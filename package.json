@@ -13,7 +13,7 @@
     "backend:start": "cd backend && node dist/main",
     "backend:start:dev": "cd backend && nest start --watch",
     "backend:start:debug": "cd backend && nest start --debug --watch",
-    "backend:start:prod": "cd backend && node dist/main",
+    "backend:start:prod": "cd backend && node dist/init-data.js && node dist/main",
     "backend:init": "cd backend && ts-node --project tsconfig.json src/init-data.ts"
   },
   "dependencies": {
@@ -49,7 +49,7 @@
     "reflect-metadata": "^0.1.13",
     "rxjs": "^7.8.1",
     "socket.io-client": "^4.5.4",
-    "sqlite3": "^5.1.6",
+    "pg": "^8.11.0",
     "tailwind-merge": "^2.1.0",
     "typeorm": "^0.3.17",
     "zod": "^3.22.0"

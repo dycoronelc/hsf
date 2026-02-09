@@ -29,13 +29,16 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
    - **Start Command**: `npm run backend:start:prod`
    - **Watch Paths**: `backend/**` (para que solo se reconstruya cuando cambie el backend)
 
-4. **Variables** (pestaña Variables):
+4. **Añadir PostgreSQL**: En el proyecto, **+ New** → **Database** → **PostgreSQL**. Railway crea la base de datos y la variable `DATABASE_URL` automáticamente (se comparte con los servicios del mismo proyecto).
+
+5. **Variables** (pestaña Variables del backend):
    | Variable | Valor |
    |----------|-------|
+   | `DATABASE_URL` | *(auto-asignada por Railway al añadir PostgreSQL)* |
    | `FRONTEND_URL` | *(lo configuras después de tener la URL del frontend, ej. `https://tu-frontend.railway.app`)* |
    | `NODE_ENV` | `production` |
 
-5. **Generate Domain**: En la pestaña Settings → Networking, haz clic en **Generate Domain**. Copia la URL (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`).
+6. **Generate Domain**: En la pestaña Settings → Networking, haz clic en **Generate Domain**. Copia la URL (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`).
 
 ---
 
@@ -66,27 +69,14 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
 
 ---
 
-## Paso 5: Base de datos (SQLite vs PostgreSQL)
+## Usuarios por defecto
 
-### Opción Actual: SQLite (archivo local)
+Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no existen:
 
-El proyecto usa SQLite por defecto. **En Railway el disco es efímero**: los datos se pierden en cada redeploy. Sirve para pruebas, no para producción.
-
-### Para producción: PostgreSQL en Railway
-
-1. En el proyecto Railway: **+ New** → **Database** → **PostgreSQL**
-2. Railway crea la base de datos y la variable `DATABASE_URL`.
-3. En el servicio **backend**, las variables heredarán `DATABASE_URL` automáticamente si compartes el mismo proyecto.
-4. Cambios necesarios en el código para usar PostgreSQL:
-   - Modificar `backend/src/app.module.ts` para usar `process.env.DATABASE_URL` en lugar de SQLite.
-   - Ejemplo de config TypeORM para PostgreSQL:
-   ```ts
-   TypeOrmModule.forRoot({
-     type: 'postgres',
-     url: process.env.DATABASE_URL,
-     ...resto de config
-   })
-   ```
+| Rol | Email | Contraseña |
+|-----|-------|------------|
+| Administrador | admin@hospitalsantafe.com | admin123 |
+| Recepción | reception@hospitalsantafe.com | reception123 |
 
 ---
 
@@ -96,6 +86,7 @@ El proyecto usa SQLite por defecto. **En Railway el disco es efímero**: los dat
 | Variable | Descripción |
 |---------|-------------|
 | `PORT` | Lo asigna Railway automáticamente |
+| `DATABASE_URL` | URL de PostgreSQL (auto-asignada al añadir la base de datos) |
 | `FRONTEND_URL` | URL del frontend para CORS |
 | `NODE_ENV` | `production` |
 

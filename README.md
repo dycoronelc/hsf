@@ -22,14 +22,14 @@ Sistema completo de gestión de flujo de pacientes con módulo de preadmisión d
 ### Backend
 - NestJS
 - TypeORM
-- SQLite (desarrollo) / PostgreSQL (producción)
+- PostgreSQL
 - JWT Authentication
 - TypeScript (compartido con frontend)
 
 ## Prerrequisitos
 
 - **Node.js 18+**
-- PostgreSQL (opcional; en desarrollo se usa SQLite por defecto)
+- **PostgreSQL** (local o remoto; ver `.env.example` para conexión)
 
 Todos los comandos siguientes se ejecutan desde la **raíz del proyecto** (carpeta donde están `package.json` y la carpeta `backend`).
 
@@ -39,12 +39,22 @@ Todos los comandos siguientes se ejecutan desde la **raíz del proyecto** (carpe
 
 ### Primera vez (instalación y datos iniciales)
 
+1. Crea un archivo `.env` en la raíz (copia `.env.example`).
+2. Configura `DATABASE_URL` apuntando a tu PostgreSQL (por defecto: `postgresql://postgres:postgres@localhost:5432/hospital_santa_fe`).
+3. Crea la base de datos si no existe: `createdb hospital_santa_fe` (o desde tu cliente PostgreSQL).
+4. Ejecuta:
+
 ```bash
 npm install
+npm run backend:build
 npm run backend:init
 ```
 
-`backend:init` crea la base SQLite, usuarios de prueba y carga catálogos (nacionalidades, ubicación geográfica).
+`backend:init` crea las tablas, usuarios iniciales y carga catálogos (nacionalidades, ubicación geográfica).
+
+**Usuarios por defecto:**
+- **Administrador**: admin@hospitalsantafe.com / admin123
+- **Recepción**: reception@hospitalsantafe.com / reception123
 
 ### Modo desarrollo (dos terminales)
 

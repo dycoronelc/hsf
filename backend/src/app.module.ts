@@ -34,8 +34,11 @@ import { Notification } from './notifications/entities/notification.entity';
       isGlobal: true,
     }),
     TypeOrmModule.forRoot({
-      type: 'sqlite',
-      database: 'hospital_santa_fe.db',
+      type: 'postgres',
+      url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hospital_santa_fe',
+      ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production'
+        ? { rejectUnauthorized: false }
+        : false,
       entities: [User, Service, Sede, Preadmission, Ticket, Appointment, Survey, Nacionalidad, Provincia, Distrito, Corregimiento, Notification],
       synchronize: true, // Solo para desarrollo, usar migrations en producción
       logging: false,
