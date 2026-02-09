@@ -40,7 +40,7 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
    | `FRONTEND_URL` | *(lo configuras después de tener la URL del frontend)* |
    | `NODE_ENV` | `production` |
 
-7. **Release Command** (opcional, para crear tablas antes del deploy): En Settings → Build, añade **Release Command**: `npm run backend:build && npm run backend:sync`. Esto crea las tablas en cada deploy.
+7. **Pre-deploy Command**: Déjalo vacío o elimínalo. Las tablas se crean automáticamente cuando el backend inicia (TypeORM synchronize).
 
 8. **Generate Domain**: En la pestaña Settings → Networking, haz clic en **Generate Domain**. Copia la URL (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`).
 
@@ -59,7 +59,8 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
 4. **Variables** (pestaña Variables):
    | Variable | Valor |
    |----------|-------|
-   | `NEXT_PUBLIC_API_URL` | URL del backend (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`) – **Obligatorio** para que el proxy redirija `/api/*` al backend |
+   | `API_URL` | URL del backend (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`) – **Obligatorio** para que el proxy redirija `/api/*` al backend. Se lee en runtime. |
+   | `NEXT_PUBLIC_API_URL` | Igual que API_URL (opcional, para builds que lo necesiten) |
 
 5. **Generate Domain**: En Settings → Networking → **Generate Domain**. Copia la URL del frontend.
 
@@ -97,7 +98,7 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 ### Frontend
 | Variable | Descripción |
 |---------|-------------|
-| `NEXT_PUBLIC_API_URL` | URL pública del backend |
+| `API_URL` | URL pública del backend (obligatorio para el proxy) |
 
 ---
 
@@ -117,5 +118,5 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 - **API no responde**: Confirma que `NEXT_PUBLIC_API_URL` en el frontend apunte a la URL del backend (sin `/api` al final).
 - **No hay tablas en PostgreSQL**: 
   1. Verifica que `DATABASE_URL` esté configurada en el backend (Variables → Add Reference → Postgres → DATABASE_URL).
-  2. Añade **Release Command**: `npm run backend:sync` en Settings → Build del backend.
+  2. Añade **Pre-deploy Command**: `cd backend && node dist/sync-db.js` en Settings → Deploy del backend.
   3. Redeploya el backend. Revisa los logs para ver si hay errores de conexión a la BD.
