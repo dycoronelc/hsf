@@ -46,7 +46,7 @@ export default function NewAppointmentPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services/`)
+      const response = await fetch('/api/services/')
       if (response.ok) {
         const data = await response.json()
         // Filtrar solo servicios que requieren cita
@@ -66,7 +66,7 @@ export default function NewAppointmentPage() {
     setLoadingSlots(true)
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/appointments/available-slots?serviceId=${selectedService}&date=${dateIso}`,
+        `/api/appointments/available-slots?serviceId=${selectedService}&date=${dateIso}`,
       )
       if (response.ok) {
         const data = await response.json()
@@ -94,7 +94,7 @@ export default function NewAppointmentPage() {
     setError('')
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/appointments/`, {
+      const response = await fetch('/api/appointments/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

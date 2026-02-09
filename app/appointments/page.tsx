@@ -26,7 +26,7 @@ function AppointmentsContent() {
   const fetchAppointments = async () => {
     setLoading(true)
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/appointments/`, {
+      const response = await fetch('/api/appointments/', {
         headers: {
           'Authorization': `Bearer ${token}`,
         },
@@ -55,7 +55,7 @@ function AppointmentsContent() {
       return
     }
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/appointments/${id}`, {
+      const response = await fetch(`/api/appointments/${id}`, {
         method: 'DELETE',
         headers: {
           'Authorization': `Bearer ${token}`,

@@ -31,7 +31,7 @@ export default function NewTicketPage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services/`)
+      const response = await fetch('/api/services/')
       if (response.ok) {
         const data = await response.json()
         setServices(data)
@@ -57,7 +57,7 @@ export default function NewTicketPage() {
     setError('')
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/`, {
+      const response = await fetch('/api/tickets/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

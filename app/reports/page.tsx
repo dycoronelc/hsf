@@ -75,7 +75,7 @@ export default function ReportsPage() {
       if (endIso) params.append('endDate', endIso)
 
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/reports/summary?${params.toString()}`,
+        `/api/reports/summary?${params.toString()}`,
         {
           headers: { Authorization: `Bearer ${token}` },
         },
@@ -93,7 +93,7 @@ export default function ReportsPage() {
 
   const loadRealTime = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/reports/realtime`, {
+      const response = await fetch('/api/reports/realtime', {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (response.ok) {

@@ -33,7 +33,7 @@ function KioskContent() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services/`)
+      const response = await fetch('/api/services/')
       if (response.ok) {
         const data = await response.json()
         setServices(data)
@@ -55,7 +55,7 @@ function KioskContent() {
     try {
       // Crear ticket como paciente anónimo (sin autenticación)
       // En producción, esto requeriría un endpoint especial o token de kiosco
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/kiosk`, {
+      const response = await fetch('/api/tickets/kiosk', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

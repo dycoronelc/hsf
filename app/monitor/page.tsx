@@ -42,8 +42,8 @@ export default function MonitorPage() {
   const fetchAll = async () => {
     try {
       const [queuesRes, preRes] = await Promise.all([
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/monitor/all-queues`),
-        fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/monitor/preadmissions`),
+        fetch('/api/monitor/all-queues'),
+        fetch('/api/monitor/preadmissions'),
       ])
       if (queuesRes.ok) {
         const data = await queuesRes.json()

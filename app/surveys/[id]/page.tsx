@@ -35,7 +35,7 @@ export default function SurveyPage() {
     setLoading(true)
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/surveys/${surveyId}`,
+        `/api/surveys/${surveyId}`,
       )
       if (response.ok) {
         const data = await response.json()
@@ -67,7 +67,7 @@ export default function SurveyPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/surveys/${surveyId}/submit`,
+        `/api/surveys/${surveyId}/submit`,
         {
           method: 'PUT',
           headers: {

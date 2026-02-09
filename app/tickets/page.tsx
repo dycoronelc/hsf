@@ -35,7 +35,7 @@ export default function TicketsPage() {
     const authToken = token ?? localStorage.getItem('token')
     if (!authToken) return
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/tickets/`, {
+      const response = await fetch('/api/tickets/', {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },

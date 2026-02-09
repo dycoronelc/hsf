@@ -36,7 +36,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [])
 
   const login = async (email: string, password: string) => {
-    const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+    const response = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -50,7 +50,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const data = await response.json()
     setToken(data.access_token)
     
-    const userResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/me`, {
+    const userResponse = await fetch('/api/auth/me', {
       headers: { Authorization: `Bearer ${data.access_token}` },
     })
     const userData = await userResponse.json()

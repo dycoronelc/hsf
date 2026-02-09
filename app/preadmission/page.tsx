@@ -82,7 +82,7 @@ export default function PreadmissionPage() {
       const authToken = token || localStorage.getItem('token')
       
       // Cargar nacionalidades
-      const natResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/catalogs/nacionalidades`, {
+      const natResponse = await fetch('/api/catalogs/nacionalidades', {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -93,7 +93,7 @@ export default function PreadmissionPage() {
       }
       
       // Cargar provincias
-      const provResponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/catalogs/provincias`, {
+      const provResponse = await fetch('/api/catalogs/provincias', {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -115,7 +115,7 @@ export default function PreadmissionPage() {
     }
     try {
       const authToken = token || localStorage.getItem('token')
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/catalogs/distritos?provincia=${provinciaCodigo}`, {
+      const response = await fetch(`/api/catalogs/distritos?provincia=${provinciaCodigo}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -140,7 +140,7 @@ export default function PreadmissionPage() {
     }
     try {
       const authToken = token || localStorage.getItem('token')
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/catalogs/corregimientos?distrito=${distritoCodigo}`, {
+      const response = await fetch(`/api/catalogs/corregimientos?distrito=${distritoCodigo}`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
         },
@@ -170,7 +170,7 @@ export default function PreadmissionPage() {
     try {
       const authToken = token || localStorage.getItem('token')
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/preadmission/search?cedula=${formData.cedula}&tipoIdentificacion=${formData.pasaporte}`,
+        `/api/preadmission/search?cedula=${formData.cedula}&tipoIdentificacion=${formData.pasaporte}`,
         {
           headers: {
             'Authorization': `Bearer ${authToken}`,
@@ -344,7 +344,7 @@ export default function PreadmissionPage() {
 
     try {
       const authToken = token || localStorage.getItem('token')
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/preadmission/`, {
+      const response = await fetch('/api/preadmission/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

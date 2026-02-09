@@ -29,16 +29,20 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
    - **Start Command**: `npm run backend:start:prod`
    - **Watch Paths**: `backend/**` (para que solo se reconstruya cuando cambie el backend)
 
-4. **Añadir PostgreSQL**: En el proyecto, **+ New** → **Database** → **PostgreSQL**. Railway crea la base de datos y la variable `DATABASE_URL` automáticamente (se comparte con los servicios del mismo proyecto).
+4. **Añadir PostgreSQL**: En el proyecto, **+ New** → **Database** → **PostgreSQL**. Renombra el servicio a `Postgres` (opcional, para la referencia).
 
-5. **Variables** (pestaña Variables del backend):
+5. **Vincular DATABASE_URL al backend**: En el servicio **backend**, pestaña **Variables** → **+ New Variable** → **Add Reference** → selecciona el servicio PostgreSQL → variable `DATABASE_URL`. Si no aparece como referencia, copia manualmente el valor de `DATABASE_URL` del servicio PostgreSQL.
+
+6. **Variables** (pestaña Variables del backend):
    | Variable | Valor |
    |----------|-------|
-   | `DATABASE_URL` | *(auto-asignada por Railway al añadir PostgreSQL)* |
-   | `FRONTEND_URL` | *(lo configuras después de tener la URL del frontend, ej. `https://tu-frontend.railway.app`)* |
+   | `DATABASE_URL` | Referencia o copia del valor del servicio PostgreSQL |
+   | `FRONTEND_URL` | *(lo configuras después de tener la URL del frontend)* |
    | `NODE_ENV` | `production` |
 
-6. **Generate Domain**: En la pestaña Settings → Networking, haz clic en **Generate Domain**. Copia la URL (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`).
+7. **Release Command** (opcional, para crear tablas antes del deploy): En Settings → Build, añade **Release Command**: `npm run backend:build && npm run backend:sync`. Esto crea las tablas en cada deploy.
+
+8. **Generate Domain**: En la pestaña Settings → Networking, haz clic en **Generate Domain**. Copia la URL (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`).
 
 ---
 
@@ -55,7 +59,7 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
 4. **Variables** (pestaña Variables):
    | Variable | Valor |
    |----------|-------|
-   | `NEXT_PUBLIC_API_URL` | URL del backend (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`) |
+   | `NEXT_PUBLIC_API_URL` | URL del backend (ej. `https://hospitalsantafe-backend-production-xxxx.up.railway.app`) – **Obligatorio** para que el proxy redirija `/api/*` al backend |
 
 5. **Generate Domain**: En Settings → Networking → **Generate Domain**. Copia la URL del frontend.
 
@@ -111,3 +115,7 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 - **"No start command found"**: Revisa que Build y Start estén configurados en Settings.
 - **CORS errors**: Verifica que `FRONTEND_URL` en el backend coincida con la URL real del frontend.
 - **API no responde**: Confirma que `NEXT_PUBLIC_API_URL` en el frontend apunte a la URL del backend (sin `/api` al final).
+- **No hay tablas en PostgreSQL**: 
+  1. Verifica que `DATABASE_URL` esté configurada en el backend (Variables → Add Reference → Postgres → DATABASE_URL).
+  2. Añade **Release Command**: `npm run backend:sync` en Settings → Build del backend.
+  3. Redeploya el backend. Revisa los logs para ver si hay errores de conexión a la BD.

@@ -13,8 +13,9 @@
     "backend:start": "cd backend && node dist/main",
     "backend:start:dev": "cd backend && nest start --watch",
     "backend:start:debug": "cd backend && nest start --debug --watch",
-    "backend:start:prod": "cd backend && node dist/init-data.js && node dist/main",
-    "backend:init": "cd backend && ts-node --project tsconfig.json src/init-data.ts"
+    "backend:start:prod": "cd backend && (node dist/init-data.js || true) && node dist/main",
+    "backend:init": "cd backend && ts-node --project tsconfig.json src/init-data.ts",
+    "backend:sync": "cd backend && node dist/sync-db.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.3.0",

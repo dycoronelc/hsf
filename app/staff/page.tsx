@@ -75,7 +75,7 @@ export default function StaffConsolePage() {
 
   const fetchServices = async () => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/services/`)
+      const response = await fetch('/api/services/')
       if (response.ok) {
         const data = await response.json()
         setServices(data)
@@ -93,7 +93,7 @@ export default function StaffConsolePage() {
     
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/tickets/?service_id=${selectedService}`,
+        `/api/tickets/?service_id=${selectedService}`,
         {
           headers: {
             'Authorization': `Bearer ${token}`,
@@ -118,7 +118,7 @@ export default function StaffConsolePage() {
     setLoading(true)
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${ticketId}/call`,
+        `/api/tickets/${ticketId}/call`,
         {
           method: 'POST',
           headers: {
@@ -142,7 +142,7 @@ export default function StaffConsolePage() {
     setLoading(true)
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${ticketId}/start`,
+        `/api/tickets/${ticketId}/start`,
         {
           method: 'POST',
           headers: {
@@ -164,7 +164,7 @@ export default function StaffConsolePage() {
     setLoading(true)
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/tickets/${ticketId}/complete`,
+        `/api/tickets/${ticketId}/complete`,
         {
           method: 'POST',
           headers: {
@@ -212,7 +212,7 @@ export default function StaffConsolePage() {
     setCheckInLoading(true)
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/tickets/check-in-by-code`,
+        '/api/tickets/check-in-by-code',
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
