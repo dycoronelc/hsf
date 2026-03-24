@@ -1,15 +1,28 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PreadmissionStatus = exports.Priority = exports.TicketStatus = exports.UserRole = void 0;
+exports.PreadmissionStatus = exports.Priority = exports.PreadmissionArrivalState = exports.TicketStatus = exports.AgentState = exports.UserRole = void 0;
 var UserRole;
 (function (UserRole) {
     UserRole["PATIENT"] = "patient";
     UserRole["RECEPTION"] = "reception";
     UserRole["TECHNICIAN"] = "technician";
+    UserRole["ANFITRION"] = "anfitrion";
+    UserRole["OFICIAL_ADMISION"] = "oficial_admision";
     UserRole["SUPERVISOR"] = "supervisor";
     UserRole["ADMIN"] = "admin";
+    UserRole["LABORATORIO"] = "laboratorio";
+    UserRole["RADIOLOGIA"] = "radiologia";
     UserRole["AUDITOR"] = "auditor";
 })(UserRole || (exports.UserRole = UserRole = {}));
+var AgentState;
+(function (AgentState) {
+    AgentState["EN_LINEA"] = "en_linea";
+    AgentState["MANUAL"] = "manual";
+    AgentState["FUERA_DE_LINEA"] = "fuera_de_linea";
+    AgentState["ALMUERZO"] = "almuerzo";
+    AgentState["BANO"] = "bano";
+    AgentState["DOCUMENTANDO"] = "documentando";
+})(AgentState || (exports.AgentState = AgentState = {}));
 var TicketStatus;
 (function (TicketStatus) {
     TicketStatus["CREADO"] = "creado";
@@ -21,7 +34,15 @@ var TicketStatus;
     TicketStatus["NO_SHOW"] = "no_show";
     TicketStatus["CANCELADO"] = "cancelado";
     TicketStatus["DERIVADO"] = "derivado";
+    TicketStatus["TRANSFERIDO"] = "transferido";
 })(TicketStatus || (exports.TicketStatus = TicketStatus = {}));
+var PreadmissionArrivalState;
+(function (PreadmissionArrivalState) {
+    PreadmissionArrivalState["REGISTRADO"] = "registrado";
+    PreadmissionArrivalState["ESPERA_LLEGADA"] = "espera_llegada";
+    PreadmissionArrivalState["PACIENTE_PRESENTE"] = "paciente_presente";
+    PreadmissionArrivalState["TICKET_GENERADO"] = "ticket_generado";
+})(PreadmissionArrivalState || (exports.PreadmissionArrivalState = PreadmissionArrivalState = {}));
 var Priority;
 (function (Priority) {
     Priority["NORMAL"] = "normal";

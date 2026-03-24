@@ -21,11 +21,11 @@ __decorate([
     __metadata("design:type", Number)
 ], Preadmission.prototype, "id", void 0);
 __decorate([
-    (0, typeorm_1.Column)(),
+    (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Number)
 ], Preadmission.prototype, "patientId", void 0);
 __decorate([
-    (0, typeorm_1.ManyToOne)(() => user_entity_1.User),
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
     (0, typeorm_1.JoinColumn)({ name: 'patientId' }),
     __metadata("design:type", user_entity_1.User)
 ], Preadmission.prototype, "patient", void 0);
@@ -182,6 +182,14 @@ __decorate([
     __metadata("design:type", String)
 ], Preadmission.prototype, "ssimagen", void 0);
 __decorate([
+    (0, typeorm_1.Column)('text', { nullable: true }),
+    __metadata("design:type", String)
+], Preadmission.prototype, "certificadoSeguro", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true, default: '507' }),
+    __metadata("design:type", String)
+], Preadmission.prototype, "celularPrefix", void 0);
+__decorate([
     (0, typeorm_1.Column)({
         type: 'text',
         default: enums_1.PreadmissionStatus.BORRADOR,
@@ -212,6 +220,30 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Date)
 ], Preadmission.prototype, "checkInAt", void 0);
+__decorate([
+    (0, typeorm_1.Column)({
+        type: 'text',
+        default: enums_1.PreadmissionArrivalState.ESPERA_LLEGADA,
+    }),
+    __metadata("design:type", String)
+], Preadmission.prototype, "arrivalState", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Preadmission.prototype, "confirmedArrivalAt", void 0);
+__decorate([
+    (0, typeorm_1.ManyToOne)(() => user_entity_1.User, { nullable: true }),
+    (0, typeorm_1.JoinColumn)({ name: 'confirmedArrivalByUserId' }),
+    __metadata("design:type", user_entity_1.User)
+], Preadmission.prototype, "confirmedArrivalBy", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Number)
+], Preadmission.prototype, "ticketId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Date)
+], Preadmission.prototype, "cellbyteSentAt", void 0);
 exports.Preadmission = Preadmission = __decorate([
     (0, typeorm_1.Entity)('preadmissions')
 ], Preadmission);

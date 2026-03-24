@@ -1,5 +1,5 @@
 import { TicketsService } from './tickets.service';
-import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto } from './dto/ticket.dto';
 import { TicketStatus } from '../common/enums';
 export declare class TicketsController {
     private readonly ticketsService;
@@ -71,6 +71,19 @@ export declare class TicketsController {
     }>;
     complete(id: number): Promise<{
         message: string;
+    }>;
+    transfer(id: number, dto: TransferTicketDto): Promise<{
+        message: string;
+        originalId: number;
+        newTicketId: number;
+        service_id?: undefined;
+        service_name?: undefined;
+    } | {
+        message: string;
+        service_id: number;
+        service_name: string;
+        originalId?: undefined;
+        newTicketId?: undefined;
     }>;
     update(id: number, updateDto: UpdateTicketDto): Promise<{
         id: number;

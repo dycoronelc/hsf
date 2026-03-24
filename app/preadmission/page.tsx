@@ -22,6 +22,8 @@ export default function PreadmissionPage() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
   const [createdPreadmissionId, setCreatedPreadmissionId] = useState<number | null>(null)
+  const [createdQrCode, setCreatedQrCode] = useState<string | null>(null)
+  const [qrRaw, setQrRaw] = useState('')
   const [patientFound, setPatientFound] = useState(false)
   const [locations, setLocations] = useState<LocationData[]>([])
   const [nationalities, setNationalities] = useState<Array<{codigo: string, nacionalidad: string, pais: string}>>([])
@@ -44,6 +46,7 @@ export default function PreadmissionPage() {
     estadocivil: '',
     tiposangre: '',
     email: '',
+    celularPrefix: '507',
     celular: '',
     provincia1: '',
     distrito1: '',
@@ -67,37 +70,26 @@ export default function PreadmissionPage() {
     ordenimagen: '',
     preautorizacion: '',
     carnetseguro: '',
+    certificadoSeguro: '',
   })
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login')
-      return
-    }
     loadCatalogs()
-  }, [isAuthenticated])
+  }, [])
 
   const loadCatalogs = async () => {
     try {
-      const authToken = token || localStorage.getItem('token')
-      
-      // Cargar nacionalidades
-      const natResponse = await fetch('/api/catalogs/nacionalidades', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      })
+      const authToken = isAuthenticated ? (token || localStorage.getItem('token')) : null
+      const headers: HeadersInit = authToken ? { Authorization: `Bearer ${authToken}` } : {}
+
+      // Cargar nacionalidades (público para preadmisión sin login)
+      const natResponse = await fetch('/api/catalogs/nacionalidades', { headers })
       if (natResponse.ok) {
         const nats = await natResponse.json()
         setNationalities(nats)
       }
       
-      // Cargar provincias
-      const provResponse = await fetch('/api/catalogs/provincias', {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      })
+      const provResponse = await fetch('/api/catalogs/provincias', { headers })
       if (provResponse.ok) {
         const provs = await provResponse.json()
         setProvincias(provs)
@@ -114,12 +106,10 @@ export default function PreadmissionPage() {
       return
     }
     try {
-      const authToken = token || localStorage.getItem('token')
-      const response = await fetch(`/api/catalogs/distritos?provincia=${provinciaCodigo}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      })
+      const authToken = isAuthenticated ? (token || localStorage.getItem('token')) : null
+      const headers: HeadersInit = {}
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+      const response = await fetch(`/api/catalogs/distritos?provincia=${provinciaCodigo}`, { headers })
       if (response.ok) {
         const dists = await response.json()
         setDistritos(dists)
@@ -139,12 +129,10 @@ export default function PreadmissionPage() {
       return
     }
     try {
-      const authToken = token || localStorage.getItem('token')
-      const response = await fetch(`/api/catalogs/corregimientos?distrito=${distritoCodigo}`, {
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-        },
-      })
+      const authToken = isAuthenticated ? (token || localStorage.getItem('token')) : null
+      const headers: HeadersInit = {}
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
+      const response = await fetch(`/api/catalogs/corregimientos?distrito=${distritoCodigo}`, { headers })
       if (response.ok) {
         const corregs = await response.json()
         setCorregimientos(corregs)
@@ -168,14 +156,12 @@ export default function PreadmissionPage() {
     setPatientFound(false)
 
     try {
-      const authToken = token || localStorage.getItem('token')
+      const authToken = isAuthenticated ? (token || localStorage.getItem('token')) : null
+      const headers: HeadersInit = {}
+      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
       const response = await fetch(
         `/api/preadmission/search?cedula=${formData.cedula}&tipoIdentificacion=${formData.pasaporte}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${authToken}`,
-          },
-        }
+        { headers }
       )
 
       if (response.ok) {
@@ -194,7 +180,13 @@ export default function PreadmissionPage() {
             estadocivil: patient.estadocivil || '',
             tiposangre: patient.tiposangre || '',
             email: patient.email || '',
-            celular: patient.celular || '',
+            celularPrefix: patient.celularPrefix || '507',
+            celular: (() => {
+              const cel = patient.celular || ''
+              const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
+              if (m) return m[2].replace(/\D/g, '')
+              return cel.replace(/^\+/, '').replace(/\D/g, '') || ''
+            })(),
             provincia1: patient.provincia1 || '',
             distrito1: patient.distrito1 || '',
             corregimiento1: patient.corregimiento1 || '',
@@ -210,6 +202,8 @@ export default function PreadmissionPage() {
             doblecobertura: patient.doblecobertura || 'NO',
             compania1: patient.compania1 || '',
             poliza1: patient.poliza1 || '',
+            carnetseguro: patient.carnetseguro || '',
+            certificadoSeguro: patient.certificadoSeguro || '',
           }
           setFormData(updatedFormData)
           
@@ -231,6 +225,58 @@ export default function PreadmissionPage() {
       setPatientFound(false)
     } finally {
       setSearching(false)
+    }
+  }
+
+  const applyCedulaQr = async () => {
+    if (!qrRaw.trim()) {
+      setError('Pega o escribe el texto leído del QR de la cédula')
+      return
+    }
+    setError('')
+    try {
+      const res = await fetch('/api/preadmission/parse-cedula-qr', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ raw: qrRaw }),
+      })
+      if (!res.ok) return
+      const d = (await res.json()) as Record<string, string>
+      setFormData((prev) => {
+        const ced =
+          d.cedula ||
+          d.Cedula ||
+          d.ID ||
+          d.id ||
+          d.rawSegment1 ||
+          prev.cedula
+        const nom =
+          d.nombres ||
+          d.NOMBRE ||
+          d.nombre ||
+          d.rawSegment2 ||
+          ''
+        const ape = d.apellidos || d.APELLIDO || d.apellido || ''
+        const partsNom = nom.trim() ? nom.trim().split(/\s+/) : []
+        const partsApe = ape.trim() ? ape.trim().split(/\s+/) : []
+        const name1 = d.name1 || partsNom[0] || prev.name1
+        const name2 = d.name2 || partsNom.slice(1).join(' ') || prev.name2
+        const apellido1 = d.apellido1 || partsApe[0] || prev.apellido1
+        const apellido2 = d.apellido2 || partsApe.slice(1).join(' ') || prev.apellido2
+        return {
+          ...prev,
+          cedula: ced ? String(ced).replace(/\s/g, '') : prev.cedula,
+          name1,
+          name2,
+          apellido1,
+          apellido2,
+          ...(d.fechanac && isValidDdMmYyyy(d.fechanac) ? { fechanac: d.fechanac } : {}),
+          ...(d.sexo === 'M' || d.sexo === 'F' ? { sexo: d.sexo } : {}),
+          ...(d.nacionalidad ? { nacionalidad: d.nacionalidad } : {}),
+        }
+      })
+    } catch {
+      setError('No se pudo interpretar el QR. Complete los datos manualmente.')
     }
   }
 
@@ -323,7 +369,9 @@ export default function PreadmissionPage() {
         }
         return true
       case 7:
-        return !!(formData.cedulaimagen && formData.ordenimagen)
+        if (!formData.cedulaimagen) return false
+        if (formData.doblecobertura === 'SI' && !formData.carnetseguro) return false
+        return true
       default:
         return true
     }
@@ -343,23 +391,40 @@ export default function PreadmissionPage() {
     setError('')
 
     try {
-      const authToken = token || localStorage.getItem('token')
-      const response = await fetch('/api/preadmission/', {
+      const isPublic = !isAuthenticated
+      const url = isPublic ? '/api/preadmission/public' : '/api/preadmission/'
+      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      if (!isPublic && token) headers['Authorization'] = `Bearer ${token}`
+      const payload = {
+        ...formData,
+        celularPrefix: formData.celularPrefix || '507',
+        certificadoSeguro: formData.certificadoSeguro || undefined,
+        ordenimagen: formData.ordenimagen || undefined,
+      }
+
+      const response = await fetch(url, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${authToken}`,
-        },
-        body: JSON.stringify(formData),
+        headers,
+        body: JSON.stringify(payload),
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Error al enviar preadmisión')
+        const data = await response.json().catch(() => ({}))
+        let detail: string =
+          typeof data.detail === 'string' ? data.detail : data.message || 'Error al enviar preadmisión'
+        if (Array.isArray(data.message)) {
+          detail = data.message
+            .map((x: { constraints?: Record<string, string>; property?: string }) =>
+              x.constraints ? Object.values(x.constraints).join(', ') : JSON.stringify(x),
+            )
+            .join('; ')
+        }
+        throw new Error(detail)
       }
 
       const data = await response.json()
       setCreatedPreadmissionId(data.id)
+      setCreatedQrCode(data.qrCode ?? null)
       setSuccess(true)
     } catch (err: any) {
       setError(err.message)
@@ -389,10 +454,14 @@ export default function PreadmissionPage() {
                 Presente este QR al llegar al hospital para registrar su llegada:
               </p>
               <div className="bg-white p-3 rounded-lg border border-gray-200 shadow-sm">
-                <QRCodeSVG value={String(createdPreadmissionId)} size={200} level="M" />
+                <QRCodeSVG
+                  value={createdQrCode || String(createdPreadmissionId)}
+                  size={200}
+                  level="M"
+                />
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                ID: {createdPreadmissionId}
+                Código: {createdQrCode || createdPreadmissionId} (escanéelo en recepción o kiosco)
               </p>
             </div>
           )}
@@ -558,6 +627,28 @@ export default function PreadmissionPage() {
                   </p>
                 </div>
               </div>
+              <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Datos del QR de cédula (opcional)
+                </label>
+                <p className="text-xs text-gray-500 mb-2">
+                  Pegue el texto del QR de datos del reverso (formato TE: campos separados por | con cédula, apellidos, nombres, sexo, fechas, etc.). Si no coincide, complete manualmente.
+                </p>
+                <textarea
+                  value={qrRaw}
+                  onChange={(e) => setQrRaw(e.target.value)}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+                  placeholder="Pegar contenido del QR…"
+                />
+                <button
+                  type="button"
+                  onClick={applyCedulaQr}
+                  className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm"
+                >
+                  Aplicar datos del QR
+                </button>
+              </div>
             </div>
           )}
 
@@ -719,17 +810,30 @@ export default function PreadmissionPage() {
                     required
                   />
                 </div>
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Celular *
+                    Celular * (prefijo país + número)
                   </label>
-                  <input
-                    type="tel"
-                    value={formData.celular}
-                    onChange={(e) => setFormData({ ...formData, celular: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    required
-                  />
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <select
+                      value={formData.celularPrefix}
+                      onChange={(e) => setFormData({ ...formData, celularPrefix: e.target.value })}
+                      className="sm:w-40 px-4 py-2 border border-gray-300 rounded-lg"
+                    >
+                      <option value="507">+507 Panamá</option>
+                      <option value="506">+506 Costa Rica</option>
+                      <option value="57">+57 Colombia</option>
+                      <option value="1">+1 USA/CAN</option>
+                    </select>
+                    <input
+                      type="tel"
+                      value={formData.celular}
+                      onChange={(e) => setFormData({ ...formData, celular: e.target.value.replace(/[^\d\s-]/g, '') })}
+                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Ej: 6123-4567"
+                      required
+                    />
+                  </div>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -802,10 +906,12 @@ export default function PreadmissionPage() {
                   <input
                     type="text"
                     value={formData.direccion1}
+                    maxLength={200}
                     onChange={(e) => setFormData({ ...formData, direccion1: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">{formData.direccion1.length}/200 caracteres</p>
                 </div>
               </div>
             </div>
@@ -879,13 +985,27 @@ export default function PreadmissionPage() {
                 </label>
                 <select
                   value={formData.doblecobertura}
-                  onChange={(e) => setFormData({ ...formData, doblecobertura: e.target.value })}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setFormData({
+                      ...formData,
+                      doblecobertura: v,
+                      ...(v === 'NO'
+                        ? { compania1: '', poliza1: '', carnetseguro: '', certificadoSeguro: '' }
+                        : {}),
+                    })
+                  }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   required
                 >
                   <option value="NO">No</option>
                   <option value="SI">Sí</option>
                 </select>
+                {formData.doblecobertura === 'NO' && (
+                  <p className="text-sm text-gray-600 mt-2">
+                    Se registrará automáticamente como <strong>PACIENTE PRIVADO</strong> (sin seguro).
+                  </p>
+                )}
               </div>
               {formData.doblecobertura === 'SI' && (
                 <>
@@ -962,7 +1082,7 @@ export default function PreadmissionPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Orden Médica (Imagen) *
+                    Orden Médica (Imagen) — opcional
                   </label>
                   <input
                     type="file"
@@ -972,7 +1092,6 @@ export default function PreadmissionPage() {
                       if (file) handleFileUpload('ordenimagen', file)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    required
                   />
                 </div>
                 <div>
@@ -991,7 +1110,7 @@ export default function PreadmissionPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Carnet de Seguro (opcional)
+                    Carné de seguro {formData.doblecobertura === 'SI' ? '*' : '(solo si tiene seguro)'}
                   </label>
                   <input
                     type="file"
@@ -1003,6 +1122,22 @@ export default function PreadmissionPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
                 </div>
+                {formData.doblecobertura === 'SI' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Certificado de seguro (opcional)
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleFileUpload('certificadoSeguro', file)
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                )}
               </div>
             </div>
           )}

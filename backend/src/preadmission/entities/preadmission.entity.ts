@@ -7,19 +7,19 @@ import {
   CreateDateColumn,
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
-import { PreadmissionStatus } from '../../common/enums';
+import { PreadmissionStatus, PreadmissionArrivalState } from '../../common/enums';
 
 @Entity('preadmissions')
 export class Preadmission {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column()
-  patientId: number;
+  @Column({ nullable: true })
+  patientId: number | null;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, { nullable: true })
   @JoinColumn({ name: 'patientId' })
-  patient: User;
+  patient: User | null;
 
   // Datos del JSON
   @Column()
@@ -137,6 +137,14 @@ export class Preadmission {
   @Column('text', { nullable: true })
   ssimagen: string;
 
+  /** Certificado de seguro (opcional si tiene seguro, PDF requisitos) */
+  @Column('text', { nullable: true })
+  certificadoSeguro: string | null;
+
+  /** Prefijo país del celular principal (ej. 507); el número puede ir sin + en celular */
+  @Column({ nullable: true, default: '507' })
+  celularPrefix: string | null;
+
   // Estado y control
   @Column({
     type: 'text',
@@ -161,4 +169,25 @@ export class Preadmission {
 
   @Column({ nullable: true })
   checkInAt: Date;
+
+  /** Flujo anfitrión (PDF requisitos) */
+  @Column({
+    type: 'text',
+    default: PreadmissionArrivalState.ESPERA_LLEGADA,
+  })
+  arrivalState: PreadmissionArrivalState;
+
+  @Column({ nullable: true })
+  confirmedArrivalAt: Date | null;
+
+  @ManyToOne(() => User, { nullable: true })
+  @JoinColumn({ name: 'confirmedArrivalByUserId' })
+  confirmedArrivalBy: User | null;
+
+  /** Ticket de admisión generado al activar turno */
+  @Column({ nullable: true })
+  ticketId: number | null;
+
+  @Column({ nullable: true })
+  cellbyteSentAt: Date | null;
 }

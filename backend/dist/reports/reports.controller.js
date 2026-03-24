@@ -41,6 +41,29 @@ let ReportsController = class ReportsController {
         const end = endDate ? new Date(endDate) : undefined;
         return this.reportsService.getServiceReport(+serviceId, start, end);
     }
+    async getPreadmissionsReport(startDate, endDate, tipo, documento, arrivalState) {
+        const start = startDate ? new Date(startDate) : undefined;
+        const end = endDate ? new Date(endDate) : undefined;
+        const state = this.parseArrivalState(arrivalState);
+        return this.reportsService.getPreadmissionsReport(start, end, tipo, documento, state);
+    }
+    async exportPreadmissions(format, startDate, endDate, tipo, documento, arrivalState) {
+        const start = startDate ? new Date(startDate) : undefined;
+        const end = endDate ? new Date(endDate) : undefined;
+        const state = this.parseArrivalState(arrivalState);
+        if (format === 'csv') {
+            const csv = await this.reportsService.exportPreadmissionsCSV(start, end, tipo, documento, state);
+            return { csv };
+        }
+        return this.reportsService.getPreadmissionsReport(start, end, tipo, documento, state);
+    }
+    parseArrivalState(raw) {
+        if (!raw)
+            return undefined;
+        return Object.values(enums_1.PreadmissionArrivalState).includes(raw)
+            ? raw
+            : undefined;
+    }
 };
 exports.ReportsController = ReportsController;
 __decorate([
@@ -74,6 +97,29 @@ __decorate([
     __metadata("design:paramtypes", [Number, String, String]),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getServiceReport", null);
+__decorate([
+    (0, common_1.Get)('preadmissions'),
+    __param(0, (0, common_1.Query)('startDate')),
+    __param(1, (0, common_1.Query)('endDate')),
+    __param(2, (0, common_1.Query)('tipo')),
+    __param(3, (0, common_1.Query)('documento')),
+    __param(4, (0, common_1.Query)('arrivalState')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "getPreadmissionsReport", null);
+__decorate([
+    (0, common_1.Get)('preadmissions/export'),
+    __param(0, (0, common_1.Query)('format')),
+    __param(1, (0, common_1.Query)('startDate')),
+    __param(2, (0, common_1.Query)('endDate')),
+    __param(3, (0, common_1.Query)('tipo')),
+    __param(4, (0, common_1.Query)('documento')),
+    __param(5, (0, common_1.Query)('arrivalState')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, String, String]),
+    __metadata("design:returntype", Promise)
+], ReportsController.prototype, "exportPreadmissions", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, common_1.Controller)('reports'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),

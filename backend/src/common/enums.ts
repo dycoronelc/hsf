@@ -1,10 +1,24 @@
 export enum UserRole {
   PATIENT = 'patient',
-  RECEPTION = 'reception',
+  RECEPTION = 'reception', // Oficial de Admisión
   TECHNICIAN = 'technician',
+  ANFITRION = 'anfitrion',
+  OFICIAL_ADMISION = 'oficial_admision',
   SUPERVISOR = 'supervisor',
   ADMIN = 'admin',
+  LABORATORIO = 'laboratorio',
+  RADIOLOGIA = 'radiologia',
   AUDITOR = 'auditor',
+}
+
+/** Estados del agente (documento Preadmision.md). En no operativos no se asignan tickets ni llamados. */
+export enum AgentState {
+  EN_LINEA = 'en_linea',
+  MANUAL = 'manual',
+  FUERA_DE_LINEA = 'fuera_de_linea',
+  ALMUERZO = 'almuerzo',
+  BANO = 'bano',
+  DOCUMENTANDO = 'documentando',
 }
 
 export enum TicketStatus {
@@ -17,6 +31,16 @@ export enum TicketStatus {
   NO_SHOW = 'no_show',
   CANCELADO = 'cancelado',
   DERIVADO = 'derivado',
+  /** PDF requisitos: ticket transferido a otra área */
+  TRANSFERIDO = 'transferido',
+}
+
+/** Estados de llegada del paciente (PDF requisitos – flujo anfitrión) */
+export enum PreadmissionArrivalState {
+  REGISTRADO = 'registrado',
+  ESPERA_LLEGADA = 'espera_llegada',
+  PACIENTE_PRESENTE = 'paciente_presente',
+  TICKET_GENERADO = 'ticket_generado',
 }
 
 export enum Priority {

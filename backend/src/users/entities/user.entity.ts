@@ -5,7 +5,7 @@ import {
   CreateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { UserRole } from '../../common/enums';
+import { UserRole, AgentState } from '../../common/enums';
 import { Preadmission } from '../../preadmission/entities/preadmission.entity';
 import { Ticket } from '../../tickets/entities/ticket.entity';
 
@@ -34,6 +34,9 @@ export class User {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @Column({ type: 'text', nullable: true })
+  agentState: AgentState | null;
 
   @CreateDateColumn()
   createdAt: Date;

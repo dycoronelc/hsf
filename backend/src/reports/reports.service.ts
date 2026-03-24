@@ -5,7 +5,8 @@ import { Ticket } from '../tickets/entities/ticket.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { Survey } from '../surveys/entities/survey.entity';
 import { Service } from '../services/entities/service.entity';
-import { TicketStatus } from '../common/enums';
+import { Preadmission } from '../preadmission/entities/preadmission.entity';
+import { TicketStatus, PreadmissionArrivalState } from '../common/enums';
 
 @Injectable()
 export class ReportsService {
@@ -18,6 +19,8 @@ export class ReportsService {
     private surveyRepository: Repository<Survey>,
     @InjectRepository(Service)
     private serviceRepository: Repository<Service>,
+    @InjectRepository(Preadmission)
+    private preadmissionRepository: Repository<Preadmission>,
   ) {}
 
   async getSummaryReport(startDate?: Date, endDate?: Date) {
@@ -77,6 +80,35 @@ export class ReportsService {
         ? surveys.reduce((sum, s) => sum + (s.csatScore || 0), 0) / surveys.length
         : 0;
 
+    const preadsInPeriod = await this.preadmissionRepository.find({
+      where: { fechapreadmision: Between(start, end) },
+    });
+
+    const byArrivalState: Record<string, number> = {};
+    for (const s of Object.values(PreadmissionArrivalState)) {
+      byArrivalState[s] = 0;
+    }
+    for (const p of preadsInPeriod) {
+      const key = p.arrivalState && byArrivalState[p.arrivalState] !== undefined ? p.arrivalState : PreadmissionArrivalState.ESPERA_LLEGADA;
+      byArrivalState[key] = (byArrivalState[key] || 0) + 1;
+    }
+
+    const withConfirm = preadsInPeriod.filter((p) => p.confirmedArrivalAt);
+    const avgMinutesToPhysicalArrival =
+      withConfirm.length > 0
+        ? withConfirm.reduce(
+            (sum, p) =>
+              sum + (p.confirmedArrivalAt!.getTime() - new Date(p.fechapreadmision).getTime()) / 60000,
+            0,
+          ) / withConfirm.length
+        : 0;
+
+    const totalPreads = preadsInPeriod.length;
+    const ticketGenerated = byArrivalState[PreadmissionArrivalState.TICKET_GENERADO] || 0;
+    const awaiting =
+      (byArrivalState[PreadmissionArrivalState.ESPERA_LLEGADA] || 0) +
+      (byArrivalState[PreadmissionArrivalState.REGISTRADO] || 0);
+
     return {
       period: {
         start: start.toISOString(),
@@ -100,6 +132,16 @@ export class ReportsService {
         averageNPS: Math.round(avgNPS * 10) / 10,
         averageCSAT: Math.round(avgCSAT * 10) / 10,
         responseRate: completedTickets.length > 0 ? (surveys.length / completedTickets.length) * 100 : 0,
+      },
+      preadmissions: {
+        total: totalPreads,
+        byArrivalState,
+        awaitingArrival: awaiting,
+        ticketGeneratedCount: ticketGenerated,
+        ticketGeneratedRatePercent:
+          totalPreads > 0 ? Math.round((ticketGenerated / totalPreads) * 1000) / 10 : 0,
+        averageMinutesSubmitToPhysicalArrival:
+          Math.round(avgMinutesToPhysicalArrival * 10) / 10,
       },
     };
   }
@@ -146,10 +188,29 @@ export class ReportsService {
       };
     });
 
+    const todayPreads = await this.preadmissionRepository.find({
+      where: { fechapreadmision: Between(todayStart, now) },
+    });
+    const preadmissionArrivalToday: Record<string, number> = {};
+    for (const s of Object.values(PreadmissionArrivalState)) {
+      preadmissionArrivalToday[s] = 0;
+    }
+    for (const p of todayPreads) {
+      const key =
+        p.arrivalState && preadmissionArrivalToday[p.arrivalState] !== undefined
+          ? p.arrivalState
+          : PreadmissionArrivalState.ESPERA_LLEGADA;
+      preadmissionArrivalToday[key] = (preadmissionArrivalToday[key] || 0) + 1;
+    }
+
     return {
       timestamp: now.toISOString(),
       activeTickets: activeTickets.length,
       byService,
+      preadmissionsToday: {
+        total: todayPreads.length,
+        byArrivalState: preadmissionArrivalToday,
+      },
     };
   }
 
@@ -251,5 +312,80 @@ export class ReportsService {
       totalTickets: tickets.length,
       statusCounts,
     };
+  }
+
+  /** Listado de preadmisiones con filtros (fecha, tipo, documento, estado de llegada) */
+  async getPreadmissionsReport(
+    startDate?: Date,
+    endDate?: Date,
+    tipo?: string,
+    documento?: string,
+    arrivalState?: PreadmissionArrivalState,
+  ): Promise<Preadmission[]> {
+    const start = startDate || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+    const end = endDate || new Date();
+
+    const qb = this.preadmissionRepository
+      .createQueryBuilder('p')
+      .where('p.fechapreadmision >= :start', { start })
+      .andWhere('p.fechapreadmision <= :end', { end })
+      .orderBy('p.fechapreadmision', 'DESC');
+
+    if (tipo && (tipo === 'RAD' || tipo === 'LAB')) {
+      qb.andWhere('p.departamento = :tipo', { tipo });
+    }
+    if (documento) {
+      qb.andWhere('(p.cedula LIKE :doc OR p.name1 LIKE :doc OR p.apellido1 LIKE :doc)', {
+        doc: `%${documento}%`,
+      });
+    }
+    if (arrivalState && Object.values(PreadmissionArrivalState).includes(arrivalState)) {
+      qb.andWhere('p.arrivalState = :arrivalState', { arrivalState });
+    }
+    return qb.getMany();
+  }
+
+  /** Exportar preadmisiones a CSV (documento: exportación CSV) */
+  async exportPreadmissionsCSV(
+    startDate?: Date,
+    endDate?: Date,
+    tipo?: string,
+    documento?: string,
+    arrivalState?: PreadmissionArrivalState,
+  ): Promise<string> {
+    const list = await this.getPreadmissionsReport(startDate, endDate, tipo, documento, arrivalState);
+    const headers = [
+      'id',
+      'departamento',
+      'cedula',
+      'name1',
+      'apellido1',
+      'fechanac',
+      'email',
+      'celular',
+      'fechaprobableatencion',
+      'medico',
+      'diagnostico',
+      'status',
+      'arrivalState',
+      'confirmedArrivalAt',
+      'ticketId',
+      'qrCode',
+      'fechapreadmision',
+    ];
+    const escape = (v: unknown) =>
+      v == null ? '' : String(v).replace(/"/g, '""');
+    const cell = (p: Preadmission, h: string) => {
+      if (h === 'confirmedArrivalAt' || h === 'fechapreadmision') {
+        const d = (p as any)[h] as Date | string | null | undefined;
+        if (d == null) return '';
+        return d instanceof Date ? d.toISOString() : String(d);
+      }
+      return (p as any)[h];
+    };
+    const rows = list.map((p) =>
+      headers.map((h) => `"${escape(cell(p, h))}"`).join(','),
+    );
+    return [headers.join(','), ...rows].join('\r\n');
   }
 }

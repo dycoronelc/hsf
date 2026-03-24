@@ -1,4 +1,4 @@
-import { IsOptional, IsEnum, IsString, IsNumber } from 'class-validator';
+import { IsOptional, IsEnum, IsString, IsNumber, IsIn } from 'class-validator';
 import { TicketStatus, Priority } from '../../common/enums';
 
 export class CreateTicketDto {
@@ -32,4 +32,9 @@ export class CallTicketDto {
 export class CheckInByCodeDto {
   @IsString()
   code: string;
+}
+
+export class TransferTicketDto {
+  @IsIn(['RAD', 'LAB', 'BOTH'])
+  targetArea: 'RAD' | 'LAB' | 'BOTH';
 }

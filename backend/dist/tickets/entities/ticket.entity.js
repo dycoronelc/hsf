@@ -93,6 +93,10 @@ __decorate([
     (0, typeorm_1.Column)({ unique: true, nullable: true }),
     __metadata("design:type", String)
 ], Ticket.prototype, "qrCode", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", Number)
+], Ticket.prototype, "preadmissionId", void 0);
 exports.Ticket = Ticket = __decorate([
     (0, typeorm_1.Entity)('tickets')
 ], Ticket);

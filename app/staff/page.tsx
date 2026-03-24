@@ -38,8 +38,19 @@ export default function StaffConsolePage() {
   const [showScanner, setShowScanner] = useState(false)
   const [scanError, setScanError] = useState<string | null>(null)
   const [scanning, setScanning] = useState(false)
+  const [agentState, setAgentState] = useState<string>(user?.agentState ?? '')
+  const [transferringId, setTransferringId] = useState<number | null>(null)
   const qrScannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerId = 'staff-qr-reader'
+
+  const agentStateOptions = [
+    { value: 'en_linea', label: 'En línea' },
+    { value: 'manual', label: 'Manual' },
+    { value: 'fuera_de_linea', label: 'Fuera de línea' },
+    { value: 'almuerzo', label: 'Almorzando' },
+    { value: 'bano', label: 'Baño' },
+    { value: 'documentando', label: 'Documentando' },
+  ]
 
   useEffect(() => {
     if (!authHydrated) return
@@ -64,6 +75,10 @@ export default function StaffConsolePage() {
   if (!isAuthenticated || user?.role === 'patient') {
     return null
   }
+
+  useEffect(() => {
+    if (user?.agentState) setAgentState(user.agentState)
+  }, [user?.agentState])
 
   useEffect(() => {
     if (selectedService) {
@@ -157,6 +172,43 @@ export default function StaffConsolePage() {
       console.error('Error starting ticket:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAgentStateChange = async (newState: string) => {
+    setAgentState(newState)
+    try {
+      await fetch('/api/auth/agent-state', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ agentState: newState || null }),
+      })
+    } catch (err) {
+      console.error('Error updating agent state:', err)
+    }
+  }
+
+  const handleTransferTicket = async (ticketId: number, targetArea: 'RAD' | 'LAB' | 'BOTH') => {
+    setTransferringId(ticketId)
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/transfer`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+        body: JSON.stringify({ targetArea }),
+      })
+      if (response.ok) {
+        fetchTickets()
+      }
+    } catch (err) {
+      console.error('Error transferring ticket:', err)
+    } finally {
+      setTransferringId(null)
     }
   }
 
@@ -394,6 +446,22 @@ export default function StaffConsolePage() {
             </select>
           </div>
 
+          {/* Estado del agente (documento Preadmision.md) */}
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Estado del agente</label>
+            <select
+              value={agentState}
+              onChange={(e) => handleAgentStateChange(e.target.value)}
+              className="w-full md:w-56 px-4 py-2 border border-gray-300 rounded-lg"
+            >
+              <option value="">Seleccionar...</option>
+              {agentStateOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-500 mt-1">En estados no operativos no se asignan tickets ni llamados.</p>
+          </div>
+
           {/* Window Number */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -470,13 +538,30 @@ export default function StaffConsolePage() {
                         {ticket.service_name}
                       </span>
                     </div>
-                    <button
-                      onClick={() => handleCallTicket(ticket.id)}
-                      disabled={loading || !windowNumber}
-                      className="px-6 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Llamar
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <select
+                        value=""
+                        onChange={(e) => {
+                          const v = e.target.value
+                          if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
+                          e.target.value = ''
+                        }}
+                        disabled={transferringId === ticket.id}
+                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      >
+                        <option value="">Transferir...</option>
+                        <option value="RAD">Radiología</option>
+                        <option value="LAB">Laboratorio</option>
+                        <option value="BOTH">Ambos</option>
+                      </select>
+                      <button
+                        onClick={() => handleCallTicket(ticket.id)}
+                        disabled={loading || !windowNumber}
+                        className="px-6 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        Llamar
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>

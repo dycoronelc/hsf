@@ -70,4 +70,7 @@ export class Ticket {
 
   @Column({ unique: true, nullable: true })
   qrCode: string;
+
+  @Column({ nullable: true })
+  preadmissionId: number | null;
 }

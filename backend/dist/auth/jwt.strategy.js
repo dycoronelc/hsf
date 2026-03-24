@@ -35,6 +35,7 @@ let JwtStrategy = class JwtStrategy extends (0, passport_1.PassportStrategy)(pas
             fullName: user.fullName,
             role: user.role,
             isActive: user.isActive,
+            agentState: user.agentState ?? null,
         };
     }
 };

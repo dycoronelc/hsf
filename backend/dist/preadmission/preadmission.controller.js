@@ -30,11 +30,31 @@ let PreadmissionController = class PreadmissionController {
         }
         return this.preadmissionService.findByCedula(cedula, tipoIdentificacion);
     }
+    async createPublic(createDto) {
+        return this.preadmissionService.create(createDto, null);
+    }
+    async parseCedulaQr(body) {
+        return this.preadmissionService.parseCedulaQrPayload(body.raw);
+    }
     async create(createDto, req) {
         return this.preadmissionService.create(createDto, req.user.id);
     }
+    async workList(req, arrivalState, q, skip, limit) {
+        return this.preadmissionService.findWorkList(req.user, {
+            arrivalState,
+            q,
+            skip: skip ?? 0,
+            limit: limit ?? 100,
+        });
+    }
     async findAll(req, skip, limit) {
         return this.preadmissionService.findAll(req.user, skip || 0, limit || 100);
+    }
+    async confirmArrival(id, req) {
+        return this.preadmissionService.confirmArrival(+id, req.user);
+    }
+    async activateTicket(id, req) {
+        return this.preadmissionService.activateTicket(+id, req.user);
     }
     async findOne(id, req) {
         return this.preadmissionService.findOne(+id, req.user);
@@ -53,7 +73,22 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "searchByCedula", null);
 __decorate([
+    (0, common_1.Post)('public'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [preadmission_dto_1.CreatePreadmissionDto]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "createPublic", null);
+__decorate([
+    (0, common_1.Post)('parse-cedula-qr'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [preadmission_dto_1.ParseCedulaQrDto]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "parseCedulaQr", null);
+__decorate([
     (0, common_1.Post)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -61,7 +96,20 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "create", null);
 __decorate([
+    (0, common_1.Get)('work-list'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Query)('arrivalState')),
+    __param(2, (0, common_1.Query)('q')),
+    __param(3, (0, common_1.Query)('skip')),
+    __param(4, (0, common_1.Query)('limit')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, Number, Number]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "workList", null);
+__decorate([
     (0, common_1.Get)(),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('skip')),
     __param(2, (0, common_1.Query)('limit')),
@@ -70,7 +118,26 @@ __decorate([
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "findAll", null);
 __decorate([
+    (0, common_1.Patch)(':id/confirm-arrival'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "confirmArrival", null);
+__decorate([
+    (0, common_1.Post)(':id/activate-ticket'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "activateTicket", null);
+__decorate([
     (0, common_1.Get)(':id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -90,7 +157,6 @@ __decorate([
 ], PreadmissionController.prototype, "review", null);
 exports.PreadmissionController = PreadmissionController = __decorate([
     (0, common_1.Controller)('preadmission'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __metadata("design:paramtypes", [preadmission_service_1.PreadmissionService])
 ], PreadmissionController);
 //# sourceMappingURL=preadmission.controller.js.map

@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.CheckInByCodeDto = exports.CallTicketDto = exports.UpdateTicketDto = exports.CreateTicketDto = void 0;
+exports.TransferTicketDto = exports.CheckInByCodeDto = exports.CallTicketDto = exports.UpdateTicketDto = exports.CreateTicketDto = void 0;
 const class_validator_1 = require("class-validator");
 const enums_1 = require("../../common/enums");
 class CreateTicketDto {
@@ -56,4 +56,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CheckInByCodeDto.prototype, "code", void 0);
+class TransferTicketDto {
+}
+exports.TransferTicketDto = TransferTicketDto;
+__decorate([
+    (0, class_validator_1.IsIn)(['RAD', 'LAB', 'BOTH']),
+    __metadata("design:type", String)
+], TransferTicketDto.prototype, "targetArea", void 0);
 //# sourceMappingURL=ticket.dto.js.map

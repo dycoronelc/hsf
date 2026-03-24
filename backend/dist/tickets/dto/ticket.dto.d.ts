@@ -14,3 +14,6 @@ export declare class CallTicketDto {
 export declare class CheckInByCodeDto {
     code: string;
 }
+export declare class TransferTicketDto {
+    targetArea: 'RAD' | 'LAB' | 'BOTH';
+}

@@ -14,6 +14,7 @@ export declare class CreatePreadmissionDto {
     tiposangre: string;
     email: string;
     celular: string;
+    celularPrefix?: string;
     provincia1: string;
     distrito1: string;
     corregimiento1: string;
@@ -31,13 +32,17 @@ export declare class CreatePreadmissionDto {
     doblecobertura: string;
     compania1?: string;
     poliza1?: string;
+    carnetseguro?: string;
     diagnostico?: string;
     numerocotizacion?: string;
     cedulaimagen: string;
-    ordenimagen: string;
+    ordenimagen?: string;
     preautorizacion?: string;
-    carnetseguro?: string;
+    certificadoSeguro?: string;
     ssimagen?: string;
+}
+export declare class ParseCedulaQrDto {
+    raw: string;
 }
 export declare class ReviewPreadmissionDto {
     status: PreadmissionStatus;

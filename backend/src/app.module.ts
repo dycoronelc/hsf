@@ -27,6 +27,7 @@ import { Provincia } from './catalogs/entities/provincia.entity';
 import { Distrito } from './catalogs/entities/distrito.entity';
 import { Corregimiento } from './catalogs/entities/corregimiento.entity';
 import { Notification } from './notifications/entities/notification.entity';
+import { IntegrationLog } from './integrations/entities/integration-log.entity';
 
 @Module({
   imports: [
@@ -39,7 +40,7 @@ import { Notification } from './notifications/entities/notification.entity';
       ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production'
         ? { rejectUnauthorized: false }
         : false,
-      entities: [User, Service, Sede, Preadmission, Ticket, Appointment, Survey, Nacionalidad, Provincia, Distrito, Corregimiento, Notification],
+      entities: [User, Service, Sede, Preadmission, Ticket, Appointment, Survey, Nacionalidad, Provincia, Distrito, Corregimiento, Notification, IntegrationLog],
       synchronize: true, // Solo para desarrollo, usar migrations en producción
       logging: false,
     }),

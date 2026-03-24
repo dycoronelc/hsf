@@ -7,6 +7,7 @@ interface User {
   email: string
   fullName: string | null
   role: string
+  agentState?: string | null
 }
 
 interface AuthContextType {

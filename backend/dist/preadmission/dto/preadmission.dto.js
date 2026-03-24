@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ReviewPreadmissionDto = exports.CreatePreadmissionDto = void 0;
+exports.ReviewPreadmissionDto = exports.ParseCedulaQrDto = exports.CreatePreadmissionDto = void 0;
 const class_validator_1 = require("class-validator");
 const enums_1 = require("../../common/enums");
 class CreatePreadmissionDto {
@@ -20,20 +20,24 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "departamento", void 0);
 __decorate([
+    (0, class_validator_1.Matches)(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en nombres' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "name1", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Matches)(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en nombres' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "name2", void 0);
 __decorate([
+    (0, class_validator_1.Matches)(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en apellidos' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "apellido1", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.Matches)(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en apellidos' }),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "apellido2", void 0);
@@ -74,6 +78,11 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "celular", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePreadmissionDto.prototype, "celularPrefix", void 0);
+__decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "provincia1", void 0);
@@ -86,6 +95,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "corregimiento1", void 0);
 __decorate([
+    (0, class_validator_1.MaxLength)(200),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "direccion1", void 0);
@@ -152,6 +162,12 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "poliza1", void 0);
 __decorate([
+    (0, class_validator_1.ValidateIf)((o) => o.doblecobertura === 'SI'),
+    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePreadmissionDto.prototype, "carnetseguro", void 0);
+__decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
@@ -166,6 +182,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "cedulaimagen", void 0);
 __decorate([
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "ordenimagen", void 0);
@@ -178,12 +195,19 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "carnetseguro", void 0);
+], CreatePreadmissionDto.prototype, "certificadoSeguro", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "ssimagen", void 0);
+class ParseCedulaQrDto {
+}
+exports.ParseCedulaQrDto = ParseCedulaQrDto;
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ParseCedulaQrDto.prototype, "raw", void 0);
 class ReviewPreadmissionDto {
 }
 exports.ReviewPreadmissionDto = ReviewPreadmissionDto;

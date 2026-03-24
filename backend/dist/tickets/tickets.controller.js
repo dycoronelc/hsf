@@ -48,6 +48,9 @@ let TicketsController = class TicketsController {
     async complete(id) {
         return this.ticketsService.complete(+id);
     }
+    async transfer(id, dto) {
+        return this.ticketsService.transfer(+id, dto);
+    }
     async update(id, updateDto) {
         return this.ticketsService.update(+id, updateDto);
     }
@@ -95,8 +98,8 @@ __decorate([
 ], TicketsController.prototype, "checkIn", null);
 __decorate([
     (0, common_1.Post)(':id/call'),
-    (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -106,6 +109,8 @@ __decorate([
 ], TicketsController.prototype, "call", null);
 __decorate([
     (0, common_1.Post)(':id/start'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
@@ -113,13 +118,27 @@ __decorate([
 ], TicketsController.prototype, "start", null);
 __decorate([
     (0, common_1.Post)(':id/complete'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
     __param(0, (0, common_1.Param)('id')),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", [Number]),
     __metadata("design:returntype", Promise)
 ], TicketsController.prototype, "complete", null);
 __decorate([
+    (0, common_1.Post)(':id/transfer'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA, enums_1.UserRole.OFICIAL_ADMISION),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, ticket_dto_1.TransferTicketDto]),
+    __metadata("design:returntype", Promise)
+], TicketsController.prototype, "transfer", null);
+__decorate([
     (0, common_1.Patch)(':id'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
+    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),

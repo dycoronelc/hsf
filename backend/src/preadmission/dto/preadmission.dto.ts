@@ -5,6 +5,8 @@ import {
   IsEnum,
   ValidateIf,
   IsNotEmpty,
+  Matches,
+  MaxLength,
 } from 'class-validator';
 import { PreadmissionStatus } from '../../common/enums';
 
@@ -12,17 +14,21 @@ export class CreatePreadmissionDto {
   @IsEnum(['RAD', 'LAB'])
   departamento: string;
 
+  @Matches(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en nombres' })
   @IsString()
   name1: string;
 
   @IsOptional()
+  @Matches(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en nombres' })
   @IsString()
   name2?: string;
 
+  @Matches(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en apellidos' })
   @IsString()
   apellido1: string;
 
   @IsOptional()
+  @Matches(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en apellidos' })
   @IsString()
   apellido2?: string;
 
@@ -53,6 +59,10 @@ export class CreatePreadmissionDto {
   @IsString()
   celular: string;
 
+  @IsOptional()
+  @IsString()
+  celularPrefix?: string;
+
   @IsString()
   provincia1: string;
 
@@ -62,6 +72,7 @@ export class CreatePreadmissionDto {
   @IsString()
   corregimiento1: string;
 
+  @MaxLength(200)
   @IsString()
   direccion1: string;
 
@@ -114,6 +125,11 @@ export class CreatePreadmissionDto {
   @IsString()
   poliza1?: string;
 
+  @ValidateIf((o) => o.doblecobertura === 'SI')
+  @IsNotEmpty()
+  @IsString()
+  carnetseguro?: string;
+
   @IsOptional()
   @IsString()
   diagnostico?: string;
@@ -123,10 +139,11 @@ export class CreatePreadmissionDto {
   numerocotizacion?: string;
 
   @IsString()
-  cedulaimagen: string; // Base64
+  cedulaimagen: string; // Base64 (*)
 
+  @IsOptional()
   @IsString()
-  ordenimagen: string; // Base64
+  ordenimagen?: string; // Base64 (opcional según documento)
 
   @IsOptional()
   @IsString()
@@ -134,11 +151,16 @@ export class CreatePreadmissionDto {
 
   @IsOptional()
   @IsString()
-  carnetseguro?: string; // Base64
+  certificadoSeguro?: string;
 
   @IsOptional()
   @IsString()
   ssimagen?: string; // Base64
+}
+
+export class ParseCedulaQrDto {
+  @IsString()
+  raw: string;
 }
 
 export class ReviewPreadmissionDto {

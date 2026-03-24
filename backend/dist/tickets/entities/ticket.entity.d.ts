@@ -19,4 +19,5 @@ export declare class Ticket {
     calledBy: number;
     notes: string;
     qrCode: string;
+    preadmissionId: number | null;
 }

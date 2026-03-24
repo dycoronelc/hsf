@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
-import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -53,8 +53,15 @@ export class TicketsController {
   }
 
   @Post(':id/call')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.RECEPTION, UserRole.TECHNICIAN, UserRole.SUPERVISOR)
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.RECEPTION,
+    UserRole.TECHNICIAN,
+    UserRole.SUPERVISOR,
+    UserRole.OFICIAL_ADMISION,
+    UserRole.LABORATORIO,
+    UserRole.RADIOLOGIA,
+  )
   async call(
     @Param('id') id: number,
     @Body() callDto: CallTicketDto,
@@ -64,16 +71,60 @@ export class TicketsController {
   }
 
   @Post(':id/start')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.RECEPTION,
+    UserRole.TECHNICIAN,
+    UserRole.SUPERVISOR,
+    UserRole.OFICIAL_ADMISION,
+    UserRole.LABORATORIO,
+    UserRole.RADIOLOGIA,
+  )
   async start(@Param('id') id: number) {
     return this.ticketsService.start(+id);
   }
 
   @Post(':id/complete')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.RECEPTION,
+    UserRole.TECHNICIAN,
+    UserRole.SUPERVISOR,
+    UserRole.OFICIAL_ADMISION,
+    UserRole.LABORATORIO,
+    UserRole.RADIOLOGIA,
+  )
   async complete(@Param('id') id: number) {
     return this.ticketsService.complete(+id);
   }
 
+  @Post(':id/transfer')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.RECEPTION,
+    UserRole.TECHNICIAN,
+    UserRole.SUPERVISOR,
+    UserRole.LABORATORIO,
+    UserRole.RADIOLOGIA,
+    UserRole.OFICIAL_ADMISION,
+  )
+  async transfer(
+    @Param('id') id: number,
+    @Body() dto: TransferTicketDto,
+  ) {
+    return this.ticketsService.transfer(+id, dto);
+  }
+
   @Patch(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(
+    UserRole.RECEPTION,
+    UserRole.TECHNICIAN,
+    UserRole.SUPERVISOR,
+    UserRole.OFICIAL_ADMISION,
+    UserRole.LABORATORIO,
+    UserRole.RADIOLOGIA,
+  )
   async update(@Param('id') id: number, @Body() updateDto: UpdateTicketDto) {
     return this.ticketsService.update(+id, updateDto);
   }

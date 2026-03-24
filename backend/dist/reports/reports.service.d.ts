@@ -3,12 +3,15 @@ import { Ticket } from '../tickets/entities/ticket.entity';
 import { Appointment } from '../appointments/entities/appointment.entity';
 import { Survey } from '../surveys/entities/survey.entity';
 import { Service } from '../services/entities/service.entity';
+import { Preadmission } from '../preadmission/entities/preadmission.entity';
+import { PreadmissionArrivalState } from '../common/enums';
 export declare class ReportsService {
     private ticketRepository;
     private appointmentRepository;
     private surveyRepository;
     private serviceRepository;
-    constructor(ticketRepository: Repository<Ticket>, appointmentRepository: Repository<Appointment>, surveyRepository: Repository<Survey>, serviceRepository: Repository<Service>);
+    private preadmissionRepository;
+    constructor(ticketRepository: Repository<Ticket>, appointmentRepository: Repository<Appointment>, surveyRepository: Repository<Survey>, serviceRepository: Repository<Service>, preadmissionRepository: Repository<Preadmission>);
     getSummaryReport(startDate?: Date, endDate?: Date): Promise<{
         period: {
             start: string;
@@ -33,12 +36,24 @@ export declare class ReportsService {
             averageCSAT: number;
             responseRate: number;
         };
+        preadmissions: {
+            total: number;
+            byArrivalState: Record<string, number>;
+            awaitingArrival: number;
+            ticketGeneratedCount: number;
+            ticketGeneratedRatePercent: number;
+            averageMinutesSubmitToPhysicalArrival: number;
+        };
     }>;
     getRealTimeReport(): Promise<{
         timestamp: string;
         activeTickets: number;
         byService: {
             [key: string]: any;
+        };
+        preadmissionsToday: {
+            total: number;
+            byArrivalState: Record<string, number>;
         };
     }>;
     getEfficiencyReport(startDate?: Date, endDate?: Date): Promise<{
@@ -70,4 +85,6 @@ export declare class ReportsService {
             [key: string]: number;
         };
     }>;
+    getPreadmissionsReport(startDate?: Date, endDate?: Date, tipo?: string, documento?: string, arrivalState?: PreadmissionArrivalState): Promise<Preadmission[]>;
+    exportPreadmissionsCSV(startDate?: Date, endDate?: Date, tipo?: string, documento?: string, arrivalState?: PreadmissionArrivalState): Promise<string>;
 }

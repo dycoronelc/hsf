@@ -1,4 +1,4 @@
-import { UserRole } from '../../common/enums';
+import { UserRole, AgentState } from '../../common/enums';
 import { Preadmission } from '../../preadmission/entities/preadmission.entity';
 import { Ticket } from '../../tickets/entities/ticket.entity';
 export declare class User {
@@ -9,6 +9,7 @@ export declare class User {
     phone: string;
     role: UserRole;
     isActive: boolean;
+    agentState: AgentState | null;
     createdAt: Date;
     preadmissions: Preadmission[];
     tickets: Ticket[];

@@ -1,46 +1,101 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  ForbiddenException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Preadmission } from './entities/preadmission.entity';
 import { CreatePreadmissionDto, ReviewPreadmissionDto } from './dto/preadmission.dto';
-import { PreadmissionStatus } from '../common/enums';
+import { PreadmissionStatus, PreadmissionArrivalState } from '../common/enums';
 import { User } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
+import { CellbyteService } from '../integrations/cellbyte.service';
+import { TicketsService } from '../tickets/tickets.service';
+import { parseCedulaQr } from './utils/parse-cedula-qr';
+
+const NAME_RE = /^[\p{L}\s'-]+$/u;
 
 @Injectable()
 export class PreadmissionService {
   constructor(
     @InjectRepository(Preadmission)
     private preadmissionRepository: Repository<Preadmission>,
+    private readonly cellbyteService: CellbyteService,
+    private readonly ticketsService: TicketsService,
   ) {}
 
   private generateQrCode(): string {
     return crypto.randomBytes(8).toString('hex').toUpperCase();
   }
 
-  async create(createDto: CreatePreadmissionDto, patientId: number): Promise<Preadmission> {
-    // Validar campos obligatorios
-    if (!createDto.cedulaimagen || !createDto.ordenimagen) {
-      throw new BadRequestException('cedulaimagen y ordenimagen son obligatorios');
+  parseCedulaQrPayload(raw: string): Record<string, string> {
+    return parseCedulaQr(raw);
+  }
+
+  private assertNamesAndAddress(dto: CreatePreadmissionDto) {
+    const names = [dto.name1, dto.name2, dto.apellido1, dto.apellido2].filter(Boolean) as string[];
+    for (const n of names) {
+      if (!NAME_RE.test(n)) {
+        throw new BadRequestException('Nombres y apellidos: solo letras');
+      }
+    }
+    if (dto.direccion1.length > 200) {
+      throw new BadRequestException('Dirección máximo 200 caracteres');
+    }
+  }
+
+  private formatCelular(prefix: string | undefined, celular: string): string {
+    const p = (prefix || '507').replace(/^\+/, '');
+    const num = celular.replace(/\s/g, '');
+    if (num.startsWith('+')) return num;
+    return `+${p}${num.replace(/^\+/, '')}`;
+  }
+
+  async create(createDto: CreatePreadmissionDto, patientId: number | null): Promise<Preadmission> {
+    if (!createDto.cedulaimagen) {
+      throw new BadRequestException('La imagen de cédula es obligatoria');
     }
 
-    // Validar doble cobertura
-    if (createDto.doblecobertura === 'SI') {
+    this.assertNamesAndAddress(createDto);
+
+    const row: Partial<Preadmission> & CreatePreadmissionDto = { ...createDto };
+
+    if (createDto.doblecobertura === 'NO') {
+      row.compania1 = 'PACIENTE PRIVADO';
+      row.poliza1 = '';
+      row.carnetseguro = null;
+      row.certificadoSeguro = null;
+      row.preautorizacion = createDto.preautorizacion ?? null;
+    } else {
       if (!createDto.compania1 || !createDto.poliza1) {
-        throw new BadRequestException(
-          'compania1 y poliza1 son obligatorios cuando doblecobertura es SI',
-        );
+        throw new BadRequestException('Compañía y póliza son obligatorias con seguro');
+      }
+      if (!createDto.carnetseguro) {
+        throw new BadRequestException('El carné de seguro es obligatorio cuando tiene seguro');
       }
     }
 
+    row.celularPrefix = createDto.celularPrefix || '507';
+    row.celular = this.formatCelular(row.celularPrefix, createDto.celular);
+
     const preadmission = this.preadmissionRepository.create({
-      ...createDto,
-      patientId,
+      ...row,
+      patientId: patientId !== undefined && patientId !== null ? patientId : null,
       status: PreadmissionStatus.ENVIADO,
       qrCode: this.generateQrCode(),
-    });
+      arrivalState: PreadmissionArrivalState.ESPERA_LLEGADA,
+    } as Preadmission);
 
-    return this.preadmissionRepository.save(preadmission);
+    const saved = await this.preadmissionRepository.save(preadmission);
+
+    this.cellbyteService.sendPreadmission(saved).then(async () => {
+      saved.cellbyteSentAt = new Date();
+      await this.preadmissionRepository.save(saved);
+    }).catch(() => undefined);
+
+    return saved;
   }
 
   async findAll(user: User, skip = 0, limit = 100): Promise<Preadmission[]> {
@@ -51,7 +106,82 @@ export class PreadmissionService {
         take: limit,
       });
     }
-    return this.preadmissionRepository.find({ skip, take: limit });
+    return this.preadmissionRepository.find({
+      skip,
+      take: limit,
+      order: { fechapreadmision: 'DESC' },
+    });
+  }
+
+  async findWorkList(
+    user: User,
+    opts: { arrivalState?: PreadmissionArrivalState; q?: string; skip?: number; limit?: number },
+  ): Promise<Preadmission[]> {
+    const allowed = [
+      'admin',
+      'supervisor',
+      'anfitrion',
+      'reception',
+      'oficial_admision',
+    ];
+    if (!allowed.includes(user.role)) {
+      throw new ForbiddenException('Sin acceso a la lista de llegadas');
+    }
+
+    const qb = this.preadmissionRepository
+      .createQueryBuilder('p')
+      .orderBy('p.fechapreadmision', 'DESC')
+      .skip(opts.skip ?? 0)
+      .take(Math.min(opts.limit ?? 100, 200));
+
+    if (opts.arrivalState) {
+      qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
+    }
+
+    if (opts.q?.trim()) {
+      const term = `%${opts.q.trim()}%`;
+      qb.andWhere(
+        '(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)',
+        { term },
+      );
+    }
+
+    return qb.getMany();
+  }
+
+  async confirmArrival(id: number, user: User): Promise<Preadmission> {
+    const allowed = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision'];
+    if (!allowed.includes(user.role)) {
+      throw new ForbiddenException('No autorizado a confirmar llegada');
+    }
+
+    const pre = await this.preadmissionRepository.findOne({ where: { id } });
+    if (!pre) {
+      throw new NotFoundException('Preadmisión no encontrada');
+    }
+
+    if (
+      pre.arrivalState !== PreadmissionArrivalState.ESPERA_LLEGADA &&
+      pre.arrivalState !== PreadmissionArrivalState.REGISTRADO
+    ) {
+      throw new BadRequestException('Estado de llegada no permite confirmar presencia');
+    }
+
+    pre.arrivalState = PreadmissionArrivalState.PACIENTE_PRESENTE;
+    pre.confirmedArrivalAt = new Date();
+    pre.confirmedArrivalBy = { id: user.id } as User;
+    pre.checkInAt = new Date();
+
+    return this.preadmissionRepository.save(pre);
+  }
+
+  async activateTicket(id: number, user: User): Promise<unknown> {
+    const allowed = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision'];
+    if (!allowed.includes(user.role)) {
+      throw new ForbiddenException('No autorizado a generar ticket');
+    }
+
+    return this.ticketsService.createTicketForPreadmission(id);
   }
 
   async findOne(id: number, user: User): Promise<Preadmission> {
@@ -59,7 +189,11 @@ export class PreadmissionService {
     if (!preadmission) {
       throw new NotFoundException('Preadmisión no encontrada');
     }
-    if (user.role === 'patient' && preadmission.patientId !== user.id) {
+    if (
+      user.role === 'patient' &&
+      preadmission.patientId != null &&
+      preadmission.patientId !== user.id
+    ) {
       throw new ForbiddenException('No autorizado');
     }
     return preadmission;

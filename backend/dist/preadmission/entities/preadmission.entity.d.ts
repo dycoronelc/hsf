@@ -1,9 +1,9 @@
 import { User } from '../../users/entities/user.entity';
-import { PreadmissionStatus } from '../../common/enums';
+import { PreadmissionStatus, PreadmissionArrivalState } from '../../common/enums';
 export declare class Preadmission {
     id: number;
-    patientId: number;
-    patient: User;
+    patientId: number | null;
+    patient: User | null;
     departamento: string;
     name1: string;
     name2: string;
@@ -42,6 +42,8 @@ export declare class Preadmission {
     preautorizacion: string;
     carnetseguro: string;
     ssimagen: string;
+    certificadoSeguro: string | null;
+    celularPrefix: string | null;
     status: PreadmissionStatus;
     fechapreadmision: Date;
     observaciones: string;
@@ -49,4 +51,9 @@ export declare class Preadmission {
     reviewedAt: Date;
     qrCode: string;
     checkInAt: Date;
+    arrivalState: PreadmissionArrivalState;
+    confirmedArrivalAt: Date | null;
+    confirmedArrivalBy: User | null;
+    ticketId: number | null;
+    cellbyteSentAt: Date | null;
 }

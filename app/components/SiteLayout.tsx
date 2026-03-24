@@ -53,6 +53,15 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/tickets" className="text-white/90 hover:text-white font-medium">
                     Mis Turnos
                   </Link>
+                  {(user?.role === 'anfitrion' ||
+                    user?.role === 'admin' ||
+                    user?.role === 'supervisor' ||
+                    user?.role === 'reception' ||
+                    user?.role === 'oficial_admision') && (
+                    <Link href="/host" className="text-white/90 hover:text-white font-medium">
+                      Llegadas (Anfitrión)
+                    </Link>
+                  )}
                   {(user?.role === 'admin' || user?.role === 'reception' || user?.role === 'technician' || user?.role === 'supervisor' || user?.role === 'auditor') && (
                     <Link href="/staff" className="text-white/90 hover:text-white font-medium">
                       Consola Staff

@@ -18,6 +18,7 @@ const auth_service_1 = require("./auth.service");
 const users_service_1 = require("../users/users.service");
 const auth_dto_1 = require("./dto/auth.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
+const enums_1 = require("../common/enums");
 let AuthController = class AuthController {
     constructor(authService, usersService) {
         this.authService = authService;
@@ -31,6 +32,10 @@ let AuthController = class AuthController {
     }
     async getProfile(req) {
         return req.user;
+    }
+    async updateAgentState(req, agentState) {
+        await this.usersService.updateAgentState(req.user.id, agentState ?? null);
+        return { agentState: agentState ?? null };
     }
 };
 exports.AuthController = AuthController;
@@ -56,6 +61,15 @@ __decorate([
     __metadata("design:paramtypes", [Object]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "getProfile", null);
+__decorate([
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Patch)('agent-state'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)('agentState')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "updateAgentState", null);
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService,

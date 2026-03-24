@@ -2,7 +2,7 @@ import { Repository } from 'typeorm';
 import { Ticket } from './entities/ticket.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
-import { CreateTicketDto, UpdateTicketDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, TransferTicketDto } from './dto/ticket.dto';
 import { TicketStatus, Priority } from '../common/enums';
 import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -96,5 +96,31 @@ export declare class TicketsService {
         priority: Priority;
         created_at: Date;
         qr_code: string;
+    }>;
+    transfer(id: number, dto: TransferTicketDto): Promise<{
+        message: string;
+        originalId: number;
+        newTicketId: number;
+        service_id?: undefined;
+        service_name?: undefined;
+    } | {
+        message: string;
+        service_id: number;
+        service_name: string;
+        originalId?: undefined;
+        newTicketId?: undefined;
+    }>;
+    createTicketForPreadmission(preadmissionId: number): Promise<{
+        queue_position: number;
+        ahead_count: number;
+        id: number;
+        ticket_number: string;
+        service_id: number;
+        service_name: string;
+        status: TicketStatus;
+        priority: Priority;
+        created_at: Date;
+        qr_code: string;
+        preadmission_id: number;
     }>;
 }

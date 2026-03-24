@@ -12,6 +12,7 @@ export declare class JwtStrategy extends JwtStrategy_base {
         fullName: string;
         role: import("../common/enums").UserRole;
         isActive: boolean;
+        agentState: import("../common/enums").AgentState;
     }>;
 }
 export {};

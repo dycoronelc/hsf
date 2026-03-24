@@ -26,12 +26,24 @@ export declare class ReportsController {
             averageCSAT: number;
             responseRate: number;
         };
+        preadmissions: {
+            total: number;
+            byArrivalState: Record<string, number>;
+            awaitingArrival: number;
+            ticketGeneratedCount: number;
+            ticketGeneratedRatePercent: number;
+            averageMinutesSubmitToPhysicalArrival: number;
+        };
     }>;
     getRealTime(): Promise<{
         timestamp: string;
         activeTickets: number;
         byService: {
             [key: string]: any;
+        };
+        preadmissionsToday: {
+            total: number;
+            byArrivalState: Record<string, number>;
         };
     }>;
     getEfficiency(startDate?: string, endDate?: string): Promise<{
@@ -63,4 +75,9 @@ export declare class ReportsController {
             [key: string]: number;
         };
     }>;
+    getPreadmissionsReport(startDate?: string, endDate?: string, tipo?: string, documento?: string, arrivalState?: string): Promise<import("../preadmission/entities/preadmission.entity").Preadmission[]>;
+    exportPreadmissions(format: string, startDate?: string, endDate?: string, tipo?: string, documento?: string, arrivalState?: string): Promise<import("../preadmission/entities/preadmission.entity").Preadmission[] | {
+        csv: string;
+    }>;
+    private parseArrivalState;
 }

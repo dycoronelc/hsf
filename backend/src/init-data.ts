@@ -72,6 +72,24 @@ async function bootstrap() {
       );
     }
 
+    let anfitrion = await userRepository.findOne({
+      where: { email: 'anfitrion@hospitalsantafe.com' },
+    });
+    if (!anfitrion) {
+      const hashedPassword = await bcrypt.hash('anfitrion123', 10);
+      anfitrion = userRepository.create({
+        email: 'anfitrion@hospitalsantafe.com',
+        hashedPassword,
+        fullName: 'Anfitrión',
+        role: UserRole.ANFITRION,
+        isActive: true,
+      });
+      await userRepository.save(anfitrion);
+      console.log(
+        '✓ Usuario anfitrión creado: anfitrion@hospitalsantafe.com / anfitrion123',
+      );
+    }
+
     // Crear sede principal
     let sede = await sedeRepository.findOne({
       where: { name: 'Sede Principal' },

@@ -40,6 +40,9 @@ let UsersService = class UsersService {
     async findByEmail(email) {
         return this.usersRepository.findOne({ where: { email } });
     }
+    async updateAgentState(userId, agentState) {
+        await this.usersRepository.update(userId, { agentState });
+    }
     async findOne(id) {
         const user = await this.usersRepository.findOne({ where: { id } });
         if (!user)

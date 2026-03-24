@@ -1,8 +1,9 @@
-import { Controller, Post, Body, Get, UseGuards, Request } from '@nestjs/common';
+import { Controller, Post, Body, Get, Patch, UseGuards, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import { CreateUserDto, LoginDto, UserResponseDto, TokenResponseDto } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { AgentState } from '../common/enums';
 
 @Controller('auth')
 export class AuthController {
@@ -25,5 +26,12 @@ export class AuthController {
   @Get('me')
   async getProfile(@Request() req): Promise<UserResponseDto> {
     return req.user;
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('agent-state')
+  async updateAgentState(@Request() req, @Body('agentState') agentState: AgentState | null) {
+    await this.usersService.updateAgentState(req.user.id, agentState ?? null);
+    return { agentState: agentState ?? null };
   }
 }

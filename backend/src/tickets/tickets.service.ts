@@ -1,11 +1,17 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Ticket } from './entities/ticket.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
-import { CreateTicketDto, UpdateTicketDto } from './dto/ticket.dto';
-import { TicketStatus, Priority } from '../common/enums';
+import { CreateTicketDto, UpdateTicketDto, TransferTicketDto } from './dto/ticket.dto';
+import { TicketStatus, Priority, PreadmissionArrivalState } from '../common/enums';
 import { User } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -243,6 +249,13 @@ export class TicketsService {
     
     if (preadmission) {
       preadmission.checkInAt = new Date();
+      if (
+        preadmission.arrivalState === PreadmissionArrivalState.ESPERA_LLEGADA ||
+        preadmission.arrivalState === PreadmissionArrivalState.REGISTRADO
+      ) {
+        preadmission.arrivalState = PreadmissionArrivalState.PACIENTE_PRESENTE;
+        preadmission.confirmedArrivalAt = new Date();
+      }
       await this.preadmissionRepository.save(preadmission);
       const nombre = `${preadmission.name1} ${preadmission.apellido1}`.trim();
       return { 
@@ -336,6 +349,97 @@ export class TicketsService {
       priority: savedTicket.priority,
       created_at: savedTicket.createdAt,
       qr_code: savedTicket.qrCode,
+    };
+  }
+
+  /** Transferir ticket a Radiología, Laboratorio o Ambos (documento Preadmision.md) */
+  async transfer(id: number, dto: TransferTicketDto) {
+    const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
+    if (!ticket) {
+      throw new NotFoundException('Ticket no encontrado');
+    }
+
+    const radService = await this.serviceRepository.findOne({ where: { area: 'RAD', isActive: true } });
+    const labService = await this.serviceRepository.findOne({ where: { area: 'LAB', isActive: true } });
+
+    if (dto.targetArea === 'BOTH') {
+      const otherArea = ticket.service?.area === 'RAD' ? labService : radService;
+      if (!otherArea) {
+        throw new NotFoundException('No se encontró servicio para el área adicional');
+      }
+      const newTicket = this.ticketRepository.create({
+        ticketNumber: this.generateTicketNumber(otherArea.code),
+        patientId: ticket.patientId,
+        serviceId: otherArea.id,
+        status: TicketStatus.CREADO,
+        priority: ticket.priority,
+        qrCode: this.generateQrCode(),
+      });
+      await this.ticketRepository.save(newTicket);
+      return { message: 'Ticket duplicado para ambos servicios', originalId: id, newTicketId: newTicket.id };
+    }
+
+    const targetService = dto.targetArea === 'RAD' ? radService : labService;
+    if (!targetService) {
+      throw new NotFoundException(`No se encontró servicio de ${dto.targetArea === 'RAD' ? 'Radiología' : 'Laboratorio'}`);
+    }
+    ticket.serviceId = targetService.id;
+    ticket.status = TicketStatus.TRANSFERIDO;
+    ticket.completedAt = new Date();
+    await this.ticketRepository.save(ticket);
+    return { message: 'Ticket transferido', service_id: targetService.id, service_name: targetService.name };
+  }
+
+  /** Cola de admisión (servicio ADM) desde preadmisión con paciente presente (PDF requisitos). */
+  async createTicketForPreadmission(preadmissionId: number) {
+    const pre = await this.preadmissionRepository.findOne({ where: { id: preadmissionId } });
+    if (!pre) {
+      throw new NotFoundException('Preadmisión no encontrada');
+    }
+    if (pre.arrivalState !== PreadmissionArrivalState.PACIENTE_PRESENTE) {
+      throw new BadRequestException('El paciente debe estar marcado como presente');
+    }
+    if (pre.ticketId) {
+      throw new BadRequestException('Ya existe un ticket asociado a esta preadmisión');
+    }
+
+    const admService = await this.serviceRepository.findOne({
+      where: { code: 'ADM', isActive: true },
+    });
+    if (!admService) {
+      throw new NotFoundException('Servicio de Admisión (ADM) no configurado');
+    }
+
+    const ticket = this.ticketRepository.create({
+      ticketNumber: this.generateTicketNumber(admService.code),
+      patientId: pre.patientId ?? null,
+      serviceId: admService.id,
+      priority: Priority.NORMAL,
+      status: TicketStatus.CREADO,
+      qrCode: this.generateQrCode(),
+      preadmissionId: pre.id,
+    });
+
+    const savedTicket = await this.ticketRepository.save(ticket);
+
+    pre.ticketId = savedTicket.id;
+    pre.arrivalState = PreadmissionArrivalState.TICKET_GENERADO;
+    await this.preadmissionRepository.save(pre);
+
+    const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
+    const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+
+    return {
+      id: savedTicket.id,
+      ticket_number: savedTicket.ticketNumber,
+      service_id: savedTicket.serviceId,
+      service_name: admService.name,
+      status: savedTicket.status,
+      priority: savedTicket.priority,
+      created_at: savedTicket.createdAt,
+      qr_code: savedTicket.qrCode,
+      preadmission_id: pre.id,
+      ...qi,
     };
   }
 }

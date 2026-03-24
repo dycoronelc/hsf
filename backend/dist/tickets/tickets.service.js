@@ -203,6 +203,11 @@ let TicketsService = class TicketsService {
         }
         if (preadmission) {
             preadmission.checkInAt = new Date();
+            if (preadmission.arrivalState === enums_1.PreadmissionArrivalState.ESPERA_LLEGADA ||
+                preadmission.arrivalState === enums_1.PreadmissionArrivalState.REGISTRADO) {
+                preadmission.arrivalState = enums_1.PreadmissionArrivalState.PACIENTE_PRESENTE;
+                preadmission.confirmedArrivalAt = new Date();
+            }
             await this.preadmissionRepository.save(preadmission);
             const nombre = `${preadmission.name1} ${preadmission.apellido1}`.trim();
             return {
@@ -281,6 +286,84 @@ let TicketsService = class TicketsService {
             priority: savedTicket.priority,
             created_at: savedTicket.createdAt,
             qr_code: savedTicket.qrCode,
+        };
+    }
+    async transfer(id, dto) {
+        const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
+        if (!ticket) {
+            throw new common_1.NotFoundException('Ticket no encontrado');
+        }
+        const radService = await this.serviceRepository.findOne({ where: { area: 'RAD', isActive: true } });
+        const labService = await this.serviceRepository.findOne({ where: { area: 'LAB', isActive: true } });
+        if (dto.targetArea === 'BOTH') {
+            const otherArea = ticket.service?.area === 'RAD' ? labService : radService;
+            if (!otherArea) {
+                throw new common_1.NotFoundException('No se encontró servicio para el área adicional');
+            }
+            const newTicket = this.ticketRepository.create({
+                ticketNumber: this.generateTicketNumber(otherArea.code),
+                patientId: ticket.patientId,
+                serviceId: otherArea.id,
+                status: enums_1.TicketStatus.CREADO,
+                priority: ticket.priority,
+                qrCode: this.generateQrCode(),
+            });
+            await this.ticketRepository.save(newTicket);
+            return { message: 'Ticket duplicado para ambos servicios', originalId: id, newTicketId: newTicket.id };
+        }
+        const targetService = dto.targetArea === 'RAD' ? radService : labService;
+        if (!targetService) {
+            throw new common_1.NotFoundException(`No se encontró servicio de ${dto.targetArea === 'RAD' ? 'Radiología' : 'Laboratorio'}`);
+        }
+        ticket.serviceId = targetService.id;
+        ticket.status = enums_1.TicketStatus.TRANSFERIDO;
+        ticket.completedAt = new Date();
+        await this.ticketRepository.save(ticket);
+        return { message: 'Ticket transferido', service_id: targetService.id, service_name: targetService.name };
+    }
+    async createTicketForPreadmission(preadmissionId) {
+        const pre = await this.preadmissionRepository.findOne({ where: { id: preadmissionId } });
+        if (!pre) {
+            throw new common_1.NotFoundException('Preadmisión no encontrada');
+        }
+        if (pre.arrivalState !== enums_1.PreadmissionArrivalState.PACIENTE_PRESENTE) {
+            throw new common_1.BadRequestException('El paciente debe estar marcado como presente');
+        }
+        if (pre.ticketId) {
+            throw new common_1.BadRequestException('Ya existe un ticket asociado a esta preadmisión');
+        }
+        const admService = await this.serviceRepository.findOne({
+            where: { code: 'ADM', isActive: true },
+        });
+        if (!admService) {
+            throw new common_1.NotFoundException('Servicio de Admisión (ADM) no configurado');
+        }
+        const ticket = this.ticketRepository.create({
+            ticketNumber: this.generateTicketNumber(admService.code),
+            patientId: pre.patientId ?? null,
+            serviceId: admService.id,
+            priority: enums_1.Priority.NORMAL,
+            status: enums_1.TicketStatus.CREADO,
+            qrCode: this.generateQrCode(),
+            preadmissionId: pre.id,
+        });
+        const savedTicket = await this.ticketRepository.save(ticket);
+        pre.ticketId = savedTicket.id;
+        pre.arrivalState = enums_1.PreadmissionArrivalState.TICKET_GENERADO;
+        await this.preadmissionRepository.save(pre);
+        const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
+        const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+        return {
+            id: savedTicket.id,
+            ticket_number: savedTicket.ticketNumber,
+            service_id: savedTicket.serviceId,
+            service_name: admService.name,
+            status: savedTicket.status,
+            priority: savedTicket.priority,
+            created_at: savedTicket.createdAt,
+            qr_code: savedTicket.qrCode,
+            preadmission_id: pre.id,
+            ...qi,
         };
     }
 };
