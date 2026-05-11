@@ -7,6 +7,8 @@ export declare class User {
     hashedPassword: string;
     fullName: string;
     phone: string;
+    nationalId: string | null;
+    birthDate: string | null;
     role: UserRole;
     isActive: boolean;
     agentState: AgentState | null;

@@ -19,22 +19,42 @@ const users_service_1 = require("../users/users.service");
 const auth_dto_1 = require("./dto/auth.dto");
 const jwt_auth_guard_1 = require("./guards/jwt-auth.guard");
 const enums_1 = require("../common/enums");
+const audit_service_1 = require("../audit/audit.service");
 let AuthController = class AuthController {
-    constructor(authService, usersService) {
+    constructor(authService, usersService, auditService) {
         this.authService = authService;
         this.usersService = usersService;
+        this.auditService = auditService;
     }
     async register(createUserDto) {
-        return this.usersService.create(createUserDto);
+        const user = await this.usersService.create(createUserDto);
+        await this.auditService.log('user_registered', {
+            entityType: 'user',
+            entityId: user.id,
+            userId: user.id,
+        });
+        return user;
     }
     async login(loginDto) {
         return this.authService.login(loginDto);
+    }
+    async forgotPassword(body) {
+        return this.authService.requestPasswordReset(body.email);
+    }
+    async resetPassword(body) {
+        return this.authService.resetPassword(body.token, body.password);
     }
     async getProfile(req) {
         return req.user;
     }
     async updateAgentState(req, agentState) {
         await this.usersService.updateAgentState(req.user.id, agentState ?? null);
+        await this.auditService.log('agent_state_changed', {
+            entityType: 'user',
+            entityId: req.user.id,
+            userId: req.user.id,
+            details: agentState ?? 'null',
+        });
         return { agentState: agentState ?? null };
     }
 };
@@ -53,6 +73,20 @@ __decorate([
     __metadata("design:paramtypes", [auth_dto_1.LoginDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "login", null);
+__decorate([
+    (0, common_1.Post)('forgot-password'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.ForgotPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "forgotPassword", null);
+__decorate([
+    (0, common_1.Post)('reset-password'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [auth_dto_1.ResetPasswordDto]),
+    __metadata("design:returntype", Promise)
+], AuthController.prototype, "resetPassword", null);
 __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     (0, common_1.Get)('me'),
@@ -73,6 +107,7 @@ __decorate([
 exports.AuthController = AuthController = __decorate([
     (0, common_1.Controller)('auth'),
     __metadata("design:paramtypes", [auth_service_1.AuthService,
-        users_service_1.UsersService])
+        users_service_1.UsersService,
+        audit_service_1.AuditService])
 ], AuthController);
 //# sourceMappingURL=auth.controller.js.map

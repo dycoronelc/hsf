@@ -25,6 +25,10 @@ export class Preadmission {
   @Column()
   departamento: string; // RAD o LAB
 
+  /** Paciente o acompañante que completa el registro (PDF preadmisiones). */
+  @Column({ default: 'paciente' })
+  registradoComo: string;
+
   @Column()
   name1: string;
 
@@ -117,6 +121,9 @@ export class Preadmission {
 
   @Column({ nullable: true })
   diagnostico: string;
+
+  @Column({ nullable: true })
+  procedimientoEstudio: string | null;
 
   @Column({ nullable: true })
   numerocotizacion: string;

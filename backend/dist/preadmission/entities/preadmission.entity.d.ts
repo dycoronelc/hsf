@@ -5,6 +5,7 @@ export declare class Preadmission {
     patientId: number | null;
     patient: User | null;
     departamento: string;
+    registradoComo: string;
     name1: string;
     name2: string;
     apellido1: string;
@@ -36,6 +37,7 @@ export declare class Preadmission {
     compania1: string;
     poliza1: string;
     diagnostico: string;
+    procedimientoEstudio: string | null;
     numerocotizacion: string;
     cedulaimagen: string;
     ordenimagen: string;

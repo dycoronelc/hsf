@@ -28,6 +28,11 @@ import { Distrito } from './catalogs/entities/distrito.entity';
 import { Corregimiento } from './catalogs/entities/corregimiento.entity';
 import { Notification } from './notifications/entities/notification.entity';
 import { IntegrationLog } from './integrations/entities/integration-log.entity';
+import { AuditModule } from './audit/audit.module';
+import { AuditLog } from './audit/entities/audit-log.entity';
+import { PasswordResetToken } from './auth/entities/password-reset-token.entity';
+import { VerificationCode } from './auth/entities/verification-code.entity';
+import { RolePermission } from './admin/entities/role-permission.entity';
 
 @Module({
   imports: [
@@ -40,10 +45,29 @@ import { IntegrationLog } from './integrations/entities/integration-log.entity';
       ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production'
         ? { rejectUnauthorized: false }
         : false,
-      entities: [User, Service, Sede, Preadmission, Ticket, Appointment, Survey, Nacionalidad, Provincia, Distrito, Corregimiento, Notification, IntegrationLog],
+      entities: [
+        User,
+        Service,
+        Sede,
+        Preadmission,
+        Ticket,
+        Appointment,
+        Survey,
+        Nacionalidad,
+        Provincia,
+        Distrito,
+        Corregimiento,
+        Notification,
+        IntegrationLog,
+        AuditLog,
+        PasswordResetToken,
+        VerificationCode,
+        RolePermission,
+      ],
       synchronize: true, // Solo para desarrollo, usar migrations en producción
       logging: false,
     }),
+    AuditModule,
     AuthModule,
     UsersModule,
     PreadmissionModule,

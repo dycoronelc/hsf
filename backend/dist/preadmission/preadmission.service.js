@@ -22,12 +22,16 @@ const crypto = require("crypto");
 const cellbyte_service_1 = require("../integrations/cellbyte.service");
 const tickets_service_1 = require("../tickets/tickets.service");
 const parse_cedula_qr_1 = require("./utils/parse-cedula-qr");
+const audit_service_1 = require("../audit/audit.service");
+const verification_code_entity_1 = require("../auth/entities/verification-code.entity");
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 let PreadmissionService = class PreadmissionService {
-    constructor(preadmissionRepository, cellbyteService, ticketsService) {
+    constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService) {
         this.preadmissionRepository = preadmissionRepository;
+        this.verificationRepository = verificationRepository;
         this.cellbyteService = cellbyteService;
         this.ticketsService = ticketsService;
+        this.auditService = auditService;
     }
     generateQrCode() {
         return crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -59,6 +63,13 @@ let PreadmissionService = class PreadmissionService {
         }
         this.assertNamesAndAddress(createDto);
         const row = { ...createDto };
+        const existing = await this.preadmissionRepository.findOne({
+            where: { cedula: createDto.cedula, pasaporte: createDto.pasaporte },
+            order: { fechapreadmision: 'DESC' },
+        });
+        if (existing && existing.status !== enums_1.PreadmissionStatus.RECHAZADO) {
+            throw new common_1.BadRequestException('Ya existe una preadmisión activa con este documento');
+        }
         if (createDto.doblecobertura === 'NO') {
             row.compania1 = 'PACIENTE PRIVADO';
             row.poliza1 = '';
@@ -66,14 +77,11 @@ let PreadmissionService = class PreadmissionService {
             row.certificadoSeguro = null;
             row.preautorizacion = createDto.preautorizacion ?? null;
         }
-        else {
-            if (!createDto.compania1 || !createDto.poliza1) {
-                throw new common_1.BadRequestException('Compañía y póliza son obligatorias con seguro');
-            }
-            if (!createDto.carnetseguro) {
-                throw new common_1.BadRequestException('El carné de seguro es obligatorio cuando tiene seguro');
-            }
+        else if (!createDto.compania1 || !createDto.poliza1) {
+            throw new common_1.BadRequestException('Compañía y póliza son obligatorias cuando mantiene seguro');
         }
+        row.procedimientoEstudio =
+            createDto.procedimientoEstudio?.trim() || createDto.diagnostico?.trim() || null;
         row.celularPrefix = createDto.celularPrefix || '507';
         row.celular = this.formatCelular(row.celularPrefix, createDto.celular);
         const preadmission = this.preadmissionRepository.create({
@@ -84,6 +92,12 @@ let PreadmissionService = class PreadmissionService {
             arrivalState: enums_1.PreadmissionArrivalState.ESPERA_LLEGADA,
         });
         const saved = await this.preadmissionRepository.save(preadmission);
+        await this.auditService.log('preadmission_created', {
+            entityType: 'preadmission',
+            entityId: saved.id,
+            userId: patientId ?? undefined,
+            details: `departamento=${saved.departamento}`,
+        });
         this.cellbyteService.sendPreadmission(saved).then(async () => {
             saved.cellbyteSentAt = new Date();
             await this.preadmissionRepository.save(saved);
@@ -185,13 +199,54 @@ let PreadmissionService = class PreadmissionService {
         await this.preadmissionRepository.save(preadmission);
         return { message: 'Preadmisión actualizada', status: reviewDto.status };
     }
+    generateVerificationCode() {
+        return Math.floor(100000 + Math.random() * 900000).toString();
+    }
+    async requestContactVerification(channel, destination) {
+        const normalized = destination.trim().toLowerCase();
+        if (!normalized) {
+            throw new common_1.BadRequestException('Destino de verificación inválido');
+        }
+        const code = this.generateVerificationCode();
+        const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+        await this.verificationRepository.save(this.verificationRepository.create({
+            channel,
+            destination: normalized,
+            code,
+            expiresAt,
+            verified: false,
+        }));
+        return {
+            message: 'Código de verificación generado',
+            channel,
+            destination: normalized,
+            expiresAt,
+            previewCode: process.env.NODE_ENV === 'production' ? undefined : code,
+        };
+    }
+    async confirmContactVerification(channel, destination, code) {
+        const normalized = destination.trim().toLowerCase();
+        const row = await this.verificationRepository.findOne({
+            where: { channel, destination: normalized, code, verified: false },
+            order: { createdAt: 'DESC' },
+        });
+        if (!row || row.expiresAt < new Date()) {
+            throw new common_1.BadRequestException('Código inválido o expirado');
+        }
+        row.verified = true;
+        await this.verificationRepository.save(row);
+        return { message: 'Verificación exitosa', channel, destination: normalized };
+    }
 };
 exports.PreadmissionService = PreadmissionService;
 exports.PreadmissionService = PreadmissionService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(preadmission_entity_1.Preadmission)),
+    __param(1, (0, typeorm_1.InjectRepository)(verification_code_entity_1.VerificationCode)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
+        typeorm_2.Repository,
         cellbyte_service_1.CellbyteService,
-        tickets_service_1.TicketsService])
+        tickets_service_1.TicketsService,
+        audit_service_1.AuditService])
 ], PreadmissionService);
 //# sourceMappingURL=preadmission.service.js.map

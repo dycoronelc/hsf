@@ -78,6 +78,12 @@ export declare class ReportsController {
     getPreadmissionsReport(startDate?: string, endDate?: string, tipo?: string, documento?: string, arrivalState?: string): Promise<import("../preadmission/entities/preadmission.entity").Preadmission[]>;
     exportPreadmissions(format: string, startDate?: string, endDate?: string, tipo?: string, documento?: string, arrivalState?: string): Promise<import("../preadmission/entities/preadmission.entity").Preadmission[] | {
         csv: string;
+        excel?: undefined;
+        mimeType?: undefined;
+    } | {
+        excel: string;
+        mimeType: string;
+        csv?: undefined;
     }>;
     private parseArrivalState;
 }

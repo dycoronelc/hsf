@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useAuth } from '../providers'
 import { useRouter } from 'next/navigation'
 import { Html5Qrcode } from 'html5-qrcode'
+import { isAgentOperational } from '@/lib/agentState'
 
 interface Ticket {
   id: number
@@ -13,8 +14,10 @@ interface Ticket {
   service_name: string | null
   status: string
   priority: string
+  priority_level?: number
   created_at: string
   window_number: string | null
+  estimated_wait_label?: string
 }
 
 interface Service {
@@ -40,6 +43,7 @@ export default function StaffConsolePage() {
   const [scanning, setScanning] = useState(false)
   const [agentState, setAgentState] = useState<string>(user?.agentState ?? '')
   const [transferringId, setTransferringId] = useState<number | null>(null)
+  const [queueView, setQueueView] = useState<'all' | 'priority'>('all')
   const qrScannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerId = 'staff-qr-reader'
 
@@ -125,6 +129,10 @@ export default function StaffConsolePage() {
   }
 
   const handleCallTicket = async (ticketId: number) => {
+    if (!agentCanOperate) {
+      alert('No puede llamar tickets mientras está en un estado no operativo')
+      return
+    }
     if (!windowNumber) {
       alert('Por favor ingresa un número de ventanilla')
       return
@@ -360,15 +368,21 @@ export default function StaffConsolePage() {
     setScanning(false)
   }
 
-  const queueTickets = tickets.filter(t => 
-    ['check_in', 'en_cola'].includes(t.status)
-  ).sort((a, b) => {
-    if (a.priority !== b.priority) {
-      const priorityOrder = ['emergencia', 'cita', 'adulto_mayor', 'embarazo', 'discapacidad', 'normal']
-      return priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
-    }
-    return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  })
+  const agentCanOperate = isAgentOperational(agentState)
+
+  const queueTickets = tickets
+    .filter((t) => ['check_in', 'en_cola'].includes(t.status))
+    .filter((t) => (queueView === 'priority' ? (t.priority_level ?? 2) <= 2 : true))
+    .sort((a, b) => {
+      const levelA = a.priority_level ?? 2
+      const levelB = b.priority_level ?? 2
+      if (levelA !== levelB) return levelA - levelB
+      if (a.priority !== b.priority) {
+        const priorityOrder = ['emergencia', 'cita', 'adulto_mayor', 'embarazo', 'discapacidad', 'normal']
+        return priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
+      }
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    })
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8">
@@ -513,6 +527,23 @@ export default function StaffConsolePage() {
             </div>
           )}
 
+          <div className="mb-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => setQueueView('all')}
+              className={`px-4 py-2 rounded-lg text-sm ${queueView === 'all' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'}`}
+            >
+              Todos los tickets
+            </button>
+            <button
+              type="button"
+              onClick={() => setQueueView('priority')}
+              className={`px-4 py-2 rounded-lg text-sm ${queueView === 'priority' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'}`}
+            >
+              Tickets con prioridades
+            </button>
+          </div>
+
           {/* Queue */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
@@ -537,6 +568,11 @@ export default function StaffConsolePage() {
                       <span className="text-sm text-gray-600">
                         {ticket.service_name}
                       </span>
+                      {ticket.estimated_wait_label && (
+                        <span className="text-sm text-gray-500">
+                          Espera estimada: {ticket.estimated_wait_label}
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
                       <select
@@ -546,7 +582,7 @@ export default function StaffConsolePage() {
                           if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
                           e.target.value = ''
                         }}
-                        disabled={transferringId === ticket.id}
+                        disabled={transferringId === ticket.id || !agentCanOperate}
                         className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                       >
                         <option value="">Transferir...</option>
@@ -556,7 +592,7 @@ export default function StaffConsolePage() {
                       </select>
                       <button
                         onClick={() => handleCallTicket(ticket.id)}
-                        disabled={loading || !windowNumber}
+                        disabled={loading || !windowNumber || !agentCanOperate}
                         className="px-6 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         Llamar

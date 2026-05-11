@@ -9,6 +9,8 @@ export declare class Service {
     sede: Sede;
     isActive: boolean;
     estimatedTime: number;
+    ticketPrefix: string | null;
+    priorityLevel: number;
     requiresAppointment: boolean;
     tickets: Ticket[];
 }

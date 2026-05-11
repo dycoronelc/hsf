@@ -23,19 +23,30 @@ const enums_1 = require("../common/enums");
 const crypto = require("crypto");
 const notifications_service_1 = require("../notifications/notifications.service");
 const surveys_service_1 = require("../surveys/surveys.service");
+const agent_utils_1 = require("../common/agent-utils");
+const audit_service_1 = require("../audit/audit.service");
 let TicketsService = class TicketsService {
-    constructor(ticketRepository, serviceRepository, preadmissionRepository, notificationsService, surveysService) {
+    constructor(ticketRepository, serviceRepository, preadmissionRepository, notificationsService, surveysService, auditService) {
         this.ticketRepository = ticketRepository;
         this.serviceRepository = serviceRepository;
         this.preadmissionRepository = preadmissionRepository;
         this.notificationsService = notificationsService;
         this.surveysService = surveysService;
+        this.auditService = auditService;
     }
-    generateTicketNumber(serviceCode) {
-        const randomSuffix = Math.floor(Math.random() * 1000)
+    generateTicketNumber(service) {
+        const prefix = service.ticketPrefix || service.code;
+        const randomSuffix = Math.floor(Math.random() * 10000)
             .toString()
-            .padStart(3, '0');
-        return `${serviceCode}-${randomSuffix}`;
+            .padStart(4, '0');
+        return `${prefix}-${randomSuffix}`;
+    }
+    assertAgentCanOperate(user) {
+        if (!user)
+            return;
+        if (!(0, agent_utils_1.isAgentOperational)(user.agentState)) {
+            throw new common_1.BadRequestException('No puede llamar ni gestionar tickets mientras está en un estado no operativo');
+        }
     }
     generateQrCode() {
         return crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -54,12 +65,26 @@ let TicketsService = class TicketsService {
     }
     async enrichWithQueueInfo(tickets) {
         const serviceIds = Array.from(new Set(tickets.map((t) => t.serviceId)));
+        const services = await this.serviceRepository.findBy({ id: (0, typeorm_2.In)(serviceIds) });
+        const serviceById = new Map(services.map((s) => [s.id, s]));
         const serviceMaps = await Promise.all(serviceIds.map(async (sid) => [sid, await this.getQueuePositionsByService(sid)]));
         const byService = new Map(serviceMaps);
         const out = new Map();
         for (const t of tickets) {
             const pos = byService.get(t.serviceId)?.get(t.id) ?? 0;
-            out.set(t.id, { queue_position: pos, ahead_count: Math.max(0, pos - 1) });
+            const ahead = Math.max(0, pos - 1);
+            const minutesPerTicket = serviceById.get(t.serviceId)?.estimatedTime ?? 15;
+            const waitSeconds = ahead * minutesPerTicket * 60;
+            const hours = Math.floor(waitSeconds / 3600);
+            const minutes = Math.floor((waitSeconds % 3600) / 60);
+            const seconds = waitSeconds % 60;
+            const label = `${hours}h ${minutes}m ${seconds}s`;
+            out.set(t.id, {
+                queue_position: pos,
+                ahead_count: ahead,
+                estimated_wait_seconds: waitSeconds,
+                estimated_wait_label: label,
+            });
         }
         return out;
     }
@@ -71,7 +96,7 @@ let TicketsService = class TicketsService {
             throw new common_1.NotFoundException('Servicio no encontrado');
         }
         const ticket = this.ticketRepository.create({
-            ticketNumber: this.generateTicketNumber(service.code),
+            ticketNumber: this.generateTicketNumber(service),
             patientId: null,
             serviceId: createDto.serviceId,
             priority: createDto.priority || enums_1.Priority.NORMAL,
@@ -80,7 +105,12 @@ let TicketsService = class TicketsService {
         });
         const savedTicket = await this.ticketRepository.save(ticket);
         const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
-        const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+        const qi = queueInfo.get(savedTicket.id) ?? {
+            queue_position: 0,
+            ahead_count: 0,
+            estimated_wait_seconds: 0,
+            estimated_wait_label: '0h 0m 0s',
+        };
         return {
             id: savedTicket.id,
             ticket_number: savedTicket.ticketNumber,
@@ -101,7 +131,7 @@ let TicketsService = class TicketsService {
             throw new common_1.NotFoundException('Servicio no encontrado');
         }
         const ticket = this.ticketRepository.create({
-            ticketNumber: this.generateTicketNumber(service.code),
+            ticketNumber: this.generateTicketNumber(service),
             patientId,
             serviceId: createDto.serviceId,
             priority: createDto.priority || enums_1.Priority.NORMAL,
@@ -115,7 +145,12 @@ let TicketsService = class TicketsService {
             });
         }
         const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
-        const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+        const qi = queueInfo.get(savedTicket.id) ?? {
+            queue_position: 0,
+            ahead_count: 0,
+            estimated_wait_seconds: 0,
+            estimated_wait_label: '0h 0m 0s',
+        };
         return {
             id: savedTicket.id,
             ticket_number: savedTicket.ticketNumber,
@@ -144,7 +179,12 @@ let TicketsService = class TicketsService {
         const tickets = await query.getMany();
         const queueInfo = await this.enrichWithQueueInfo(tickets.map((t) => ({ id: t.id, serviceId: t.serviceId })));
         return tickets.map((ticket) => {
-            const qi = queueInfo.get(ticket.id) ?? { queue_position: 0, ahead_count: 0 };
+            const qi = queueInfo.get(ticket.id) ?? {
+                queue_position: 0,
+                ahead_count: 0,
+                estimated_wait_seconds: 0,
+                estimated_wait_label: '0h 0m 0s',
+            };
             return {
                 id: ticket.id,
                 ticket_number: ticket.ticketNumber,
@@ -152,6 +192,7 @@ let TicketsService = class TicketsService {
                 service_name: ticket.service?.name,
                 status: ticket.status,
                 priority: ticket.priority,
+                priority_level: ticket.service?.priorityLevel ?? 2,
                 created_at: ticket.createdAt,
                 qr_code: ticket.qrCode,
                 ...qi,
@@ -191,7 +232,12 @@ let TicketsService = class TicketsService {
             ticket.checkInAt = new Date();
             await this.ticketRepository.save(ticket);
             const queueInfo = await this.enrichWithQueueInfo([{ id: ticket.id, serviceId: ticket.serviceId }]);
-            const qi = queueInfo.get(ticket.id) ?? { queue_position: 0, ahead_count: 0 };
+            const qi = queueInfo.get(ticket.id) ?? {
+                queue_position: 0,
+                ahead_count: 0,
+                estimated_wait_seconds: 0,
+                estimated_wait_label: '0h 0m 0s',
+            };
             return {
                 message: 'Llegada registrada',
                 type: 'ticket',
@@ -220,16 +266,23 @@ let TicketsService = class TicketsService {
         }
         throw new common_1.NotFoundException('Turno o preadmisión no encontrado con ese código o ID');
     }
-    async call(id, windowNumber, calledBy) {
+    async call(id, windowNumber, agent) {
+        this.assertAgentCanOperate(agent);
         const ticket = await this.ticketRepository.findOne({ where: { id } });
         if (!ticket) {
             throw new common_1.NotFoundException('Ticket no encontrado');
         }
         ticket.status = enums_1.TicketStatus.LLAMADO;
         ticket.calledAt = new Date();
-        ticket.calledBy = calledBy;
+        ticket.calledBy = agent.id;
         ticket.windowNumber = windowNumber;
         await this.ticketRepository.save(ticket);
+        await this.auditService.log('ticket_called', {
+            entityType: 'ticket',
+            entityId: ticket.id,
+            userId: agent.id,
+            details: `window=${windowNumber}`,
+        });
         if (ticket.patientId && ticket.patientId > 0) {
             this.notificationsService.sendTicketCalled(ticket.patientId, ticket.ticketNumber, windowNumber).catch((error) => {
                 console.error('Error sending ticket called notification:', error);
@@ -237,7 +290,8 @@ let TicketsService = class TicketsService {
         }
         return { message: 'Ticket llamado', ticket_number: ticket.ticketNumber };
     }
-    async start(id) {
+    async start(id, agent) {
+        this.assertAgentCanOperate(agent);
         const ticket = await this.ticketRepository.findOne({ where: { id } });
         if (!ticket) {
             throw new common_1.NotFoundException('Ticket no encontrado');
@@ -245,9 +299,15 @@ let TicketsService = class TicketsService {
         ticket.status = enums_1.TicketStatus.EN_ATENCION;
         ticket.startedAt = new Date();
         await this.ticketRepository.save(ticket);
+        await this.auditService.log('ticket_started', {
+            entityType: 'ticket',
+            entityId: ticket.id,
+            userId: agent?.id,
+        });
         return { message: 'Atención iniciada' };
     }
-    async complete(id) {
+    async complete(id, agent) {
+        this.assertAgentCanOperate(agent);
         const ticket = await this.ticketRepository.findOne({ where: { id } });
         if (!ticket) {
             throw new common_1.NotFoundException('Ticket no encontrado');
@@ -255,6 +315,11 @@ let TicketsService = class TicketsService {
         ticket.status = enums_1.TicketStatus.FINALIZADO;
         ticket.completedAt = new Date();
         await this.ticketRepository.save(ticket);
+        await this.auditService.log('ticket_completed', {
+            entityType: 'ticket',
+            entityId: ticket.id,
+            userId: agent?.id,
+        });
         if (ticket.patientId && ticket.patientId > 0) {
             this.surveysService.createForTicket(ticket.id).catch((error) => {
                 console.error('Error creating survey for ticket:', error);
@@ -288,7 +353,8 @@ let TicketsService = class TicketsService {
             qr_code: savedTicket.qrCode,
         };
     }
-    async transfer(id, dto) {
+    async transfer(id, dto, agent) {
+        this.assertAgentCanOperate(agent);
         const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
         if (!ticket) {
             throw new common_1.NotFoundException('Ticket no encontrado');
@@ -301,7 +367,7 @@ let TicketsService = class TicketsService {
                 throw new common_1.NotFoundException('No se encontró servicio para el área adicional');
             }
             const newTicket = this.ticketRepository.create({
-                ticketNumber: this.generateTicketNumber(otherArea.code),
+                ticketNumber: this.generateTicketNumber(otherArea),
                 patientId: ticket.patientId,
                 serviceId: otherArea.id,
                 status: enums_1.TicketStatus.CREADO,
@@ -309,6 +375,12 @@ let TicketsService = class TicketsService {
                 qrCode: this.generateQrCode(),
             });
             await this.ticketRepository.save(newTicket);
+            await this.auditService.log('ticket_transferred', {
+                entityType: 'ticket',
+                entityId: ticket.id,
+                userId: agent?.id,
+                details: `targetArea=${dto.targetArea}`,
+            });
             return { message: 'Ticket duplicado para ambos servicios', originalId: id, newTicketId: newTicket.id };
         }
         const targetService = dto.targetArea === 'RAD' ? radService : labService;
@@ -319,6 +391,12 @@ let TicketsService = class TicketsService {
         ticket.status = enums_1.TicketStatus.TRANSFERIDO;
         ticket.completedAt = new Date();
         await this.ticketRepository.save(ticket);
+        await this.auditService.log('ticket_transferred', {
+            entityType: 'ticket',
+            entityId: ticket.id,
+            userId: agent?.id,
+            details: `targetArea=${dto.targetArea}`,
+        });
         return { message: 'Ticket transferido', service_id: targetService.id, service_name: targetService.name };
     }
     async createTicketForPreadmission(preadmissionId) {
@@ -339,7 +417,7 @@ let TicketsService = class TicketsService {
             throw new common_1.NotFoundException('Servicio de Admisión (ADM) no configurado');
         }
         const ticket = this.ticketRepository.create({
-            ticketNumber: this.generateTicketNumber(admService.code),
+            ticketNumber: this.generateTicketNumber(admService),
             patientId: pre.patientId ?? null,
             serviceId: admService.id,
             priority: enums_1.Priority.NORMAL,
@@ -352,7 +430,12 @@ let TicketsService = class TicketsService {
         pre.arrivalState = enums_1.PreadmissionArrivalState.TICKET_GENERADO;
         await this.preadmissionRepository.save(pre);
         const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
-        const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+        const qi = queueInfo.get(savedTicket.id) ?? {
+            queue_position: 0,
+            ahead_count: 0,
+            estimated_wait_seconds: 0,
+            estimated_wait_label: '0h 0m 0s',
+        };
         return {
             id: savedTicket.id,
             ticket_number: savedTicket.ticketNumber,
@@ -379,6 +462,7 @@ exports.TicketsService = TicketsService = __decorate([
         typeorm_2.Repository,
         typeorm_2.Repository,
         notifications_service_1.NotificationsService,
-        surveys_service_1.SurveysService])
+        surveys_service_1.SurveysService,
+        audit_service_1.AuditService])
 ], TicketsService);
 //# sourceMappingURL=tickets.service.js.map

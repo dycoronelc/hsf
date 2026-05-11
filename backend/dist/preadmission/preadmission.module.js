@@ -12,6 +12,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const preadmission_controller_1 = require("./preadmission.controller");
 const preadmission_service_1 = require("./preadmission.service");
 const preadmission_entity_1 = require("./entities/preadmission.entity");
+const verification_code_entity_1 = require("../auth/entities/verification-code.entity");
 const integrations_module_1 = require("../integrations/integrations.module");
 const tickets_module_1 = require("../tickets/tickets.module");
 let PreadmissionModule = class PreadmissionModule {
@@ -20,7 +21,7 @@ exports.PreadmissionModule = PreadmissionModule;
 exports.PreadmissionModule = PreadmissionModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([preadmission_entity_1.Preadmission]),
+            typeorm_1.TypeOrmModule.forFeature([preadmission_entity_1.Preadmission, verification_code_entity_1.VerificationCode]),
             integrations_module_1.IntegrationsModule,
             tickets_module_1.TicketsModule,
         ],

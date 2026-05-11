@@ -150,6 +150,35 @@ export default function ReportsPage() {
     }
   }
 
+  const exportPreadmissionsExcel = async () => {
+    if (!token) return
+    try {
+      const params = new URLSearchParams({ format: 'excel' })
+      const startIso = startDate ? ddMmYyyyToIso(startDate) : ''
+      const endIso = endDate ? ddMmYyyyToIso(endDate) : ''
+      if (startIso) params.append('startDate', startIso)
+      if (endIso) params.append('endDate', endIso)
+      if (preTipo === 'RAD' || preTipo === 'LAB') params.append('tipo', preTipo)
+      if (preDocumento.trim()) params.append('documento', preDocumento.trim())
+      if (preArrivalState) params.append('arrivalState', preArrivalState)
+
+      const response = await fetch(`/api/reports/preadmissions/export?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) return
+      const data = await response.json()
+      const excel = data.excel as string
+      const blob = new Blob([excel], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = `preadmisiones_${new Date().toISOString().slice(0, 10)}.xls`
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch (e) {
+      console.error('Export Excel failed:', e)
+    }
+  }
+
   const exportPreadmissionsCsv = async () => {
     if (!token) return
     try {
@@ -528,6 +557,13 @@ export default function ReportsPage() {
                     className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm"
                   >
                     Exportar CSV
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => exportPreadmissionsExcel()}
+                    className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 text-sm"
+                  >
+                    Exportar Excel
                   </button>
                 </div>
 

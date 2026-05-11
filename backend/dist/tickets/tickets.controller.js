@@ -40,16 +40,16 @@ let TicketsController = class TicketsController {
         return this.ticketsService.checkIn(+id);
     }
     async call(id, callDto, req) {
-        return this.ticketsService.call(+id, callDto.windowNumber, req.user.id);
+        return this.ticketsService.call(+id, callDto.windowNumber, req.user);
     }
-    async start(id) {
-        return this.ticketsService.start(+id);
+    async start(id, req) {
+        return this.ticketsService.start(+id, req.user);
     }
-    async complete(id) {
-        return this.ticketsService.complete(+id);
+    async complete(id, req) {
+        return this.ticketsService.complete(+id, req.user);
     }
-    async transfer(id, dto) {
-        return this.ticketsService.transfer(+id, dto);
+    async transfer(id, dto, req) {
+        return this.ticketsService.transfer(+id, dto, req.user);
     }
     async update(id, updateDto) {
         return this.ticketsService.update(+id, updateDto);
@@ -112,8 +112,9 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], TicketsController.prototype, "start", null);
 __decorate([
@@ -121,8 +122,9 @@ __decorate([
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
     (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
     __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number]),
+    __metadata("design:paramtypes", [Number, Object]),
     __metadata("design:returntype", Promise)
 ], TicketsController.prototype, "complete", null);
 __decorate([
@@ -131,8 +133,9 @@ __decorate([
     (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA, enums_1.UserRole.OFICIAL_ADMISION),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Number, ticket_dto_1.TransferTicketDto]),
+    __metadata("design:paramtypes", [Number, ticket_dto_1.TransferTicketDto, Object]),
     __metadata("design:returntype", Promise)
 ], TicketsController.prototype, "transfer", null);
 __decorate([

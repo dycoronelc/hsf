@@ -50,6 +50,14 @@ __decorate([
     __metadata("design:type", Number)
 ], Service.prototype, "estimatedTime", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Service.prototype, "ticketPrefix", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ type: 'int', default: 2 }),
+    __metadata("design:type", Number)
+], Service.prototype, "priorityLevel", void 0);
+__decorate([
     (0, typeorm_1.Column)({ default: false }),
     __metadata("design:type", Boolean)
 ], Service.prototype, "requiresAppointment", void 0);

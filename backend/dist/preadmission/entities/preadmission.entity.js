@@ -34,6 +34,10 @@ __decorate([
     __metadata("design:type", String)
 ], Preadmission.prototype, "departamento", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ default: 'paciente' }),
+    __metadata("design:type", String)
+], Preadmission.prototype, "registradoComo", void 0);
+__decorate([
     (0, typeorm_1.Column)(),
     __metadata("design:type", String)
 ], Preadmission.prototype, "name1", void 0);
@@ -157,6 +161,10 @@ __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "diagnostico", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], Preadmission.prototype, "procedimientoEstudio", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", String)

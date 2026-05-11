@@ -7,14 +7,17 @@ import { TicketStatus, Priority } from '../common/enums';
 import { User } from '../users/entities/user.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SurveysService } from '../surveys/surveys.service';
+import { AuditService } from '../audit/audit.service';
 export declare class TicketsService {
     private ticketRepository;
     private serviceRepository;
     private preadmissionRepository;
     private notificationsService;
     private surveysService;
-    constructor(ticketRepository: Repository<Ticket>, serviceRepository: Repository<Service>, preadmissionRepository: Repository<Preadmission>, notificationsService: NotificationsService, surveysService: SurveysService);
+    private auditService;
+    constructor(ticketRepository: Repository<Ticket>, serviceRepository: Repository<Service>, preadmissionRepository: Repository<Preadmission>, notificationsService: NotificationsService, surveysService: SurveysService, auditService: AuditService);
     private generateTicketNumber;
+    private assertAgentCanOperate;
     private generateQrCode;
     private getActiveQueueStatuses;
     private getQueuePositionsByService;
@@ -22,6 +25,8 @@ export declare class TicketsService {
     createKioskTicket(createDto: CreateTicketDto): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;
@@ -34,6 +39,8 @@ export declare class TicketsService {
     create(createDto: CreateTicketDto, patientId: number): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;
@@ -46,12 +53,15 @@ export declare class TicketsService {
     findAll(user: User, serviceId?: number, status?: TicketStatus): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;
         service_name: string;
         status: TicketStatus;
         priority: Priority;
+        priority_level: number;
         created_at: Date;
         qr_code: string;
     }[]>;
@@ -63,6 +73,8 @@ export declare class TicketsService {
         status: TicketStatus.CHECK_IN;
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         message: string;
         type: string;
         ticket_number: string;
@@ -77,14 +89,14 @@ export declare class TicketsService {
         departamento: string;
         type: string;
     }>;
-    call(id: number, windowNumber: string, calledBy: number): Promise<{
+    call(id: number, windowNumber: string, agent: Pick<User, 'id' | 'agentState'>): Promise<{
         message: string;
         ticket_number: string;
     }>;
-    start(id: number): Promise<{
+    start(id: number, agent?: Pick<User, 'id' | 'agentState'>): Promise<{
         message: string;
     }>;
-    complete(id: number): Promise<{
+    complete(id: number, agent?: Pick<User, 'id' | 'agentState'>): Promise<{
         message: string;
     }>;
     update(id: number, updateDto: UpdateTicketDto): Promise<{
@@ -97,7 +109,7 @@ export declare class TicketsService {
         created_at: Date;
         qr_code: string;
     }>;
-    transfer(id: number, dto: TransferTicketDto): Promise<{
+    transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>): Promise<{
         message: string;
         originalId: number;
         newTicketId: number;
@@ -113,6 +125,8 @@ export declare class TicketsService {
     createTicketForPreadmission(preadmissionId: number): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;

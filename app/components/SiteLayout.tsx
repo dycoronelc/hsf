@@ -67,6 +67,11 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                       Consola Staff
                     </Link>
                   )}
+                  {user?.role === 'admin' && (
+                    <Link href="/admin" className="text-white/90 hover:text-white font-medium">
+                      Administración
+                    </Link>
+                  )}
                   <div className="relative" ref={menuRef}>
                     <button
                       type="button"

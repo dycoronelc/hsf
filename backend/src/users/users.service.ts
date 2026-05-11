@@ -1,9 +1,9 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto, UserResponseDto } from '../auth/dto/auth.dto';
-import { AgentState } from '../common/enums';
+import { AgentState, UserRole } from '../common/enums';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -14,9 +14,27 @@ export class UsersService {
   ) {}
 
   async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
+    const existingEmail = await this.findByEmail(createUserDto.email);
+    if (existingEmail) {
+      throw new ConflictException('Ya existe una cuenta con este correo electrónico');
+    }
+    if (createUserDto.nationalId) {
+      const existingId = await this.usersRepository.findOne({
+        where: { nationalId: createUserDto.nationalId },
+      });
+      if (existingId) {
+        throw new ConflictException('Ya existe una cuenta con este número de identificación');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepository.create({
-      ...createUserDto,
+      email: createUserDto.email,
+      fullName: createUserDto.fullName,
+      phone: createUserDto.phone,
+      nationalId: createUserDto.nationalId ?? null,
+      birthDate: createUserDto.birthDate ?? null,
+      role: createUserDto.role ?? UserRole.PATIENT,
       hashedPassword,
     });
     const savedUser = await this.usersRepository.save(user);
@@ -35,6 +53,11 @@ export class UsersService {
 
   async updateAgentState(userId: number, agentState: AgentState | null): Promise<void> {
     await this.usersRepository.update(userId, { agentState });
+  }
+
+  async updatePassword(userId: number, password: string): Promise<void> {
+    const hashedPassword = await bcrypt.hash(password, 10);
+    await this.usersRepository.update(userId, { hashedPassword });
   }
 
   async findOne(id: number): Promise<UserResponseDto | null> {

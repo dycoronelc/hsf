@@ -87,4 +87,5 @@ export declare class ReportsService {
     }>;
     getPreadmissionsReport(startDate?: Date, endDate?: Date, tipo?: string, documento?: string, arrivalState?: PreadmissionArrivalState): Promise<Preadmission[]>;
     exportPreadmissionsCSV(startDate?: Date, endDate?: Date, tipo?: string, documento?: string, arrivalState?: PreadmissionArrivalState): Promise<string>;
+    exportPreadmissionsExcel(startDate?: Date, endDate?: Date, tipo?: string, documento?: string, arrivalState?: PreadmissionArrivalState): Promise<string>;
 }

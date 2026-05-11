@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PreadmissionStatus = exports.Priority = exports.PreadmissionArrivalState = exports.TicketStatus = exports.AgentState = exports.UserRole = void 0;
+exports.PreadmissionStatus = exports.RegistradoComo = exports.ServicePriorityLevel = exports.Priority = exports.PreadmissionArrivalState = exports.TicketStatus = exports.AgentState = exports.UserRole = void 0;
 var UserRole;
 (function (UserRole) {
     UserRole["PATIENT"] = "patient";
@@ -52,6 +52,17 @@ var Priority;
     Priority["DISCAPACIDAD"] = "discapacidad";
     Priority["EMERGENCIA"] = "emergencia";
 })(Priority || (exports.Priority = Priority = {}));
+var ServicePriorityLevel;
+(function (ServicePriorityLevel) {
+    ServicePriorityLevel[ServicePriorityLevel["PRIORIDAD_1"] = 1] = "PRIORIDAD_1";
+    ServicePriorityLevel[ServicePriorityLevel["PRIORIDAD_2"] = 2] = "PRIORIDAD_2";
+    ServicePriorityLevel[ServicePriorityLevel["PRIORIDAD_3"] = 3] = "PRIORIDAD_3";
+})(ServicePriorityLevel || (exports.ServicePriorityLevel = ServicePriorityLevel = {}));
+var RegistradoComo;
+(function (RegistradoComo) {
+    RegistradoComo["PACIENTE"] = "paciente";
+    RegistradoComo["ACOMPANANTE"] = "acompanante";
+})(RegistradoComo || (exports.RegistradoComo = RegistradoComo = {}));
 var PreadmissionStatus;
 (function (PreadmissionStatus) {
     PreadmissionStatus["BORRADOR"] = "borrador";

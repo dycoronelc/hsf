@@ -1,16 +1,42 @@
-import { IsEmail, IsString, IsOptional, IsEnum } from 'class-validator';
+import {
+  IsEmail,
+  IsString,
+  IsOptional,
+  IsEnum,
+  Matches,
+  MinLength,
+} from 'class-validator';
 import { UserRole } from '../../common/enums';
+
+const PASSWORD_RULE =
+  /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/;
 
 export class CreateUserDto {
   @IsEmail()
   email: string;
 
   @IsString()
+  @MinLength(8)
+  @Matches(PASSWORD_RULE, {
+    message: 'La contraseña debe ser alfanumérica e incluir al menos una mayúscula',
+  })
   password: string;
 
   @IsOptional()
   @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  nationalId?: string;
+
+  @IsOptional()
+  @IsString()
+  birthDate?: string;
 
   @IsOptional()
   @IsEnum(UserRole)
@@ -22,6 +48,23 @@ export class LoginDto {
   email: string;
 
   @IsString()
+  password: string;
+}
+
+export class ForgotPasswordDto {
+  @IsEmail()
+  email: string;
+}
+
+export class ResetPasswordDto {
+  @IsString()
+  token: string;
+
+  @IsString()
+  @MinLength(8)
+  @Matches(PASSWORD_RULE, {
+    message: 'La contraseña debe ser alfanumérica e incluir al menos una mayúscula',
+  })
   password: string;
 }
 

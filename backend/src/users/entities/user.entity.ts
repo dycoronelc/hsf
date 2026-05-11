@@ -26,6 +26,12 @@ export class User {
   @Column({ nullable: true })
   phone: string;
 
+  @Column({ nullable: true, unique: true })
+  nationalId: string | null;
+
+  @Column({ nullable: true })
+  birthDate: string | null;
+
   @Column({
     type: 'text',
     default: UserRole.PATIENT,

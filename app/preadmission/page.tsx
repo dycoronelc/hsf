@@ -31,7 +31,14 @@ export default function PreadmissionPage() {
   const [distritos, setDistritos] = useState<Array<{codigo: string, nombre: string}>>([])
   const [corregimientos, setCorregimientos] = useState<Array<{codigo: string, nombre: string}>>([])
   
+  const [emailCode, setEmailCode] = useState('')
+  const [smsCode, setSmsCode] = useState('')
+  const [emailVerified, setEmailVerified] = useState(false)
+  const [phoneVerified, setPhoneVerified] = useState(false)
+  const [verificationHint, setVerificationHint] = useState('')
+
   const [formData, setFormData] = useState({
+    registradoComo: 'paciente',
     departamento: '',
     fechaprobableatencion: '',
     pasaporte: 'C',
@@ -65,6 +72,7 @@ export default function PreadmissionPage() {
     compania1: '',
     poliza1: '',
     diagnostico: '',
+    procedimientoEstudio: '',
     numerocotizacion: '',
     cedulaimagen: '',
     ordenimagen: '',
@@ -347,19 +355,74 @@ export default function PreadmissionPage() {
     }
   }
 
+  const requestVerification = async (channel: 'email' | 'sms') => {
+    setVerificationHint('')
+    const destination =
+      channel === 'email'
+        ? formData.email.trim().toLowerCase()
+        : `+${formData.celularPrefix}${formData.celular.replace(/\D/g, '')}`
+    if (!destination) {
+      setError(channel === 'email' ? 'Ingrese un correo válido' : 'Ingrese un celular válido')
+      return
+    }
+    try {
+      const response = await fetch('/api/preadmission/verify-contact/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, destination }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.message || 'No se pudo enviar el código')
+      }
+      setVerificationHint(
+        data.previewCode
+          ? `Código de prueba (${channel}): ${data.previewCode}`
+          : 'Código enviado. Revise su correo o SMS.',
+      )
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
+
+  const confirmVerification = async (channel: 'email' | 'sms') => {
+    const destination =
+      channel === 'email'
+        ? formData.email.trim().toLowerCase()
+        : `+${formData.celularPrefix}${formData.celular.replace(/\D/g, '')}`
+    const code = channel === 'email' ? emailCode : smsCode
+    try {
+      const response = await fetch('/api/preadmission/verify-contact/confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ channel, destination, code }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.message || 'Código inválido')
+      }
+      if (channel === 'email') setEmailVerified(true)
+      else setPhoneVerified(true)
+      setVerificationHint('Verificación completada')
+    } catch (err: any) {
+      setError(err.message)
+    }
+  }
+
   const validateStep = (stepNum: number): boolean => {
     switch (stepNum) {
       case 1:
         return !!(formData.departamento && formData.fechaprobableatencion && isValidDdMmYyyy(formData.fechaprobableatencion))
       case 2:
-        return !!(formData.pasaporte && formData.cedula)
+        return !!(formData.registradoComo && formData.pasaporte && formData.cedula)
       case 3:
         return !!(formData.name1 && formData.apellido1 && 
                   formData.fechanac && isValidDdMmYyyy(formData.fechanac) && formData.sexo && formData.nacionalidad && 
                   formData.estadocivil && formData.tiposangre)
       case 4:
-        return !!(formData.email && formData.celular && formData.provincia1 && 
-                  formData.distrito1 && formData.corregimiento1 && formData.direccion1)
+        return !!(formData.email && formData.celular && formData.provincia1 &&
+                  formData.distrito1 && formData.corregimiento1 && formData.direccion1 &&
+                  emailVerified && phoneVerified)
       case 5:
         return !!(formData.encasourgencia && formData.relacion && 
                   formData.email3 && formData.celular3)
@@ -370,7 +433,6 @@ export default function PreadmissionPage() {
         return true
       case 7:
         if (!formData.cedulaimagen) return false
-        if (formData.doblecobertura === 'SI' && !formData.carnetseguro) return false
         return true
       default:
         return true
@@ -586,6 +648,20 @@ export default function PreadmissionPage() {
           {step === 2 && (
             <div className="space-y-6">
               <h2 className="text-lg sm:text-xl font-semibold">Paso 2: Identificación del Paciente</h2>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  ¿Quién completa el registro? *
+                </label>
+                <select
+                  value={formData.registradoComo}
+                  onChange={(e) => setFormData({ ...formData, registradoComo: e.target.value })}
+                  className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg"
+                  required
+                >
+                  <option value="paciente">Paciente</option>
+                  <option value="acompanante">Acompañante</option>
+                </select>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -805,7 +881,10 @@ export default function PreadmissionPage() {
                   <input
                     type="email"
                     value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    onChange={(e) => {
+                      setEmailVerified(false)
+                      setFormData({ ...formData, email: e.target.value })
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     required
                   />
@@ -828,12 +907,51 @@ export default function PreadmissionPage() {
                     <input
                       type="tel"
                       value={formData.celular}
-                      onChange={(e) => setFormData({ ...formData, celular: e.target.value.replace(/[^\d\s-]/g, '') })}
+                      onChange={(e) => {
+                        setPhoneVerified(false)
+                        setFormData({ ...formData, celular: e.target.value.replace(/[^\d\s-]/g, '') })
+                      }}
                       className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg"
                       placeholder="Ej: 6123-4567"
                       required
                     />
                   </div>
+                </div>
+                <div className="md:col-span-2 border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 space-y-3">
+                  <p className="text-sm text-gray-700 font-medium">Verificación de contacto</p>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <button type="button" onClick={() => requestVerification('email')} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">
+                      Enviar código al correo
+                    </button>
+                    <input
+                      type="text"
+                      value={emailCode}
+                      onChange={(e) => setEmailCode(e.target.value)}
+                      placeholder="Código email"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                    <button type="button" onClick={() => confirmVerification('email')} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
+                      Confirmar email
+                    </button>
+                    {emailVerified && <span className="text-green-700 text-sm">Correo verificado</span>}
+                  </div>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <button type="button" onClick={() => requestVerification('sms')} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">
+                      Enviar código SMS
+                    </button>
+                    <input
+                      type="text"
+                      value={smsCode}
+                      onChange={(e) => setSmsCode(e.target.value)}
+                      placeholder="Código SMS"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                    />
+                    <button type="button" onClick={() => confirmVerification('sms')} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
+                      Confirmar celular
+                    </button>
+                    {phoneVerified && <span className="text-green-700 text-sm">Celular verificado</span>}
+                  </div>
+                  {verificationHint && <p className="text-xs text-gray-600">{verificationHint}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -981,7 +1099,7 @@ export default function PreadmissionPage() {
               <h2 className="text-lg sm:text-xl font-semibold">Paso 6: Seguro y Cobertura</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ¿Tiene Seguro Privado? *
+                  ¿Mantiene seguro? *
                 </label>
                 <select
                   value={formData.doblecobertura}
@@ -1048,11 +1166,17 @@ export default function PreadmissionPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Diagnóstico (opcional)
+                  Procedimiento / estudio a realizar
                 </label>
                 <textarea
-                  value={formData.diagnostico}
-                  onChange={(e) => setFormData({ ...formData, diagnostico: e.target.value })}
+                  value={formData.procedimientoEstudio}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      procedimientoEstudio: e.target.value,
+                      diagnostico: e.target.value,
+                    })
+                  }
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   rows={3}
                 />
@@ -1072,6 +1196,7 @@ export default function PreadmissionPage() {
                   <input
                     type="file"
                     accept="image/*,.pdf"
+                    capture="environment"
                     onChange={(e) => {
                       const file = e.target.files?.[0]
                       if (file) handleFileUpload('cedulaimagen', file)
@@ -1079,6 +1204,9 @@ export default function PreadmissionPage() {
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     required
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Puede usar la cámara del dispositivo o subir un archivo PNG, JPG o PDF.
+                  </p>
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

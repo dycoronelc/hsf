@@ -5,11 +5,15 @@ import { PreadmissionStatus, PreadmissionArrivalState } from '../common/enums';
 import { User } from '../users/entities/user.entity';
 import { CellbyteService } from '../integrations/cellbyte.service';
 import { TicketsService } from '../tickets/tickets.service';
+import { AuditService } from '../audit/audit.service';
+import { VerificationCode } from '../auth/entities/verification-code.entity';
 export declare class PreadmissionService {
     private preadmissionRepository;
+    private verificationRepository;
     private readonly cellbyteService;
     private readonly ticketsService;
-    constructor(preadmissionRepository: Repository<Preadmission>, cellbyteService: CellbyteService, ticketsService: TicketsService);
+    private readonly auditService;
+    constructor(preadmissionRepository: Repository<Preadmission>, verificationRepository: Repository<VerificationCode>, cellbyteService: CellbyteService, ticketsService: TicketsService, auditService: AuditService);
     private generateQrCode;
     parseCedulaQrPayload(raw: string): Record<string, string>;
     private assertNamesAndAddress;
@@ -29,5 +33,18 @@ export declare class PreadmissionService {
     review(id: number, reviewDto: ReviewPreadmissionDto, reviewerId: number): Promise<{
         message: string;
         status: PreadmissionStatus;
+    }>;
+    private generateVerificationCode;
+    requestContactVerification(channel: 'email' | 'sms', destination: string): Promise<{
+        message: string;
+        channel: "email" | "sms";
+        destination: string;
+        expiresAt: Date;
+        previewCode: string;
+    }>;
+    confirmContactVerification(channel: 'email' | 'sms', destination: string, code: string): Promise<{
+        message: string;
+        channel: "email" | "sms";
+        destination: string;
     }>;
 }

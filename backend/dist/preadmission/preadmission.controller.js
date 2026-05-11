@@ -36,6 +36,12 @@ let PreadmissionController = class PreadmissionController {
     async parseCedulaQr(body) {
         return this.preadmissionService.parseCedulaQrPayload(body.raw);
     }
+    async requestContactVerification(body) {
+        return this.preadmissionService.requestContactVerification(body.channel, body.destination);
+    }
+    async confirmContactVerification(body) {
+        return this.preadmissionService.confirmContactVerification(body.channel, body.destination, body.code);
+    }
     async create(createDto, req) {
         return this.preadmissionService.create(createDto, req.user.id);
     }
@@ -86,6 +92,20 @@ __decorate([
     __metadata("design:paramtypes", [preadmission_dto_1.ParseCedulaQrDto]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "parseCedulaQr", null);
+__decorate([
+    (0, common_1.Post)('verify-contact/request'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [preadmission_dto_1.RequestVerificationDto]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "requestContactVerification", null);
+__decorate([
+    (0, common_1.Post)('verify-contact/confirm'),
+    __param(0, (0, common_1.Body)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [preadmission_dto_1.ConfirmVerificationDto]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "confirmContactVerification", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

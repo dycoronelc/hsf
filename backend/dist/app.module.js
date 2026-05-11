@@ -37,6 +37,11 @@ const distrito_entity_1 = require("./catalogs/entities/distrito.entity");
 const corregimiento_entity_1 = require("./catalogs/entities/corregimiento.entity");
 const notification_entity_1 = require("./notifications/entities/notification.entity");
 const integration_log_entity_1 = require("./integrations/entities/integration-log.entity");
+const audit_module_1 = require("./audit/audit.module");
+const audit_log_entity_1 = require("./audit/entities/audit-log.entity");
+const password_reset_token_entity_1 = require("./auth/entities/password-reset-token.entity");
+const verification_code_entity_1 = require("./auth/entities/verification-code.entity");
+const role_permission_entity_1 = require("./admin/entities/role-permission.entity");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -52,10 +57,29 @@ exports.AppModule = AppModule = __decorate([
                 ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production'
                     ? { rejectUnauthorized: false }
                     : false,
-                entities: [user_entity_1.User, service_entity_1.Service, sede_entity_1.Sede, preadmission_entity_1.Preadmission, ticket_entity_1.Ticket, appointment_entity_1.Appointment, survey_entity_1.Survey, nacionalidad_entity_1.Nacionalidad, provincia_entity_1.Provincia, distrito_entity_1.Distrito, corregimiento_entity_1.Corregimiento, notification_entity_1.Notification, integration_log_entity_1.IntegrationLog],
+                entities: [
+                    user_entity_1.User,
+                    service_entity_1.Service,
+                    sede_entity_1.Sede,
+                    preadmission_entity_1.Preadmission,
+                    ticket_entity_1.Ticket,
+                    appointment_entity_1.Appointment,
+                    survey_entity_1.Survey,
+                    nacionalidad_entity_1.Nacionalidad,
+                    provincia_entity_1.Provincia,
+                    distrito_entity_1.Distrito,
+                    corregimiento_entity_1.Corregimiento,
+                    notification_entity_1.Notification,
+                    integration_log_entity_1.IntegrationLog,
+                    audit_log_entity_1.AuditLog,
+                    password_reset_token_entity_1.PasswordResetToken,
+                    verification_code_entity_1.VerificationCode,
+                    role_permission_entity_1.RolePermission,
+                ],
                 synchronize: true,
                 logging: false,
             }),
+            audit_module_1.AuditModule,
             auth_module_1.AuthModule,
             users_module_1.UsersModule,
             preadmission_module_1.PreadmissionModule,

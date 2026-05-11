@@ -14,6 +14,8 @@ import * as crypto from 'crypto';
 import { CellbyteService } from '../integrations/cellbyte.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { parseCedulaQr } from './utils/parse-cedula-qr';
+import { AuditService } from '../audit/audit.service';
+import { VerificationCode } from '../auth/entities/verification-code.entity';
 
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 
@@ -22,8 +24,11 @@ export class PreadmissionService {
   constructor(
     @InjectRepository(Preadmission)
     private preadmissionRepository: Repository<Preadmission>,
+    @InjectRepository(VerificationCode)
+    private verificationRepository: Repository<VerificationCode>,
     private readonly cellbyteService: CellbyteService,
     private readonly ticketsService: TicketsService,
+    private readonly auditService: AuditService,
   ) {}
 
   private generateQrCode(): string {
@@ -62,20 +67,26 @@ export class PreadmissionService {
 
     const row: Partial<Preadmission> & CreatePreadmissionDto = { ...createDto };
 
+    const existing = await this.preadmissionRepository.findOne({
+      where: { cedula: createDto.cedula, pasaporte: createDto.pasaporte },
+      order: { fechapreadmision: 'DESC' },
+    });
+    if (existing && existing.status !== PreadmissionStatus.RECHAZADO) {
+      throw new BadRequestException('Ya existe una preadmisión activa con este documento');
+    }
+
     if (createDto.doblecobertura === 'NO') {
       row.compania1 = 'PACIENTE PRIVADO';
       row.poliza1 = '';
       row.carnetseguro = null;
       row.certificadoSeguro = null;
       row.preautorizacion = createDto.preautorizacion ?? null;
-    } else {
-      if (!createDto.compania1 || !createDto.poliza1) {
-        throw new BadRequestException('Compañía y póliza son obligatorias con seguro');
-      }
-      if (!createDto.carnetseguro) {
-        throw new BadRequestException('El carné de seguro es obligatorio cuando tiene seguro');
-      }
+    } else if (!createDto.compania1 || !createDto.poliza1) {
+      throw new BadRequestException('Compañía y póliza son obligatorias cuando mantiene seguro');
     }
+
+    row.procedimientoEstudio =
+      createDto.procedimientoEstudio?.trim() || createDto.diagnostico?.trim() || null;
 
     row.celularPrefix = createDto.celularPrefix || '507';
     row.celular = this.formatCelular(row.celularPrefix, createDto.celular);
@@ -89,6 +100,13 @@ export class PreadmissionService {
     } as Preadmission);
 
     const saved = await this.preadmissionRepository.save(preadmission);
+
+    await this.auditService.log('preadmission_created', {
+      entityType: 'preadmission',
+      entityId: saved.id,
+      userId: patientId ?? undefined,
+      details: `departamento=${saved.departamento}`,
+    });
 
     this.cellbyteService.sendPreadmission(saved).then(async () => {
       saved.cellbyteSentAt = new Date();
@@ -223,5 +241,48 @@ export class PreadmissionService {
 
     await this.preadmissionRepository.save(preadmission);
     return { message: 'Preadmisión actualizada', status: reviewDto.status };
+  }
+
+  private generateVerificationCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  async requestContactVerification(channel: 'email' | 'sms', destination: string) {
+    const normalized = destination.trim().toLowerCase();
+    if (!normalized) {
+      throw new BadRequestException('Destino de verificación inválido');
+    }
+    const code = this.generateVerificationCode();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
+    await this.verificationRepository.save(
+      this.verificationRepository.create({
+        channel,
+        destination: normalized,
+        code,
+        expiresAt,
+        verified: false,
+      }),
+    );
+    return {
+      message: 'Código de verificación generado',
+      channel,
+      destination: normalized,
+      expiresAt,
+      previewCode: process.env.NODE_ENV === 'production' ? undefined : code,
+    };
+  }
+
+  async confirmContactVerification(channel: 'email' | 'sms', destination: string, code: string) {
+    const normalized = destination.trim().toLowerCase();
+    const row = await this.verificationRepository.findOne({
+      where: { channel, destination: normalized, code, verified: false },
+      order: { createdAt: 'DESC' },
+    });
+    if (!row || row.expiresAt < new Date()) {
+      throw new BadRequestException('Código inválido o expirado');
+    }
+    row.verified = true;
+    await this.verificationRepository.save(row);
+    return { message: 'Verificación exitosa', channel, destination: normalized };
   }
 }

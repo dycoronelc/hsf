@@ -1,6 +1,7 @@
 import { PreadmissionStatus } from '../../common/enums';
 export declare class CreatePreadmissionDto {
     departamento: string;
+    registradoComo: string;
     name1: string;
     name2?: string;
     apellido1: string;
@@ -34,6 +35,7 @@ export declare class CreatePreadmissionDto {
     poliza1?: string;
     carnetseguro?: string;
     diagnostico?: string;
+    procedimientoEstudio?: string;
     numerocotizacion?: string;
     cedulaimagen: string;
     ordenimagen?: string;
@@ -43,6 +45,15 @@ export declare class CreatePreadmissionDto {
 }
 export declare class ParseCedulaQrDto {
     raw: string;
+}
+export declare class RequestVerificationDto {
+    channel: 'email' | 'sms';
+    destination: string;
+}
+export declare class ConfirmVerificationDto {
+    channel: 'email' | 'sms';
+    destination: string;
+    code: string;
 }
 export declare class ReviewPreadmissionDto {
     status: PreadmissionStatus;

@@ -17,15 +17,33 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_entity_1 = require("./entities/user.entity");
+const enums_1 = require("../common/enums");
 const bcrypt = require("bcrypt");
 let UsersService = class UsersService {
     constructor(usersRepository) {
         this.usersRepository = usersRepository;
     }
     async create(createUserDto) {
+        const existingEmail = await this.findByEmail(createUserDto.email);
+        if (existingEmail) {
+            throw new common_1.ConflictException('Ya existe una cuenta con este correo electrónico');
+        }
+        if (createUserDto.nationalId) {
+            const existingId = await this.usersRepository.findOne({
+                where: { nationalId: createUserDto.nationalId },
+            });
+            if (existingId) {
+                throw new common_1.ConflictException('Ya existe una cuenta con este número de identificación');
+            }
+        }
         const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
         const user = this.usersRepository.create({
-            ...createUserDto,
+            email: createUserDto.email,
+            fullName: createUserDto.fullName,
+            phone: createUserDto.phone,
+            nationalId: createUserDto.nationalId ?? null,
+            birthDate: createUserDto.birthDate ?? null,
+            role: createUserDto.role ?? enums_1.UserRole.PATIENT,
             hashedPassword,
         });
         const savedUser = await this.usersRepository.save(user);
@@ -42,6 +60,10 @@ let UsersService = class UsersService {
     }
     async updateAgentState(userId, agentState) {
         await this.usersRepository.update(userId, { agentState });
+    }
+    async updatePassword(userId, password) {
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await this.usersRepository.update(userId, { hashedPassword });
     }
     async findOne(id) {
         const user = await this.usersRepository.findOne({ where: { id } });

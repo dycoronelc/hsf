@@ -38,6 +38,14 @@ __decorate([
     __metadata("design:type", String)
 ], User.prototype, "phone", void 0);
 __decorate([
+    (0, typeorm_1.Column)({ nullable: true, unique: true }),
+    __metadata("design:type", String)
+], User.prototype, "nationalId", void 0);
+__decorate([
+    (0, typeorm_1.Column)({ nullable: true }),
+    __metadata("design:type", String)
+], User.prototype, "birthDate", void 0);
+__decorate([
     (0, typeorm_1.Column)({
         type: 'text',
         default: enums_1.UserRole.PATIENT,

@@ -36,6 +36,14 @@ export class Service {
   @Column({ nullable: true })
   estimatedTime: number; // minutos
 
+  /** Prefijo del ticket (PDF: H, PMSF, LR, etc.). */
+  @Column({ nullable: true })
+  ticketPrefix: string | null;
+
+  /** Prioridad operativa 1–3 por tipo de ticket. */
+  @Column({ type: 'int', default: 2 })
+  priorityLevel: number;
+
   @Column({ default: false })
   requiresAppointment: boolean;
 

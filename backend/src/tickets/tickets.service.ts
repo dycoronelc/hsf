@@ -16,6 +16,8 @@ import { User } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { SurveysService } from '../surveys/surveys.service';
+import { isAgentOperational } from '../common/agent-utils';
+import { AuditService } from '../audit/audit.service';
 
 @Injectable()
 export class TicketsService {
@@ -30,13 +32,24 @@ export class TicketsService {
     private notificationsService: NotificationsService,
     @Inject(forwardRef(() => SurveysService))
     private surveysService: SurveysService,
+    private auditService: AuditService,
   ) {}
 
-  private generateTicketNumber(serviceCode: string): string {
-    const randomSuffix = Math.floor(Math.random() * 1000)
+  private generateTicketNumber(service: Pick<Service, 'code' | 'ticketPrefix'>): string {
+    const prefix = service.ticketPrefix || service.code;
+    const randomSuffix = Math.floor(Math.random() * 10000)
       .toString()
-      .padStart(3, '0');
-    return `${serviceCode}-${randomSuffix}`;
+      .padStart(4, '0');
+    return `${prefix}-${randomSuffix}`;
+  }
+
+  private assertAgentCanOperate(user: Pick<User, 'id' | 'agentState'> | null | undefined) {
+    if (!user) return;
+    if (!isAgentOperational(user.agentState)) {
+      throw new BadRequestException(
+        'No puede llamar ni gestionar tickets mientras está en un estado no operativo',
+      );
+    }
   }
 
   private generateQrCode(): string {
@@ -63,17 +76,49 @@ export class TicketsService {
 
   private async enrichWithQueueInfo(
     tickets: Array<{ id: number; serviceId: number }>,
-  ): Promise<Map<number, { queue_position: number; ahead_count: number }>> {
+  ): Promise<
+    Map<
+      number,
+      {
+        queue_position: number;
+        ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
+      }
+    >
+  > {
     const serviceIds = Array.from(new Set(tickets.map((t) => t.serviceId)));
+    const services = await this.serviceRepository.findBy({ id: In(serviceIds) });
+    const serviceById = new Map(services.map((s) => [s.id, s]));
     const serviceMaps = await Promise.all(
       serviceIds.map(async (sid) => [sid, await this.getQueuePositionsByService(sid)] as const),
     );
     const byService = new Map<number, Map<number, number>>(serviceMaps);
 
-    const out = new Map<number, { queue_position: number; ahead_count: number }>();
+    const out = new Map<
+      number,
+      {
+        queue_position: number;
+        ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
+      }
+    >();
     for (const t of tickets) {
       const pos = byService.get(t.serviceId)?.get(t.id) ?? 0;
-      out.set(t.id, { queue_position: pos, ahead_count: Math.max(0, pos - 1) });
+      const ahead = Math.max(0, pos - 1);
+      const minutesPerTicket = serviceById.get(t.serviceId)?.estimatedTime ?? 15;
+      const waitSeconds = ahead * minutesPerTicket * 60;
+      const hours = Math.floor(waitSeconds / 3600);
+      const minutes = Math.floor((waitSeconds % 3600) / 60);
+      const seconds = waitSeconds % 60;
+      const label = `${hours}h ${minutes}m ${seconds}s`;
+      out.set(t.id, {
+        queue_position: pos,
+        ahead_count: ahead,
+        estimated_wait_seconds: waitSeconds,
+        estimated_wait_label: label,
+      });
     }
     return out;
   }
@@ -88,7 +133,7 @@ export class TicketsService {
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(service.code),
+      ticketNumber: this.generateTicketNumber(service),
       patientId: null, // Ticket anónimo desde kiosco
       serviceId: createDto.serviceId,
       priority: createDto.priority || Priority.NORMAL,
@@ -98,7 +143,12 @@ export class TicketsService {
 
     const savedTicket = await this.ticketRepository.save(ticket);
     const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
-    const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+    const qi = queueInfo.get(savedTicket.id) ?? {
+      queue_position: 0,
+      ahead_count: 0,
+      estimated_wait_seconds: 0,
+      estimated_wait_label: '0h 0m 0s',
+    };
 
     return {
       id: savedTicket.id,
@@ -122,7 +172,7 @@ export class TicketsService {
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(service.code),
+      ticketNumber: this.generateTicketNumber(service),
       patientId,
       serviceId: createDto.serviceId,
       priority: createDto.priority || Priority.NORMAL,
@@ -145,7 +195,12 @@ export class TicketsService {
     }
     
     const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
-    const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+    const qi = queueInfo.get(savedTicket.id) ?? {
+      queue_position: 0,
+      ahead_count: 0,
+      estimated_wait_seconds: 0,
+      estimated_wait_label: '0h 0m 0s',
+    };
 
     return {
       id: savedTicket.id,
@@ -183,7 +238,12 @@ export class TicketsService {
     );
 
     return tickets.map((ticket) => {
-      const qi = queueInfo.get(ticket.id) ?? { queue_position: 0, ahead_count: 0 };
+      const qi = queueInfo.get(ticket.id) ?? {
+        queue_position: 0,
+        ahead_count: 0,
+        estimated_wait_seconds: 0,
+        estimated_wait_label: '0h 0m 0s',
+      };
       return {
         id: ticket.id,
         ticket_number: ticket.ticketNumber,
@@ -191,6 +251,7 @@ export class TicketsService {
         service_name: ticket.service?.name,
         status: ticket.status,
         priority: ticket.priority,
+        priority_level: ticket.service?.priorityLevel ?? 2,
         created_at: ticket.createdAt,
         qr_code: ticket.qrCode,
         ...qi,
@@ -236,7 +297,12 @@ export class TicketsService {
       ticket.checkInAt = new Date();
       await this.ticketRepository.save(ticket);
       const queueInfo = await this.enrichWithQueueInfo([{ id: ticket.id, serviceId: ticket.serviceId }]);
-      const qi = queueInfo.get(ticket.id) ?? { queue_position: 0, ahead_count: 0 };
+      const qi = queueInfo.get(ticket.id) ?? {
+        queue_position: 0,
+        ahead_count: 0,
+        estimated_wait_seconds: 0,
+        estimated_wait_label: '0h 0m 0s',
+      };
       return {
         message: 'Llegada registrada',
         type: 'ticket',
@@ -270,16 +336,23 @@ export class TicketsService {
     throw new NotFoundException('Turno o preadmisión no encontrado con ese código o ID');
   }
 
-  async call(id: number, windowNumber: string, calledBy: number) {
+  async call(id: number, windowNumber: string, agent: Pick<User, 'id' | 'agentState'>) {
+    this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
-    ticket.calledBy = calledBy;
+    ticket.calledBy = agent.id;
     ticket.windowNumber = windowNumber;
     await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_called', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent.id,
+      details: `window=${windowNumber}`,
+    });
     
     // Enviar notificación si el paciente está autenticado
     if (ticket.patientId && ticket.patientId > 0) {
@@ -295,7 +368,8 @@ export class TicketsService {
     return { message: 'Ticket llamado', ticket_number: ticket.ticketNumber };
   }
 
-  async start(id: number) {
+  async start(id: number, agent?: Pick<User, 'id' | 'agentState'>) {
+    this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
@@ -303,10 +377,16 @@ export class TicketsService {
     ticket.status = TicketStatus.EN_ATENCION;
     ticket.startedAt = new Date();
     await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_started', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent?.id,
+    });
     return { message: 'Atención iniciada' };
   }
 
-  async complete(id: number) {
+  async complete(id: number, agent?: Pick<User, 'id' | 'agentState'>) {
+    this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
@@ -314,6 +394,11 @@ export class TicketsService {
     ticket.status = TicketStatus.FINALIZADO;
     ticket.completedAt = new Date();
     await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_completed', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent?.id,
+    });
     
     // Crear encuesta automática si el paciente está autenticado
     if (ticket.patientId && ticket.patientId > 0) {
@@ -353,7 +438,8 @@ export class TicketsService {
   }
 
   /** Transferir ticket a Radiología, Laboratorio o Ambos (documento Preadmision.md) */
-  async transfer(id: number, dto: TransferTicketDto) {
+  async transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>) {
+    this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
@@ -368,7 +454,7 @@ export class TicketsService {
         throw new NotFoundException('No se encontró servicio para el área adicional');
       }
       const newTicket = this.ticketRepository.create({
-        ticketNumber: this.generateTicketNumber(otherArea.code),
+        ticketNumber: this.generateTicketNumber(otherArea),
         patientId: ticket.patientId,
         serviceId: otherArea.id,
         status: TicketStatus.CREADO,
@@ -376,6 +462,12 @@ export class TicketsService {
         qrCode: this.generateQrCode(),
       });
       await this.ticketRepository.save(newTicket);
+      await this.auditService.log('ticket_transferred', {
+        entityType: 'ticket',
+        entityId: ticket.id,
+        userId: agent?.id,
+        details: `targetArea=${dto.targetArea}`,
+      });
       return { message: 'Ticket duplicado para ambos servicios', originalId: id, newTicketId: newTicket.id };
     }
 
@@ -387,6 +479,12 @@ export class TicketsService {
     ticket.status = TicketStatus.TRANSFERIDO;
     ticket.completedAt = new Date();
     await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_transferred', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent?.id,
+      details: `targetArea=${dto.targetArea}`,
+    });
     return { message: 'Ticket transferido', service_id: targetService.id, service_name: targetService.name };
   }
 
@@ -411,7 +509,7 @@ export class TicketsService {
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(admService.code),
+      ticketNumber: this.generateTicketNumber(admService),
       patientId: pre.patientId ?? null,
       serviceId: admService.id,
       priority: Priority.NORMAL,
@@ -427,7 +525,12 @@ export class TicketsService {
     await this.preadmissionRepository.save(pre);
 
     const queueInfo = await this.enrichWithQueueInfo([{ id: savedTicket.id, serviceId: savedTicket.serviceId }]);
-    const qi = queueInfo.get(savedTicket.id) ?? { queue_position: 0, ahead_count: 0 };
+    const qi = queueInfo.get(savedTicket.id) ?? {
+      queue_position: 0,
+      ahead_count: 0,
+      estimated_wait_seconds: 0,
+      estimated_wait_label: '0h 0m 0s',
+    };
 
     return {
       id: savedTicket.id,

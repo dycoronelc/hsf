@@ -77,6 +77,10 @@ export class ReportsController {
       const csv = await this.reportsService.exportPreadmissionsCSV(start, end, tipo, documento, state);
       return { csv };
     }
+    if (format === 'excel' || format === 'xlsx' || format === 'xls') {
+      const excel = await this.reportsService.exportPreadmissionsExcel(start, end, tipo, documento, state);
+      return { excel, mimeType: 'application/vnd.ms-excel' };
+    }
     return this.reportsService.getPreadmissionsReport(start, end, tipo, documento, state);
   }
 

@@ -55,6 +55,7 @@ let MonitorService = class MonitorService {
                 ticket_number: current.ticketNumber,
                 service_name: service.name,
                 priority: current.priority,
+                window_number: current.windowNumber ?? null,
                 wait_time: current.calledAt
                     ? Math.floor((new Date().getTime() - new Date(current.calledAt).getTime()) /
                         60000)

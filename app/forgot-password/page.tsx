@@ -17,10 +17,19 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      // TODO: Implementar endpoint de recuperación de contraseña en el backend
-      // Por ahora solo mostramos un mensaje
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      setMessage('Si el email existe, recibirás instrucciones para recuperar tu contraseña.')
+      const response = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(data.message || 'Error al procesar la solicitud')
+      }
+      setMessage(data.message || 'Si el email existe, recibirás instrucciones para recuperar tu contraseña.')
+      if (data.resetUrl) {
+        setMessage(`${data.message} Enlace de prueba: ${data.resetUrl}`)
+      }
     } catch (err: any) {
       setError(err.message || 'Error al procesar la solicitud')
     } finally {

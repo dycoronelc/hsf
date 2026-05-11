@@ -14,6 +14,8 @@ import {
   CreatePreadmissionDto,
   ReviewPreadmissionDto,
   ParseCedulaQrDto,
+  RequestVerificationDto,
+  ConfirmVerificationDto,
 } from './dto/preadmission.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
@@ -46,6 +48,20 @@ export class PreadmissionController {
   @Post('parse-cedula-qr')
   async parseCedulaQr(@Body() body: ParseCedulaQrDto) {
     return this.preadmissionService.parseCedulaQrPayload(body.raw);
+  }
+
+  @Post('verify-contact/request')
+  async requestContactVerification(@Body() body: RequestVerificationDto) {
+    return this.preadmissionService.requestContactVerification(body.channel, body.destination);
+  }
+
+  @Post('verify-contact/confirm')
+  async confirmContactVerification(@Body() body: ConfirmVerificationDto) {
+    return this.preadmissionService.confirmContactVerification(
+      body.channel,
+      body.destination,
+      body.code,
+    );
   }
 
   @Post()

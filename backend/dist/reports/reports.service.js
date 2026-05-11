@@ -291,6 +291,7 @@ let ReportsService = class ReportsService {
         const headers = [
             'id',
             'departamento',
+            'registradoComo',
             'cedula',
             'name1',
             'apellido1',
@@ -299,6 +300,7 @@ let ReportsService = class ReportsService {
             'celular',
             'fechaprobableatencion',
             'medico',
+            'procedimientoEstudio',
             'diagnostico',
             'status',
             'arrivalState',
@@ -319,6 +321,19 @@ let ReportsService = class ReportsService {
         };
         const rows = list.map((p) => headers.map((h) => `"${escape(cell(p, h))}"`).join(','));
         return [headers.join(','), ...rows].join('\r\n');
+    }
+    async exportPreadmissionsExcel(startDate, endDate, tipo, documento, arrivalState) {
+        const csv = await this.exportPreadmissionsCSV(startDate, endDate, tipo, documento, arrivalState);
+        const rows = csv.split(/\r?\n/).map((line) => line.split(',').map((cell) => cell.replace(/^"|"$/g, '').replace(/""/g, '"')));
+        const escapeXml = (value) => value
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+        const body = rows
+            .map((row) => `<Row>${row.map((cell) => `<Cell><Data ss:Type="String">${escapeXml(cell)}</Data></Cell>`).join('')}</Row>`)
+            .join('');
+        return `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Preadmisiones"><Table>${body}</Table></Worksheet></Workbook>`;
     }
 };
 exports.ReportsService = ReportsService;

@@ -1,0 +1,61 @@
+1. Acuerdos de Nivel de Servicio (SLA) y Soporte
+Tiempos de respuesta ante incidencias (críticas, medias y bajas)
+Tiempos de resolución estimados
+Canales de soporte disponibles
+Horarios de atención
+Procedimiento de escalamiento
+
+2. Infraestructura y Arquitectura Tecnológica
+Definición del esquema de hosting (cloud, on-premise o híbrido)
+Responsabilidad sobre la infraestructura (servidores, base de datos)
+Tecnologías utilizadas (backend, frontend, base de datos)
+Requerimientos técnicos del lado del hospital
+Consideraciones de escalabilidad
+
+3. Seguridad de la Información y Cumplimiento
+Mecanismos de protección de datos sensibles (encriptación en tránsito y en reposo)
+Gestión de accesos y autenticación
+Cumplimiento de normativas aplicables (si corresponde)
+Gestión de sesiones y control de accesos
+
+4. Respaldo de Información y Recuperación ante Desastres
+Políticas de respaldo (frecuencia, tipo de backup)
+Ubicación de los respaldos
+Procedimiento de recuperación
+Tiempos estimados de restauración (RTO / RPO)
+Plan de continuidad operativa
+
+5. Integración con Sistemas Existentes (Cellbyte)
+Alcance exacto de la integración
+Dependencias técnicas y responsabilidades de terceros
+Riesgos identificados en la integración
+Estrategia en caso de indisponibilidad del sistema externo
+Nivel de acoplamiento (impacto en caso de fallos)
+
+6. Comunicación con el Paciente
+Confirmaciones de preadmisión (correo, SMS, WhatsApp)
+Notificaciones de recordatorio
+Envío de documentos (ej. consentimientos informados)
+Uso del QR como canal de comunicación o acceso
+
+7. Documentación y Capacitación
+Disponibilidad de manuales de usuario y técnicos
+Plan de capacitación para personal operativo y técnico
+Materiales de apoyo (guías, videos, etc.)
+Transferencia de conocimiento al equipo interno
+
+8. Alcance del Soporte Post-Implementación
+Detalle del soporte incluido en los 3 meses indicados
+Alcance del soporte posterior a ese período
+Modalidades de contratación de soporte adicional
+
+9. Consideraciones Operativas
+Procedimientos ante fallos del sistema
+Operación en contingencia (modo manual o alterno)
+Impacto en la continuidad del servicio clínico
+
+10. Validación del Alcance vs. Inversión
+Dado el alcance amplio de la solución propuesta, agradeceríamos confirmar:
+Supuestos considerados para la estimación
+Exclusiones del alcance
+Posibles costos adicionales (infraestructura, integraciones, licencias, etc.)

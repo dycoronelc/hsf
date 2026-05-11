@@ -8,5 +8,6 @@ export declare class UsersService {
     create(createUserDto: CreateUserDto): Promise<UserResponseDto>;
     findByEmail(email: string): Promise<User | null>;
     updateAgentState(userId: number, agentState: AgentState | null): Promise<void>;
+    updatePassword(userId: number, password: string): Promise<void>;
     findOne(id: number): Promise<UserResponseDto | null>;
 }

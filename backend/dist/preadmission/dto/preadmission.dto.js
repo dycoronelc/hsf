@@ -9,7 +9,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.ReviewPreadmissionDto = exports.ParseCedulaQrDto = exports.CreatePreadmissionDto = void 0;
+exports.ReviewPreadmissionDto = exports.ConfirmVerificationDto = exports.RequestVerificationDto = exports.ParseCedulaQrDto = exports.CreatePreadmissionDto = void 0;
 const class_validator_1 = require("class-validator");
 const enums_1 = require("../../common/enums");
 class CreatePreadmissionDto {
@@ -19,6 +19,10 @@ __decorate([
     (0, class_validator_1.IsEnum)(['RAD', 'LAB']),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "departamento", void 0);
+__decorate([
+    (0, class_validator_1.IsEnum)(['paciente', 'acompanante']),
+    __metadata("design:type", String)
+], CreatePreadmissionDto.prototype, "registradoComo", void 0);
 __decorate([
     (0, class_validator_1.Matches)(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en nombres' }),
     (0, class_validator_1.IsString)(),
@@ -162,8 +166,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "poliza1", void 0);
 __decorate([
-    (0, class_validator_1.ValidateIf)((o) => o.doblecobertura === 'SI'),
-    (0, class_validator_1.IsNotEmpty)(),
+    (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "carnetseguro", void 0);
@@ -172,6 +175,11 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "diagnostico", void 0);
+__decorate([
+    (0, class_validator_1.IsOptional)(),
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], CreatePreadmissionDto.prototype, "procedimientoEstudio", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
@@ -208,6 +216,32 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], ParseCedulaQrDto.prototype, "raw", void 0);
+class RequestVerificationDto {
+}
+exports.RequestVerificationDto = RequestVerificationDto;
+__decorate([
+    (0, class_validator_1.IsEnum)(['email', 'sms']),
+    __metadata("design:type", String)
+], RequestVerificationDto.prototype, "channel", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], RequestVerificationDto.prototype, "destination", void 0);
+class ConfirmVerificationDto {
+}
+exports.ConfirmVerificationDto = ConfirmVerificationDto;
+__decorate([
+    (0, class_validator_1.IsEnum)(['email', 'sms']),
+    __metadata("design:type", String)
+], ConfirmVerificationDto.prototype, "channel", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ConfirmVerificationDto.prototype, "destination", void 0);
+__decorate([
+    (0, class_validator_1.IsString)(),
+    __metadata("design:type", String)
+], ConfirmVerificationDto.prototype, "code", void 0);
 class ReviewPreadmissionDto {
 }
 exports.ReviewPreadmissionDto = ReviewPreadmissionDto;

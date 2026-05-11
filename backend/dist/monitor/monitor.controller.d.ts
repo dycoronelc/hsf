@@ -9,6 +9,7 @@ export declare class MonitorController {
             ticket_number: string;
             service_name: string;
             priority: import("../common/enums").Priority;
+            window_number: string;
             wait_time: number;
             status: import("../common/enums").TicketStatus;
         };
@@ -28,6 +29,7 @@ export declare class MonitorController {
             ticket_number: string;
             service_name: string;
             priority: import("../common/enums").Priority;
+            window_number: string;
             wait_time: number;
             status: import("../common/enums").TicketStatus;
         };

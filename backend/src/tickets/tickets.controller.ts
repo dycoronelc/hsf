@@ -67,7 +67,7 @@ export class TicketsController {
     @Body() callDto: CallTicketDto,
     @Request() req,
   ) {
-    return this.ticketsService.call(+id, callDto.windowNumber, req.user.id);
+    return this.ticketsService.call(+id, callDto.windowNumber, req.user);
   }
 
   @Post(':id/start')
@@ -80,8 +80,8 @@ export class TicketsController {
     UserRole.LABORATORIO,
     UserRole.RADIOLOGIA,
   )
-  async start(@Param('id') id: number) {
-    return this.ticketsService.start(+id);
+  async start(@Param('id') id: number, @Request() req) {
+    return this.ticketsService.start(+id, req.user);
   }
 
   @Post(':id/complete')
@@ -94,8 +94,8 @@ export class TicketsController {
     UserRole.LABORATORIO,
     UserRole.RADIOLOGIA,
   )
-  async complete(@Param('id') id: number) {
-    return this.ticketsService.complete(+id);
+  async complete(@Param('id') id: number, @Request() req) {
+    return this.ticketsService.complete(+id, req.user);
   }
 
   @Post(':id/transfer')
@@ -111,8 +111,9 @@ export class TicketsController {
   async transfer(
     @Param('id') id: number,
     @Body() dto: TransferTicketDto,
+    @Request() req,
   ) {
-    return this.ticketsService.transfer(+id, dto);
+    return this.ticketsService.transfer(+id, dto, req.user);
   }
 
   @Patch(':id')

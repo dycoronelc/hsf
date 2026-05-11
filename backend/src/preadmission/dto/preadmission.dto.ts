@@ -14,6 +14,9 @@ export class CreatePreadmissionDto {
   @IsEnum(['RAD', 'LAB'])
   departamento: string;
 
+  @IsEnum(['paciente', 'acompanante'])
+  registradoComo: string;
+
   @Matches(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en nombres' })
   @IsString()
   name1: string;
@@ -125,14 +128,17 @@ export class CreatePreadmissionDto {
   @IsString()
   poliza1?: string;
 
-  @ValidateIf((o) => o.doblecobertura === 'SI')
-  @IsNotEmpty()
+  @IsOptional()
   @IsString()
   carnetseguro?: string;
 
   @IsOptional()
   @IsString()
   diagnostico?: string;
+
+  @IsOptional()
+  @IsString()
+  procedimientoEstudio?: string;
 
   @IsOptional()
   @IsString()
@@ -161,6 +167,25 @@ export class CreatePreadmissionDto {
 export class ParseCedulaQrDto {
   @IsString()
   raw: string;
+}
+
+export class RequestVerificationDto {
+  @IsEnum(['email', 'sms'])
+  channel: 'email' | 'sms';
+
+  @IsString()
+  destination: string;
+}
+
+export class ConfirmVerificationDto {
+  @IsEnum(['email', 'sms'])
+  channel: 'email' | 'sms';
+
+  @IsString()
+  destination: string;
+
+  @IsString()
+  code: string;
 }
 
 export class ReviewPreadmissionDto {

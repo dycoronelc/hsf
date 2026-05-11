@@ -82,17 +82,26 @@ async function bootstrap() {
             console.log('✓ Sede principal creada');
         }
         const servicesData = [
-            { name: 'Laboratorio Clínico', code: 'LAB', area: 'LAB', estimatedTime: 30 },
-            { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45 },
-            { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60 },
+            { name: 'Laboratorio Clínico', code: 'LAB', area: 'LAB', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2 },
+            { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45, ticketPrefix: 'LR', priorityLevel: 2 },
+            { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60, ticketPrefix: 'LR', priorityLevel: 2 },
             {
                 name: 'Resonancia Magnética',
                 code: 'RMN',
                 area: 'RAD',
                 estimatedTime: 90,
+                ticketPrefix: 'LR',
+                priorityLevel: 2,
             },
-            { name: 'Ecografía', code: 'ECO', area: 'RAD', estimatedTime: 30 },
-            { name: 'Admisión', code: 'ADM', area: 'ADMISION', estimatedTime: 15 },
+            { name: 'Ecografía', code: 'ECO', area: 'RAD', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2 },
+            { name: 'Admisión', code: 'ADM', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'CTA', priorityLevel: 2 },
+            { name: 'Hospitalización', code: 'HOSP', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'H', priorityLevel: 1 },
+            { name: 'Copago / Ingreso PMSF', code: 'PMSF', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'PMSF', priorityLevel: 2 },
+            { name: 'Cirugías / Endoscopias / Hemodinámica', code: 'CEH', area: 'ADMISION', estimatedTime: 25, ticketPrefix: 'CEH', priorityLevel: 1 },
+            { name: 'Triage', code: 'TRIAGE', area: 'ADMISION', estimatedTime: 10, ticketPrefix: 'T', priorityLevel: 1 },
+            { name: 'Urgencias', code: 'URG', area: 'ADMISION', estimatedTime: 10, ticketPrefix: 'URG', priorityLevel: 1 },
+            { name: 'Consulta', code: 'CTA', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'CTA', priorityLevel: 2 },
+            { name: 'Otros servicios', code: 'OT', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'OT', priorityLevel: 3 },
         ];
         for (const serviceData of servicesData) {
             const existing = await serviceRepository.findOne({

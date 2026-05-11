@@ -12,14 +12,17 @@ const typeorm_1 = require("@nestjs/typeorm");
 const admin_controller_1 = require("./admin.controller");
 const admin_service_1 = require("./admin.service");
 const service_entity_1 = require("../services/entities/service.entity");
+const role_permission_entity_1 = require("./entities/role-permission.entity");
+const user_entity_1 = require("../users/entities/user.entity");
 let AdminModule = class AdminModule {
 };
 exports.AdminModule = AdminModule;
 exports.AdminModule = AdminModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([service_entity_1.Service])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([service_entity_1.Service, role_permission_entity_1.RolePermission, user_entity_1.User])],
         controllers: [admin_controller_1.AdminController],
         providers: [admin_service_1.AdminService],
+        exports: [admin_service_1.AdminService],
     })
 ], AdminModule);
 //# sourceMappingURL=admin.module.js.map

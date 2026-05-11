@@ -1,5 +1,5 @@
 import { PreadmissionService } from './preadmission.service';
-import { CreatePreadmissionDto, ReviewPreadmissionDto, ParseCedulaQrDto } from './dto/preadmission.dto';
+import { CreatePreadmissionDto, ReviewPreadmissionDto, ParseCedulaQrDto, RequestVerificationDto, ConfirmVerificationDto } from './dto/preadmission.dto';
 import { PreadmissionArrivalState } from '../common/enums';
 export declare class PreadmissionController {
     private readonly preadmissionService;
@@ -7,6 +7,18 @@ export declare class PreadmissionController {
     searchByCedula(cedula: string, tipoIdentificacion: string): Promise<import("./entities/preadmission.entity").Preadmission>;
     createPublic(createDto: CreatePreadmissionDto): Promise<import("./entities/preadmission.entity").Preadmission>;
     parseCedulaQr(body: ParseCedulaQrDto): Promise<Record<string, string>>;
+    requestContactVerification(body: RequestVerificationDto): Promise<{
+        message: string;
+        channel: "email" | "sms";
+        destination: string;
+        expiresAt: Date;
+        previewCode: string;
+    }>;
+    confirmContactVerification(body: ConfirmVerificationDto): Promise<{
+        message: string;
+        channel: "email" | "sms";
+        destination: string;
+    }>;
     create(createDto: CreatePreadmissionDto, req: any): Promise<import("./entities/preadmission.entity").Preadmission>;
     workList(req: any, arrivalState?: PreadmissionArrivalState, q?: string, skip?: number, limit?: number): Promise<import("./entities/preadmission.entity").Preadmission[]>;
     findAll(req: any, skip?: number, limit?: number): Promise<import("./entities/preadmission.entity").Preadmission[]>;

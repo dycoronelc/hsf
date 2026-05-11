@@ -52,6 +52,18 @@ export enum Priority {
   EMERGENCIA = 'emergencia',
 }
 
+/** Nivel de prioridad configurable por tipo de ticket (PDF preadmisiones). */
+export enum ServicePriorityLevel {
+  PRIORIDAD_1 = 1,
+  PRIORIDAD_2 = 2,
+  PRIORIDAD_3 = 3,
+}
+
+export enum RegistradoComo {
+  PACIENTE = 'paciente',
+  ACOMPANANTE = 'acompanante',
+}
+
 export enum PreadmissionStatus {
   BORRADOR = 'borrador',
   ENVIADO = 'enviado',

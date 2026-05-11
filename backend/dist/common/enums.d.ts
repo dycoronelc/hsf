@@ -44,6 +44,15 @@ export declare enum Priority {
     DISCAPACIDAD = "discapacidad",
     EMERGENCIA = "emergencia"
 }
+export declare enum ServicePriorityLevel {
+    PRIORIDAD_1 = 1,
+    PRIORIDAD_2 = 2,
+    PRIORIDAD_3 = 3
+}
+export declare enum RegistradoComo {
+    PACIENTE = "paciente",
+    ACOMPANANTE = "acompanante"
+}
 export declare enum PreadmissionStatus {
     BORRADOR = "borrador",
     ENVIADO = "enviado",

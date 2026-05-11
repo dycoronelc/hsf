@@ -7,6 +7,8 @@ export declare class TicketsController {
     createKioskTicket(createDto: CreateTicketDto): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;
@@ -19,6 +21,8 @@ export declare class TicketsController {
     create(createDto: CreateTicketDto, req: any): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;
@@ -31,12 +35,15 @@ export declare class TicketsController {
     findAll(req: any, serviceId?: number, status?: TicketStatus): Promise<{
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         id: number;
         ticket_number: string;
         service_id: number;
         service_name: string;
         status: TicketStatus;
         priority: import("../common/enums").Priority;
+        priority_level: number;
         created_at: Date;
         qr_code: string;
     }[]>;
@@ -44,6 +51,8 @@ export declare class TicketsController {
         status: TicketStatus.CHECK_IN;
         queue_position: number;
         ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
         message: string;
         type: string;
         ticket_number: string;
@@ -66,13 +75,13 @@ export declare class TicketsController {
         message: string;
         ticket_number: string;
     }>;
-    start(id: number): Promise<{
+    start(id: number, req: any): Promise<{
         message: string;
     }>;
-    complete(id: number): Promise<{
+    complete(id: number, req: any): Promise<{
         message: string;
     }>;
-    transfer(id: number, dto: TransferTicketDto): Promise<{
+    transfer(id: number, dto: TransferTicketDto, req: any): Promise<{
         message: string;
         originalId: number;
         newTicketId: number;
