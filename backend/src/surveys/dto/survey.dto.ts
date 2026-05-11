@@ -7,10 +7,6 @@ export class CreateSurveyDto {
 
   @IsOptional()
   @IsNumber()
-  appointmentId?: number;
-
-  @IsOptional()
-  @IsNumber()
   patientId?: number;
 }
 

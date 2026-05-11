@@ -7,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation'
 interface Survey {
   id: number
   ticketId?: number
-  appointmentId?: number
   npsScore?: number
   csatScore?: number
   comments?: string

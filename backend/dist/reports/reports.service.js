@@ -17,15 +17,13 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const ticket_entity_1 = require("../tickets/entities/ticket.entity");
-const appointment_entity_1 = require("../appointments/entities/appointment.entity");
 const survey_entity_1 = require("../surveys/entities/survey.entity");
 const service_entity_1 = require("../services/entities/service.entity");
 const preadmission_entity_1 = require("../preadmission/entities/preadmission.entity");
 const enums_1 = require("../common/enums");
 let ReportsService = class ReportsService {
-    constructor(ticketRepository, appointmentRepository, surveyRepository, serviceRepository, preadmissionRepository) {
+    constructor(ticketRepository, surveyRepository, serviceRepository, preadmissionRepository) {
         this.ticketRepository = ticketRepository;
-        this.appointmentRepository = appointmentRepository;
         this.surveyRepository = surveyRepository;
         this.serviceRepository = serviceRepository;
         this.preadmissionRepository = preadmissionRepository;
@@ -53,13 +51,6 @@ let ReportsService = class ReportsService {
                 serviceTimes.push(serviceTime);
             }
         });
-        const appointments = await this.appointmentRepository.find({
-            where: {
-                scheduledDate: (0, typeorm_2.Between)(start, end),
-            },
-        });
-        const completedAppointments = appointments.filter((a) => a.status === 'completed');
-        const cancelledAppointments = appointments.filter((a) => a.status === 'cancelled');
         const surveys = await this.surveyRepository.find({
             where: {
                 submittedAt: (0, typeorm_2.Between)(start, end),
@@ -102,12 +93,6 @@ let ReportsService = class ReportsService {
                 noShows: noShows.length,
                 averageWaitTime: waitTimes.length > 0 ? waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length : 0,
                 averageServiceTime: serviceTimes.length > 0 ? serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length : 0,
-            },
-            appointments: {
-                total: appointments.length,
-                completed: completedAppointments.length,
-                cancelled: cancelledAppointments.length,
-                completionRate: appointments.length > 0 ? (completedAppointments.length / appointments.length) * 100 : 0,
             },
             satisfaction: {
                 totalSurveys: surveys.length,
@@ -340,12 +325,10 @@ exports.ReportsService = ReportsService;
 exports.ReportsService = ReportsService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(ticket_entity_1.Ticket)),
-    __param(1, (0, typeorm_1.InjectRepository)(appointment_entity_1.Appointment)),
-    __param(2, (0, typeorm_1.InjectRepository)(survey_entity_1.Survey)),
-    __param(3, (0, typeorm_1.InjectRepository)(service_entity_1.Service)),
-    __param(4, (0, typeorm_1.InjectRepository)(preadmission_entity_1.Preadmission)),
+    __param(1, (0, typeorm_1.InjectRepository)(survey_entity_1.Survey)),
+    __param(2, (0, typeorm_1.InjectRepository)(service_entity_1.Service)),
+    __param(3, (0, typeorm_1.InjectRepository)(preadmission_entity_1.Preadmission)),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository,
         typeorm_2.Repository])

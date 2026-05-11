@@ -8,7 +8,6 @@ import { UsersModule } from './users/users.module';
 import { PreadmissionModule } from './preadmission/preadmission.module';
 import { TicketsModule } from './tickets/tickets.module';
 import { ServicesModule } from './services/services.module';
-import { AppointmentsModule } from './appointments/appointments.module';
 import { SurveysModule } from './surveys/surveys.module';
 import { MonitorModule } from './monitor/monitor.module';
 import { AdminModule } from './admin/admin.module';
@@ -19,7 +18,6 @@ import { Service } from './services/entities/service.entity';
 import { Sede } from './services/entities/sede.entity';
 import { Preadmission } from './preadmission/entities/preadmission.entity';
 import { Ticket } from './tickets/entities/ticket.entity';
-import { Appointment } from './appointments/entities/appointment.entity';
 import { Survey } from './surveys/entities/survey.entity';
 import { CatalogsModule } from './catalogs/catalogs.module';
 import { Nacionalidad } from './catalogs/entities/nacionalidad.entity';
@@ -51,7 +49,6 @@ import { RolePermission } from './admin/entities/role-permission.entity';
         Sede,
         Preadmission,
         Ticket,
-        Appointment,
         Survey,
         Nacionalidad,
         Provincia,
@@ -73,7 +70,6 @@ import { RolePermission } from './admin/entities/role-permission.entity';
     PreadmissionModule,
     TicketsModule,
     ServicesModule,
-    AppointmentsModule,
     SurveysModule,
     MonitorModule,
     AdminModule,

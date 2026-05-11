@@ -2,7 +2,6 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { Ticket } from '../tickets/entities/ticket.entity';
-import { Appointment } from '../appointments/entities/appointment.entity';
 import { Survey } from '../surveys/entities/survey.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
@@ -13,8 +12,6 @@ export class ReportsService {
   constructor(
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
-    @InjectRepository(Appointment)
-    private appointmentRepository: Repository<Appointment>,
     @InjectRepository(Survey)
     private surveyRepository: Repository<Survey>,
     @InjectRepository(Service)
@@ -52,16 +49,6 @@ export class ReportsService {
         serviceTimes.push(serviceTime);
       }
     });
-
-    // Citas
-    const appointments = await this.appointmentRepository.find({
-      where: {
-        scheduledDate: Between(start, end),
-      },
-    });
-
-    const completedAppointments = appointments.filter((a) => a.status === 'completed');
-    const cancelledAppointments = appointments.filter((a) => a.status === 'cancelled');
 
     // Encuestas
     const surveys = await this.surveyRepository.find({
@@ -120,12 +107,6 @@ export class ReportsService {
         noShows: noShows.length,
         averageWaitTime: waitTimes.length > 0 ? waitTimes.reduce((a, b) => a + b, 0) / waitTimes.length : 0,
         averageServiceTime: serviceTimes.length > 0 ? serviceTimes.reduce((a, b) => a + b, 0) / serviceTimes.length : 0,
-      },
-      appointments: {
-        total: appointments.length,
-        completed: completedAppointments.length,
-        cancelled: cancelledAppointments.length,
-        completionRate: appointments.length > 0 ? (completedAppointments.length / appointments.length) * 100 : 0,
       },
       satisfaction: {
         totalSurveys: surveys.length,

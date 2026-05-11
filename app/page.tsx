@@ -12,12 +12,11 @@ export default function Home() {
             Plataforma de Gestión de Pacientes
           </h2>
           <p className="text-xl text-gray-600 mb-8">
-            Gestiona tus turnos, preadmisiones y citas de manera sencilla
+            Gestiona tus turnos y preadmisiones de manera sencilla
           </p>
         </div>
 
-        {/* Services Grid */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
           <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
             <div className="w-16 h-16 bg-blue-100 rounded-lg flex items-center justify-center mb-4">
               <svg className="w-8 h-8 text-hospital-blue" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -28,7 +27,7 @@ export default function Home() {
             <p className="text-gray-600 mb-4">
               Completa tu preadmisión para Laboratorio o Radiología de forma rápida y segura
             </p>
-            <Link 
+            <Link
               href="/preadmission"
               className="text-hospital-blue hover:underline font-medium"
             >
@@ -47,13 +46,13 @@ export default function Home() {
               Toma tu turno virtual y sigue el estado en tiempo real desde tu dispositivo
             </p>
             <div className="space-y-2">
-              <Link 
+              <Link
                 href="/tickets/new"
                 className="block text-hospital-blue hover:underline font-medium"
               >
                 Tomar Turno (Autenticado) →
               </Link>
-              <Link 
+              <Link
                 href="/kiosk"
                 className="block text-hospital-blue hover:underline font-medium text-sm"
               >
@@ -61,39 +60,12 @@ export default function Home() {
               </Link>
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition-shadow">
-            <div className="w-16 h-16 bg-purple-100 rounded-lg flex items-center justify-center mb-4">
-              <svg className="w-8 h-8 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-            <h3 className="text-xl font-semibold mb-2">Agendar Citas</h3>
-            <p className="text-gray-600 mb-4">
-              Reserva tu cita con anticipación para servicios que lo requieren
-            </p>
-            <div className="space-y-2">
-              <Link 
-                href="/appointments"
-                className="block text-hospital-blue hover:underline font-medium"
-              >
-                Ver Mis Citas →
-              </Link>
-              <Link 
-                href="/appointments/new"
-                className="block text-hospital-blue hover:underline font-medium text-sm"
-              >
-                Agendar Nueva Cita →
-              </Link>
-            </div>
-          </div>
         </div>
 
-        {/* Monitor Link */}
         <div className="bg-gradient-to-r from-hospital-blue to-hospital-blue-dark rounded-lg p-8 text-white text-center">
           <h3 className="text-2xl font-bold mb-4">Pantalla de Llamados</h3>
           <p className="mb-6">Visualiza las listas de espera en tiempo real</p>
-          <Link 
+          <Link
             href="/monitor"
             className="bg-white text-hospital-blue px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 inline-block"
           >

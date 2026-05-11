@@ -18,13 +18,11 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const survey_entity_1 = require("./entities/survey.entity");
 const ticket_entity_1 = require("../tickets/entities/ticket.entity");
-const appointment_entity_1 = require("../appointments/entities/appointment.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
 let SurveysService = class SurveysService {
-    constructor(surveyRepository, ticketRepository, appointmentRepository, notificationsService) {
+    constructor(surveyRepository, ticketRepository, notificationsService) {
         this.surveyRepository = surveyRepository;
         this.ticketRepository = ticketRepository;
-        this.appointmentRepository = appointmentRepository;
         this.notificationsService = notificationsService;
     }
     async create(createDto) {
@@ -49,31 +47,7 @@ let SurveysService = class SurveysService {
         });
         const saved = await this.surveyRepository.save(survey);
         if (ticket.patientId && ticket.patientId > 0) {
-            await this.sendSurveyNotification(ticket.patientId, saved.id, 'ticket');
-        }
-        return saved;
-    }
-    async createForAppointment(appointmentId) {
-        const appointment = await this.appointmentRepository.findOne({
-            where: { id: appointmentId },
-        });
-        if (!appointment) {
-            throw new common_1.NotFoundException('Cita no encontrada');
-        }
-        const existing = await this.surveyRepository.findOne({
-            where: { appointmentId },
-        });
-        if (existing) {
-            return existing;
-        }
-        const survey = this.surveyRepository.create({
-            appointmentId,
-            patientId: appointment.patientId,
-            isCompleted: false,
-        });
-        const saved = await this.surveyRepository.save(survey);
-        if (appointment.patientId) {
-            await this.sendSurveyNotification(appointment.patientId, saved.id, 'appointment');
+            await this.sendSurveyNotification(ticket.patientId, saved.id);
         }
         return saved;
     }
@@ -95,7 +69,7 @@ let SurveysService = class SurveysService {
     async findOne(id) {
         const survey = await this.surveyRepository.findOne({
             where: { id },
-            relations: ['ticket', 'appointment'],
+            relations: ['ticket'],
         });
         if (!survey) {
             throw new common_1.NotFoundException('Encuesta no encontrada');
@@ -105,7 +79,7 @@ let SurveysService = class SurveysService {
     async findByPatient(patientId) {
         return this.surveyRepository.find({
             where: { patientId },
-            relations: ['ticket', 'appointment'],
+            relations: ['ticket'],
             order: { submittedAt: 'DESC' },
         });
     }
@@ -143,7 +117,7 @@ let SurveysService = class SurveysService {
             csatDistribution,
         };
     }
-    async sendSurveyNotification(patientId, surveyId, type) {
+    async sendSurveyNotification(patientId, surveyId) {
         const surveyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/surveys/${surveyId}`;
         const content = `
       <h2>Encuesta de Satisfacción</h2>
@@ -156,7 +130,7 @@ let SurveysService = class SurveysService {
             type: 'email',
             subject: 'Encuesta de Satisfacción - Hospital Santa Fe',
             content,
-            relatedEntityType: type,
+            relatedEntityType: 'ticket',
             relatedEntityId: surveyId,
         });
     }
@@ -166,10 +140,8 @@ exports.SurveysService = SurveysService = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(survey_entity_1.Survey)),
     __param(1, (0, typeorm_1.InjectRepository)(ticket_entity_1.Ticket)),
-    __param(2, (0, typeorm_1.InjectRepository)(appointment_entity_1.Appointment)),
-    __param(3, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
+    __param(2, (0, common_1.Inject)((0, common_1.forwardRef)(() => notifications_service_1.NotificationsService))),
     __metadata("design:paramtypes", [typeorm_2.Repository,
-        typeorm_2.Repository,
         typeorm_2.Repository,
         notifications_service_1.NotificationsService])
 ], SurveysService);

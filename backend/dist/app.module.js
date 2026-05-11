@@ -17,7 +17,6 @@ const users_module_1 = require("./users/users.module");
 const preadmission_module_1 = require("./preadmission/preadmission.module");
 const tickets_module_1 = require("./tickets/tickets.module");
 const services_module_1 = require("./services/services.module");
-const appointments_module_1 = require("./appointments/appointments.module");
 const surveys_module_1 = require("./surveys/surveys.module");
 const monitor_module_1 = require("./monitor/monitor.module");
 const admin_module_1 = require("./admin/admin.module");
@@ -28,7 +27,6 @@ const service_entity_1 = require("./services/entities/service.entity");
 const sede_entity_1 = require("./services/entities/sede.entity");
 const preadmission_entity_1 = require("./preadmission/entities/preadmission.entity");
 const ticket_entity_1 = require("./tickets/entities/ticket.entity");
-const appointment_entity_1 = require("./appointments/entities/appointment.entity");
 const survey_entity_1 = require("./surveys/entities/survey.entity");
 const catalogs_module_1 = require("./catalogs/catalogs.module");
 const nacionalidad_entity_1 = require("./catalogs/entities/nacionalidad.entity");
@@ -63,7 +61,6 @@ exports.AppModule = AppModule = __decorate([
                     sede_entity_1.Sede,
                     preadmission_entity_1.Preadmission,
                     ticket_entity_1.Ticket,
-                    appointment_entity_1.Appointment,
                     survey_entity_1.Survey,
                     nacionalidad_entity_1.Nacionalidad,
                     provincia_entity_1.Provincia,
@@ -85,7 +82,6 @@ exports.AppModule = AppModule = __decorate([
             preadmission_module_1.PreadmissionModule,
             tickets_module_1.TicketsModule,
             services_module_1.ServicesModule,
-            appointments_module_1.AppointmentsModule,
             surveys_module_1.SurveysModule,
             monitor_module_1.MonitorModule,
             admin_module_1.AdminModule,

@@ -1,17 +1,15 @@
 import { Repository } from 'typeorm';
 import { Ticket } from '../tickets/entities/ticket.entity';
-import { Appointment } from '../appointments/entities/appointment.entity';
 import { Survey } from '../surveys/entities/survey.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { PreadmissionArrivalState } from '../common/enums';
 export declare class ReportsService {
     private ticketRepository;
-    private appointmentRepository;
     private surveyRepository;
     private serviceRepository;
     private preadmissionRepository;
-    constructor(ticketRepository: Repository<Ticket>, appointmentRepository: Repository<Appointment>, surveyRepository: Repository<Survey>, serviceRepository: Repository<Service>, preadmissionRepository: Repository<Preadmission>);
+    constructor(ticketRepository: Repository<Ticket>, surveyRepository: Repository<Survey>, serviceRepository: Repository<Service>, preadmissionRepository: Repository<Preadmission>);
     getSummaryReport(startDate?: Date, endDate?: Date): Promise<{
         period: {
             start: string;
@@ -23,12 +21,6 @@ export declare class ReportsService {
             noShows: number;
             averageWaitTime: number;
             averageServiceTime: number;
-        };
-        appointments: {
-            total: number;
-            completed: number;
-            cancelled: number;
-            completionRate: number;
         };
         satisfaction: {
             totalSurveys: number;

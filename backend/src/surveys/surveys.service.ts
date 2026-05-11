@@ -4,7 +4,6 @@ import { Repository } from 'typeorm';
 import { Survey } from './entities/survey.entity';
 import { CreateSurveyDto, SubmitSurveyDto } from './dto/survey.dto';
 import { Ticket } from '../tickets/entities/ticket.entity';
-import { Appointment } from '../appointments/entities/appointment.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -14,8 +13,6 @@ export class SurveysService {
     private surveyRepository: Repository<Survey>,
     @InjectRepository(Ticket)
     private ticketRepository: Repository<Ticket>,
-    @InjectRepository(Appointment)
-    private appointmentRepository: Repository<Appointment>,
     @Inject(forwardRef(() => NotificationsService))
     private notificationsService: NotificationsService,
   ) {}
@@ -31,7 +28,6 @@ export class SurveysService {
       throw new NotFoundException('Ticket no encontrado');
     }
 
-    // Verificar si ya existe una encuesta para este ticket
     const existing = await this.surveyRepository.findOne({
       where: { ticketId },
     });
@@ -48,42 +44,8 @@ export class SurveysService {
 
     const saved = await this.surveyRepository.save(survey);
 
-    // Enviar notificación con enlace a la encuesta
     if (ticket.patientId && ticket.patientId > 0) {
-      await this.sendSurveyNotification(ticket.patientId, saved.id, 'ticket');
-    }
-
-    return saved;
-  }
-
-  async createForAppointment(appointmentId: number): Promise<Survey> {
-    const appointment = await this.appointmentRepository.findOne({
-      where: { id: appointmentId },
-    });
-    if (!appointment) {
-      throw new NotFoundException('Cita no encontrada');
-    }
-
-    // Verificar si ya existe una encuesta para esta cita
-    const existing = await this.surveyRepository.findOne({
-      where: { appointmentId },
-    });
-
-    if (existing) {
-      return existing;
-    }
-
-    const survey = this.surveyRepository.create({
-      appointmentId,
-      patientId: appointment.patientId,
-      isCompleted: false,
-    });
-
-    const saved = await this.surveyRepository.save(survey);
-
-    // Enviar notificación con enlace a la encuesta
-    if (appointment.patientId) {
-      await this.sendSurveyNotification(appointment.patientId, saved.id, 'appointment');
+      await this.sendSurveyNotification(ticket.patientId, saved.id);
     }
 
     return saved;
@@ -111,7 +73,7 @@ export class SurveysService {
   async findOne(id: number): Promise<Survey> {
     const survey = await this.surveyRepository.findOne({
       where: { id },
-      relations: ['ticket', 'appointment'],
+      relations: ['ticket'],
     });
     if (!survey) {
       throw new NotFoundException('Encuesta no encontrada');
@@ -122,7 +84,7 @@ export class SurveysService {
   async findByPatient(patientId: number): Promise<Survey[]> {
     return this.surveyRepository.find({
       where: { patientId },
-      relations: ['ticket', 'appointment'],
+      relations: ['ticket'],
       order: { submittedAt: 'DESC' },
     });
   }
@@ -167,11 +129,7 @@ export class SurveysService {
     };
   }
 
-  private async sendSurveyNotification(
-    patientId: number,
-    surveyId: number,
-    type: 'ticket' | 'appointment',
-  ): Promise<void> {
+  private async sendSurveyNotification(patientId: number, surveyId: number): Promise<void> {
     const surveyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/surveys/${surveyId}`;
     const content = `
       <h2>Encuesta de Satisfacción</h2>
@@ -185,7 +143,7 @@ export class SurveysService {
       type: 'email' as any,
       subject: 'Encuesta de Satisfacción - Hospital Santa Fe',
       content,
-      relatedEntityType: type,
+      relatedEntityType: 'ticket',
       relatedEntityId: surveyId,
     });
   }

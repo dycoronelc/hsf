@@ -13,7 +13,6 @@ const surveys_controller_1 = require("./surveys.controller");
 const surveys_service_1 = require("./surveys.service");
 const survey_entity_1 = require("./entities/survey.entity");
 const ticket_entity_1 = require("../tickets/entities/ticket.entity");
-const appointment_entity_1 = require("../appointments/entities/appointment.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
 let SurveysModule = class SurveysModule {
 };
@@ -21,7 +20,7 @@ exports.SurveysModule = SurveysModule;
 exports.SurveysModule = SurveysModule = __decorate([
     (0, common_1.Module)({
         imports: [
-            typeorm_1.TypeOrmModule.forFeature([survey_entity_1.Survey, ticket_entity_1.Ticket, appointment_entity_1.Appointment]),
+            typeorm_1.TypeOrmModule.forFeature([survey_entity_1.Survey, ticket_entity_1.Ticket]),
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
         ],
         controllers: [surveys_controller_1.SurveysController],

@@ -15,12 +15,6 @@ interface SummaryReport {
     averageWaitTime: number
     averageServiceTime: number
   }
-  appointments: {
-    total: number
-    completed: number
-    cancelled: number
-    completionRate: number
-  }
   satisfaction: {
     totalSurveys: number
     averageNPS: number
@@ -325,7 +319,7 @@ export default function ReportsPage() {
             )}
             {activeTab === 'summary' && !loading && summary && (
               <>
-              <div className="grid md:grid-cols-3 gap-6">
+              <div className="grid md:grid-cols-2 gap-6">
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <h3 className="text-lg font-semibold mb-4">Turnos</h3>
                   <div className="space-y-2">
@@ -352,27 +346,6 @@ export default function ReportsPage() {
                   </div>
                 </div>
 
-                <div className="bg-white rounded-lg shadow-lg p-6">
-                  <h3 className="text-lg font-semibold mb-4">Citas</h3>
-                  <div className="space-y-2">
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Total:</span>
-                      <span className="font-semibold">{summary.appointments.total}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Completadas:</span>
-                      <span className="font-semibold text-green-600">{summary.appointments.completed}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Canceladas:</span>
-                      <span className="font-semibold text-red-600">{summary.appointments.cancelled}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-600">Tasa de Completación:</span>
-                      <span className="font-semibold">{summary.appointments.completionRate.toFixed(1)}%</span>
-                    </div>
-                  </div>
-                </div>
 
                 <div className="bg-white rounded-lg shadow-lg p-6">
                   <h3 className="text-lg font-semibold mb-4">Satisfacción</h3>

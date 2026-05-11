@@ -14,12 +14,6 @@ export declare class ReportsController {
             averageWaitTime: number;
             averageServiceTime: number;
         };
-        appointments: {
-            total: number;
-            completed: number;
-            cancelled: number;
-            completionRate: number;
-        };
         satisfaction: {
             totalSurveys: number;
             averageNPS: number;

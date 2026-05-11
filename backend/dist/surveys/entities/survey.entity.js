@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.Survey = void 0;
 const typeorm_1 = require("typeorm");
 const ticket_entity_1 = require("../../tickets/entities/ticket.entity");
-const appointment_entity_1 = require("../../appointments/entities/appointment.entity");
 let Survey = class Survey {
 };
 exports.Survey = Survey;
@@ -29,15 +28,6 @@ __decorate([
     (0, typeorm_1.JoinColumn)({ name: 'ticketId' }),
     __metadata("design:type", ticket_entity_1.Ticket)
 ], Survey.prototype, "ticket", void 0);
-__decorate([
-    (0, typeorm_1.Column)({ nullable: true }),
-    __metadata("design:type", Number)
-], Survey.prototype, "appointmentId", void 0);
-__decorate([
-    (0, typeorm_1.ManyToOne)(() => appointment_entity_1.Appointment, { nullable: true }),
-    (0, typeorm_1.JoinColumn)({ name: 'appointmentId' }),
-    __metadata("design:type", appointment_entity_1.Appointment)
-], Survey.prototype, "appointment", void 0);
 __decorate([
     (0, typeorm_1.Column)({ nullable: true }),
     __metadata("design:type", Number)
