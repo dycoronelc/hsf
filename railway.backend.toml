@@ -1,0 +1,6 @@
+[build]
+buildCommand = "npm install && npm run backend:build"
+watchPatterns = ["backend/**", "package.json", "package-lock.json"]
+
+[deploy]
+startCommand = "npm run backend:start:prod"

@@ -25,6 +25,7 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
 2. Renombra el servicio a `backend` (opcional).
 3. **Settings** del servicio backend:
    - **Root Directory**: *dejar vacío* (raíz del repo)
+   - **Config file path**: `/railway.backend.toml` (recomendado; define build, start y watch paths en el repo)
    - **Build Command**: `npm install && npm run backend:build`
    - **Start Command**: `npm run backend:start:prod`
    - **Watch Paths**: `backend/**` (para que solo se reconstruya cuando cambie el backend)
@@ -48,10 +49,13 @@ Guía para desplegar frontend (Next.js) y backend (NestJS) en Railway.
 
 ## Paso 3: Crear el servicio Frontend
 
+El frontend **no se despliega solo** con el backend: hace falta un **segundo servicio** en el mismo proyecto Railway, apuntando al mismo repositorio.
+
 1. **+ New** → **GitHub Repo** (mismo repo).
 2. Renombra el servicio a `frontend` (opcional).
 3. **Settings** del servicio frontend:
    - **Root Directory**: *dejar vacío*
+   - **Config file path**: `/railway.frontend.toml` (recomendado)
    - **Build Command**: `npm install && npm run build`
    - **Start Command**: `npm run start`
    - **Watch Paths**: `app/**, lib/**, public/**, next.config.js, tailwind.config.js, postcss.config.js, package.json, package-lock.json`
@@ -113,6 +117,8 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 
 ## Troubleshooting
 
+- **Solo se desplegó el backend**: En el proyecto Railway debe haber **dos servicios** (backend y frontend). Si solo existe uno, crea el servicio frontend (Paso 3), asigna `API_URL` y haz **Deploy** manual.
+- **El frontend no se reconstruye al hacer push**: Revisa **Watch Paths** del servicio frontend o usa `/railway.frontend.toml`. Un push que solo toque `backend/**` no debe redeployar el frontend.
 - **"No start command found"**: Revisa que Build y Start estén configurados en Settings.
 - **CORS errors**: Verifica que `FRONTEND_URL` en el backend coincida con la URL real del frontend.
 - **API no responde**: Confirma que `NEXT_PUBLIC_API_URL` en el frontend apunte a la URL del backend (sin `/api` al final).
