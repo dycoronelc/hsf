@@ -90,6 +90,27 @@ async function bootstrap() {
       );
     }
 
+    let patient = await userRepository.findOne({
+      where: { email: 'paciente@hospitalsantafe.com' },
+    });
+    if (!patient) {
+      const hashedPassword = await bcrypt.hash('Paciente123', 10);
+      patient = userRepository.create({
+        email: 'paciente@hospitalsantafe.com',
+        hashedPassword,
+        fullName: 'Paciente de Prueba',
+        phone: '6000-0000',
+        nationalId: '8-888-8888',
+        birthDate: '1990-01-15',
+        role: UserRole.PATIENT,
+        isActive: true,
+      });
+      await userRepository.save(patient);
+      console.log(
+        '✓ Usuario paciente creado: paciente@hospitalsantafe.com / Paciente123',
+      );
+    }
+
     // Crear sede principal
     let sede = await sedeRepository.findOne({
       where: { name: 'Sede Principal' },

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { useAuth } from '../providers'
+import { getPostLoginPath } from '@/lib/authRedirect'
 import Link from 'next/link'
 
 export default function LoginPage() {
@@ -21,7 +22,9 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      router.push('/')
+      const storedUser = localStorage.getItem('user')
+      const role = storedUser ? (JSON.parse(storedUser).role as string | undefined) : undefined
+      router.push(getPostLoginPath(role))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Credenciales incorrectas')
     } finally {
@@ -34,11 +37,6 @@ export default function LoginPage() {
       className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white"
       role="main"
     >
-      <div className="p-4 shrink-0">
-        <Link href="/" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium inline-flex items-center gap-1">
-          ← Volver al inicio
-        </Link>
-      </div>
       <div className="flex-1 flex items-center justify-center px-4 pb-8">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg overflow-hidden">
         {/* Franja superior con color #00816D y logo centrado */}
@@ -167,8 +165,12 @@ export default function LoginPage() {
               <span className="font-medium text-gray-700">Recepción:</span>{' '}
               reception@hospitalsantafe.com / reception123
             </div>
+            <div>
+              <span className="font-medium text-gray-700">Paciente:</span>{' '}
+              paciente@hospitalsantafe.com / Paciente123
+            </div>
             <p className="text-xs text-gray-500 mt-2">
-              Los pacientes pueden registrarse con el enlace anterior.
+              También puede crear una cuenta de paciente con el enlace de registro.
             </p>
           </div>
         </div>

@@ -25,8 +25,10 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   const handleLogout = () => {
     logout()
     setUserMenuOpen(false)
-    router.push('/')
+    router.push('/login')
   }
+
+  const homeHref = isAuthenticated ? '/dashboard' : '/login'
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
@@ -34,18 +36,15 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
-              <Link href="/" className="block">
+              <Link href={homeHref} className="block">
                 <Image src="/logo-hospital-santa-fe.svg" alt="Hospital Santa Fe" width={140} height={36} className="h-9 w-auto object-contain" />
               </Link>
             </div>
             <nav className="flex items-center gap-4">
               {isAuthenticated ? (
                 <>
-                  <Link href="/" className="text-white/90 hover:text-white font-medium">
-                    Inicio
-                  </Link>
                   <Link href="/dashboard" className="text-white/90 hover:text-white font-medium">
-                    Dashboard
+                    Inicio
                   </Link>
                   <Link href="/preadmission" className="text-white/90 hover:text-white font-medium">
                     Preadmisión
