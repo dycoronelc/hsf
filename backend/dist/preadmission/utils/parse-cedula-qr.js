@@ -2,14 +2,102 @@
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.looksLikePanamaCedula = looksLikePanamaCedula;
 exports.parseCedulaQr = parseCedulaQr;
-const CEDULA_COMPLETA_RE = /^(?:PE|E|N|[23456789](?:AV|PI)?|1[0123]?(?:AV|PI)?)-\d{1,4}-\d{1,6}$/i;
+const CEDULA_COMPLETA_RE = /^(?:PE|AE|E|N|[23456789](?:AV|PI)?|1[0123]?(?:AV|PI)?)-\d{1,4}-\d{1,6}$/i;
+const MRZ_LINE_RE = /^[A-Z0-9<]{25,}$/;
 const DATE_DMY_RE = /^(\d{2})[/-](\d{2})[/-](\d{4})$/;
 const DATE_YMD_RE = /^(\d{4})[/-](\d{2})[/-](\d{2})$/;
 function normalizeCedulaToken(s) {
     return s.replace(/\s+/g, '').trim();
 }
+function formatPanamaCedulaFromDocumentNumber(doc) {
+    const t = normalizeCedulaToken(doc).replace(/</g, '').toUpperCase();
+    if (!t)
+        return t;
+    if (CEDULA_COMPLETA_RE.test(t))
+        return t;
+    if (/^AE\d{5,}$/.test(t)) {
+        const digits = t.slice(2);
+        return `AE-${digits.slice(0, digits.length - 4)}-${digits.slice(-4)}`;
+    }
+    if (/^E\d{6,9}$/.test(t)) {
+        const digits = t.slice(1);
+        return `E-${digits.slice(0, 1)}-${digits.slice(1)}`;
+    }
+    if (/^\d{7,12}$/.test(t)) {
+        const digits = t;
+        if (digits.length >= 9) {
+            return `${digits.slice(0, 1)}-${digits.slice(1, 4)}-${digits.slice(4)}`;
+        }
+        if (digits.length >= 7) {
+            return `${digits.slice(0, 1)}-${digits.slice(1, 4)}-${digits.slice(4)}`;
+        }
+    }
+    return t;
+}
+function parseMrzBirthDate(yymmdd) {
+    if (!/^\d{6}$/.test(yymmdd))
+        return '';
+    const yy = parseInt(yymmdd.slice(0, 2), 10);
+    const mm = yymmdd.slice(2, 4);
+    const dd = yymmdd.slice(4, 6);
+    const currentYear = new Date().getFullYear() % 100;
+    const century = yy > currentYear ? 1900 : 2000;
+    return `${dd}/${mm}/${String(century + yy).padStart(4, '0')}`;
+}
+function parseMrzNames(line3) {
+    const clean = line3.replace(/<+$/, '');
+    const [surnamesPart = '', givenPart = ''] = clean.split('<<');
+    const surnames = surnamesPart.split('<').filter(Boolean);
+    const given = givenPart.replace(/<+/g, ' ').trim().split(/\s+/).filter(Boolean);
+    const apellido1 = surnames[0] ?? '';
+    const apellido2 = surnames.slice(1).join(' ');
+    const nombres = given.join(' ');
+    const name1 = given[0] ?? '';
+    const name2 = given.slice(1).join(' ');
+    return { apellido1, apellido2, nombres, name1, name2 };
+}
+function parseIcaoMrz(raw) {
+    const lines = raw
+        .split(/\r?\n/)
+        .map((line) => line.trim().toUpperCase())
+        .filter((line) => MRZ_LINE_RE.test(line));
+    if (lines.length < 3)
+        return null;
+    const [line1, line2, line3] = lines.slice(-3);
+    if (line1.slice(2, 5) !== 'PAN')
+        return null;
+    let documentNumber = '';
+    for (let i = 5; i < line1.length; i++) {
+        const c = line1[i];
+        if (c === '<')
+            break;
+        documentNumber += c;
+    }
+    if (!documentNumber)
+        return null;
+    const birthRaw = line2.slice(0, 6);
+    const sex = line2[7] ?? '';
+    const nationality = line2.slice(15, 18).replace(/<+/g, '').trim();
+    const names = parseMrzNames(line3);
+    return {
+        cedula: formatPanamaCedulaFromDocumentNumber(documentNumber),
+        apellido1: names.apellido1,
+        apellido2: names.apellido2,
+        apellidos: [names.apellido1, names.apellido2].filter(Boolean).join(' ').trim(),
+        nombres: names.nombres,
+        name1: names.name1,
+        name2: names.name2,
+        sexo: normalizeSexo(sex),
+        fechanac: parseMrzBirthDate(birthRaw),
+        nacionalidad: nationality,
+        _qrFormat: 'icao_mrz',
+    };
+}
 function looksLikePanamaCedula(s) {
-    return CEDULA_COMPLETA_RE.test(normalizeCedulaToken(s));
+    const token = normalizeCedulaToken(s);
+    if (CEDULA_COMPLETA_RE.test(token))
+        return true;
+    return /^(?:AE|E|PE|N)\d{5,}$/i.test(token) || /^\d{7,13}$/.test(token);
 }
 function normalizeDateToDdMmYyyy(s) {
     const t = s.trim();
@@ -286,6 +374,9 @@ function parseCedulaQr(raw) {
     const t = raw.trim();
     if (!t)
         return {};
+    const mrz = parseIcaoMrz(t);
+    if (mrz?.cedula)
+        return mrz;
     try {
         const j = JSON.parse(t);
         if (j && typeof j === 'object' && !Array.isArray(j)) {
@@ -335,8 +426,11 @@ function parseCedulaQr(raw) {
             out.rawSegment2 = looseParts[idx + 2];
         return out;
     }
-    if (/^\d[\d-]{5,}$/i.test(normalizeCedulaToken(t))) {
-        return { cedula: normalizeCedulaToken(t), _qrFormat: 'cedula_only' };
+    if (/^(?:AE|E|\d)[\d-]{5,}$/i.test(normalizeCedulaToken(t))) {
+        return {
+            cedula: formatPanamaCedulaFromDocumentNumber(t),
+            _qrFormat: 'cedula_only',
+        };
     }
     return {};
 }

@@ -110,7 +110,6 @@ Con ambos en marcha, el sistema queda listo para usar.
 │       ├── auth/          # Autenticación JWT
 │       ├── users/         # Usuarios
 │       ├── tickets/       # Turnos
-│       ├── appointments/  # Citas
 │       ├── preadmission/  # Preadmisiones
 │       ├── surveys/       # Encuestas
 │       ├── reports/      # Reportes

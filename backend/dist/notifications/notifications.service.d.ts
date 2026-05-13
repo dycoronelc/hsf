@@ -13,8 +13,6 @@ export declare class NotificationsService {
     private sendEmail;
     private sendSMS;
     private sendWhatsApp;
-    sendAppointmentConfirmation(userId: number, appointmentId: number, appointmentDate: Date, serviceName: string): Promise<void>;
-    sendAppointmentReminder(userId: number, appointmentId: number, appointmentDate: Date, serviceName: string): Promise<void>;
     sendTicketCreated(userId: number, ticketNumber: string, serviceName: string, qrCode?: string): Promise<void>;
     sendTicketCalled(userId: number, ticketNumber: string, windowNumber: string): Promise<void>;
     findAll(userId?: number): Promise<Notification[]>;

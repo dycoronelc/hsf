@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
 import { formatDateInput, isValidDdMmYyyy } from '@/lib/dateUtils'
+import { CedulaQrCapture } from '../components/CedulaQrCapture'
+import { mapParsedToRegisterFields } from '@/lib/cedulaQr'
 
 const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/
 
@@ -95,6 +97,14 @@ export default function RegisterPage() {
                   {error}
                 </div>
               )}
+
+              <CedulaQrCapture
+                onParsed={(_, parsed) => {
+                  setError('')
+                  setFormData((prev) => mapParsedToRegisterFields(prev, parsed))
+                }}
+                onError={(message) => setError(message)}
+              />
 
               <div>
                 <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-2">

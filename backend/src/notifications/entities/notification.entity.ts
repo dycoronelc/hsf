@@ -52,7 +52,7 @@ export class Notification {
   errorMessage: string;
 
   @Column({ nullable: true })
-  relatedEntityType: string; // 'appointment', 'ticket', 'preadmission'
+  relatedEntityType: string; // p. ej. 'ticket', 'preadmission'
 
   @Column({ nullable: true })
   relatedEntityId: number;

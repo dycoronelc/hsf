@@ -19,7 +19,6 @@ El backend ha sido migrado exitosamente de Python/FastAPI a Node.js/NestJS.
 - ✅ Tickets (gestión de turnos)
 - ✅ Services (servicios del hospital)
 - ✅ Monitor (pantalla de llamados)
-- ✅ Appointments (citas)
 - ✅ Surveys (encuestas)
 - ✅ Admin (administración)
 

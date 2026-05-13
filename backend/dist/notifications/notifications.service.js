@@ -109,62 +109,6 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             this.logger.log(`[DEV] WhatsApp would be sent to ${phone}: ${message}`);
         }
     }
-    async sendAppointmentConfirmation(userId, appointmentId, appointmentDate, serviceName) {
-        const dateStr = appointmentDate.toLocaleDateString('es-PA', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-        const content = `
-      <h2>Confirmación de Cita</h2>
-      <p>Su cita ha sido confirmada:</p>
-      <ul>
-        <li><strong>Servicio:</strong> ${serviceName}</li>
-        <li><strong>Fecha y Hora:</strong> ${dateStr}</li>
-      </ul>
-      <p>Por favor llegue 15 minutos antes de su cita.</p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
-        await this.create({
-            recipientId: userId,
-            type: notification_entity_1.NotificationType.EMAIL,
-            subject: 'Confirmación de Cita - Hospital Santa Fe',
-            content,
-            relatedEntityType: 'appointment',
-            relatedEntityId: appointmentId,
-        });
-    }
-    async sendAppointmentReminder(userId, appointmentId, appointmentDate, serviceName) {
-        const dateStr = appointmentDate.toLocaleDateString('es-PA', {
-            weekday: 'long',
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit',
-        });
-        const content = `
-      <h2>Recordatorio de Cita</h2>
-      <p>Le recordamos que tiene una cita programada:</p>
-      <ul>
-        <li><strong>Servicio:</strong> ${serviceName}</li>
-        <li><strong>Fecha y Hora:</strong> ${dateStr}</li>
-      </ul>
-      <p>Por favor llegue 15 minutos antes de su cita.</p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
-        await this.create({
-            recipientId: userId,
-            type: notification_entity_1.NotificationType.EMAIL,
-            subject: 'Recordatorio de Cita - Hospital Santa Fe',
-            content,
-            relatedEntityType: 'appointment',
-            relatedEntityId: appointmentId,
-        });
-    }
     async sendTicketCreated(userId, ticketNumber, serviceName, qrCode) {
         const content = `
       <h2>Turno Creado</h2>

@@ -51,7 +51,7 @@ export default function DashboardPage() {
               </svg>
             </div>
             <h3 className="text-xl font-semibold mb-2">Mis Turnos</h3>
-            <p className="text-gray-600">Gestiona tus turnos y citas</p>
+            <p className="text-gray-600">Gestiona tus turnos y preadmisiones</p>
           </Link>
 
           <Link

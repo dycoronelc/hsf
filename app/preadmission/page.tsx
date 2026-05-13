@@ -6,6 +6,8 @@ import { useAuth } from '../providers'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { formatDateInput, isValidDdMmYyyy } from '@/lib/dateUtils'
+import { CedulaQrCapture } from '../components/CedulaQrCapture'
+import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
 
 interface LocationData {
   provincia: string
@@ -23,7 +25,6 @@ export default function PreadmissionPage() {
   const [success, setSuccess] = useState(false)
   const [createdPreadmissionId, setCreatedPreadmissionId] = useState<number | null>(null)
   const [createdQrCode, setCreatedQrCode] = useState<string | null>(null)
-  const [qrRaw, setQrRaw] = useState('')
   const [patientFound, setPatientFound] = useState(false)
   const [locations, setLocations] = useState<LocationData[]>([])
   const [nationalities, setNationalities] = useState<Array<{codigo: string, nacionalidad: string, pais: string}>>([])
@@ -233,58 +234,6 @@ export default function PreadmissionPage() {
       setPatientFound(false)
     } finally {
       setSearching(false)
-    }
-  }
-
-  const applyCedulaQr = async () => {
-    if (!qrRaw.trim()) {
-      setError('Pega o escribe el texto leído del QR de la cédula')
-      return
-    }
-    setError('')
-    try {
-      const res = await fetch('/api/preadmission/parse-cedula-qr', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ raw: qrRaw }),
-      })
-      if (!res.ok) return
-      const d = (await res.json()) as Record<string, string>
-      setFormData((prev) => {
-        const ced =
-          d.cedula ||
-          d.Cedula ||
-          d.ID ||
-          d.id ||
-          d.rawSegment1 ||
-          prev.cedula
-        const nom =
-          d.nombres ||
-          d.NOMBRE ||
-          d.nombre ||
-          d.rawSegment2 ||
-          ''
-        const ape = d.apellidos || d.APELLIDO || d.apellido || ''
-        const partsNom = nom.trim() ? nom.trim().split(/\s+/) : []
-        const partsApe = ape.trim() ? ape.trim().split(/\s+/) : []
-        const name1 = d.name1 || partsNom[0] || prev.name1
-        const name2 = d.name2 || partsNom.slice(1).join(' ') || prev.name2
-        const apellido1 = d.apellido1 || partsApe[0] || prev.apellido1
-        const apellido2 = d.apellido2 || partsApe.slice(1).join(' ') || prev.apellido2
-        return {
-          ...prev,
-          cedula: ced ? String(ced).replace(/\s/g, '') : prev.cedula,
-          name1,
-          name2,
-          apellido1,
-          apellido2,
-          ...(d.fechanac && isValidDdMmYyyy(d.fechanac) ? { fechanac: d.fechanac } : {}),
-          ...(d.sexo === 'M' || d.sexo === 'F' ? { sexo: d.sexo } : {}),
-          ...(d.nacionalidad ? { nacionalidad: d.nacionalidad } : {}),
-        }
-      })
-    } catch {
-      setError('No se pudo interpretar el QR. Complete los datos manualmente.')
     }
   }
 
@@ -703,28 +652,15 @@ export default function PreadmissionPage() {
                   </p>
                 </div>
               </div>
-              <div className="border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Datos del QR de cédula (opcional)
-                </label>
-                <p className="text-xs text-gray-500 mb-2">
-                  Pegue el texto del QR de datos del reverso (formato TE: campos separados por | con cédula, apellidos, nombres, sexo, fechas, etc.). Si no coincide, complete manualmente.
-                </p>
-                <textarea
-                  value={qrRaw}
-                  onChange={(e) => setQrRaw(e.target.value)}
-                  rows={2}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
-                  placeholder="Pegar contenido del QR…"
+              {formData.pasaporte === 'C' && (
+                <CedulaQrCapture
+                  onParsed={(_, parsed) => {
+                    setError('')
+                    setFormData((prev) => mapParsedToPreadmissionFields(prev, parsed))
+                  }}
+                  onError={(message) => setError(message)}
                 />
-                <button
-                  type="button"
-                  onClick={applyCedulaQr}
-                  className="mt-2 px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 text-sm"
-                >
-                  Aplicar datos del QR
-                </button>
-              </div>
+              )}
             </div>
           )}
 

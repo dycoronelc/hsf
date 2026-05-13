@@ -126,3 +126,11 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
   1. Verifica que `DATABASE_URL` esté configurada en el backend (Variables → Add Reference → Postgres → DATABASE_URL).
   2. Añade **Pre-deploy Command**: `cd backend && node dist/sync-db.js` en Settings → Deploy del backend.
   3. Redeploya el backend. Revisa los logs para ver si hay errores de conexión a la BD.
+
+### Limpieza de base de datos (tabla legacy `appointments`)
+
+Si la base fue creada con una versión anterior que incluía el módulo de citas, ejecuta una sola vez el script SQL (desde tu máquina con `psql` o el cliente SQL de Railway):
+
+`db/migrations/20260513_drop_legacy_appointments.sql`
+
+Elimina la tabla `appointments` y crea índices útiles para preadmisiones, turnos e integración. No afecta al código actual del repositorio.
