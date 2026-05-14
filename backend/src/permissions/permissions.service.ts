@@ -62,16 +62,17 @@ export class PermissionsService {
    * si hay fila en role_permissions se usa; si no, valor por defecto del catálogo.
    */
   async userHasPermission(role: string, permissionKey: AdminPermissionKey): Promise<boolean> {
-    if (role === UserRole.ADMIN) {
+    const roleNorm = String(role ?? '').trim().toLowerCase();
+    if (roleNorm === 'admin') {
       return true;
     }
-    if (role === UserRole.PATIENT) {
+    if (roleNorm === 'patient') {
       return false;
     }
 
     await this.ensureMatrixSeeded();
 
-    const matrixRow = await this.matrixRowRepository.findOne({ where: { role } });
+    const matrixRow = await this.matrixRowRepository.findOne({ where: { role: roleNorm } });
     if (!matrixRow) {
       return false;
     }
@@ -80,11 +81,11 @@ export class PermissionsService {
     }
 
     const stored = await this.rolePermissionRepository.findOne({
-      where: { role, permissionKey },
+      where: { role: roleNorm, permissionKey },
     });
     if (stored) {
       return stored.allowed;
     }
-    return this.isAllowedByDefault(role as UserRole, permissionKey);
+    return this.isAllowedByDefault(roleNorm as UserRole, permissionKey);
   }
 }

@@ -41,7 +41,13 @@ export default function AdminPermissionsPage() {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!response.ok) {
-        throw new Error('No se pudo cargar la matriz de permisos')
+        const errBody = await response.json().catch(() => ({} as Record<string, unknown>))
+        const detail =
+          (typeof errBody.message === 'string' && errBody.message) ||
+          (Array.isArray(errBody.message) && errBody.message[0]) ||
+          (typeof errBody.error === 'string' && errBody.error) ||
+          `Error HTTP ${response.status}`
+        throw new Error(`No se pudo cargar la matriz de permisos: ${detail}`)
       }
       const data = await response.json()
       setPermissions(data.permissions ?? [])

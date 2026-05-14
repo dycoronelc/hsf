@@ -19,7 +19,6 @@ const typeorm_2 = require("typeorm");
 const role_permission_entity_1 = require("../admin/entities/role-permission.entity");
 const admin_role_matrix_row_entity_1 = require("../admin/entities/admin-role-matrix-row.entity");
 const permission_catalog_1 = require("../admin/permission-catalog");
-const enums_1 = require("../common/enums");
 let PermissionsService = class PermissionsService {
     constructor(rolePermissionRepository, matrixRowRepository) {
         this.rolePermissionRepository = rolePermissionRepository;
@@ -52,14 +51,15 @@ let PermissionsService = class PermissionsService {
         }
     }
     async userHasPermission(role, permissionKey) {
-        if (role === enums_1.UserRole.ADMIN) {
+        const roleNorm = String(role ?? '').trim().toLowerCase();
+        if (roleNorm === 'admin') {
             return true;
         }
-        if (role === enums_1.UserRole.PATIENT) {
+        if (roleNorm === 'patient') {
             return false;
         }
         await this.ensureMatrixSeeded();
-        const matrixRow = await this.matrixRowRepository.findOne({ where: { role } });
+        const matrixRow = await this.matrixRowRepository.findOne({ where: { role: roleNorm } });
         if (!matrixRow) {
             return false;
         }
@@ -67,12 +67,12 @@ let PermissionsService = class PermissionsService {
             return false;
         }
         const stored = await this.rolePermissionRepository.findOne({
-            where: { role, permissionKey },
+            where: { role: roleNorm, permissionKey },
         });
         if (stored) {
             return stored.allowed;
         }
-        return this.isAllowedByDefault(role, permissionKey);
+        return this.isAllowedByDefault(roleNorm, permissionKey);
     }
 };
 exports.PermissionsService = PermissionsService;

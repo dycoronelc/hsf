@@ -34,8 +34,13 @@ export class PermissionsGuard implements CanActivate {
       throw new ForbiddenException('Cuenta desactivada');
     }
 
+    const roleNorm = String(user.role).trim().toLowerCase();
+    if (roleNorm === 'admin') {
+      return true;
+    }
+
     for (const key of keys) {
-      const ok = await this.permissionsService.userHasPermission(user.role, key);
+      const ok = await this.permissionsService.userHasPermission(roleNorm, key);
       if (!ok) {
         throw new ForbiddenException('No tiene permiso para esta operación');
       }
