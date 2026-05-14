@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react'
-import type { Html5Qrcode } from 'html5-qrcode'
-import { decodeQrFromImageFile, startLiveQrScanner } from '@/lib/html5QrcodeScan'
+import { useCallback, useId, useRef, useState } from 'react'
+import { decodeQrFromImageFile } from '@/lib/html5QrcodeScan'
 import { CedulaQrParsed, parseCedulaQrRaw } from '@/lib/cedulaQr'
+import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
 
 type CedulaQrCaptureProps = {
   onParsed: (raw: string, parsed: CedulaQrParsed) => void
@@ -15,12 +15,9 @@ export function CedulaQrCapture({ onParsed, onError, disabled = false }: CedulaQ
   const reactId = useId().replace(/:/g, '')
   const scannerContainerId = `cedula-qr-${reactId}`
   const fileScanElementId = `cedula-qr-file-${reactId}`
-  const qrScannerRef = useRef<Html5Qrcode | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const [qrRaw, setQrRaw] = useState('')
   const [showScanner, setShowScanner] = useState(false)
-  const [scanError, setScanError] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(false)
   const [applying, setApplying] = useState(false)
   const [fileScanning, setFileScanning] = useState(false)
 
@@ -50,104 +47,19 @@ export function CedulaQrCapture({ onParsed, onError, disabled = false }: CedulaQ
     }
   }, [onParsed, onError])
 
-  const closeScanner = async () => {
-    const scanner = qrScannerRef.current
-    qrScannerRef.current = null
-    if (scanner) {
-      try {
-        await scanner.stop()
-      } catch {
-        // ignorar si ya está detenido
-      }
-      try {
-        scanner.clear()
-      } catch {
-        /* */
-      }
-    }
-    setShowScanner(false)
-    setScanError(null)
-    setScanning(false)
-  }
-
-  useEffect(() => {
-    if (!showScanner) return
-    setScanError(null)
-    setScanning(true)
-    let cancelled = false
-    const startScanner = async () => {
-      try {
-        const scanner = await startLiveQrScanner(
-          scannerContainerId,
-          (decodedText) => {
-            if (cancelled) return
-            void scanner
-              .stop()
-              .then(() => {
-                try {
-                  scanner.clear()
-                } catch {
-                  /* */
-                }
-              })
-              .then(() => {
-                qrScannerRef.current = null
-                if (!cancelled) {
-                  setShowScanner(false)
-                  setScanning(false)
-                  void applyRaw(decodedText)
-                }
-              })
-              .catch(() => {})
-          },
-          () => {},
-        )
-        if (cancelled) {
-          try {
-            await scanner.stop()
-          } catch {
-            /* */
-          }
-          try {
-            scanner.clear()
-          } catch {
-            /* */
-          }
-          return
-        }
-        qrScannerRef.current = scanner
-        setScanning(false)
-      } catch (err) {
-        if (cancelled) return
-        const msg = err instanceof Error ? err.message : 'No se pudo acceder a la cámara'
-        setScanError(msg)
-        setScanning(false)
-        qrScannerRef.current = null
-      }
-    }
-    const timer = setTimeout(startScanner, 350)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-      const scanner = qrScannerRef.current
-      if (scanner) {
-        qrScannerRef.current = null
-        scanner.stop().catch(() => {})
-        try {
-          scanner.clear()
-        } catch {
-          /* */
-        }
-      }
-    }
-  }, [showScanner, scannerContainerId, applyRaw])
+  const onLiveQrDecoded = useCallback(
+    (decodedText: string) => {
+      setShowScanner(false)
+      void applyRaw(decodedText)
+    },
+    [applyRaw],
+  )
 
   const onPickImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || disabled) return
     setFileScanning(true)
-    setScanError(null)
     try {
       const decoded = await decodeQrFromImageFile(fileScanElementId, file)
       await applyRaw(decoded)
@@ -214,32 +126,20 @@ export function CedulaQrCapture({ onParsed, onError, disabled = false }: CedulaQ
         placeholder="Pegar contenido del QR…"
       />
 
-      {showScanner && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Escanear QR de cédula</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Mantenga el código dentro del recuadro, con buena luz y sin reflejos. En PC, si no hay cámara trasera,
-              se usará la frontal. Acérquese si el QR es pequeño (cédulas y carnés de residente suelen ser densos).
-            </p>
-            <div
-              id={scannerContainerId}
-              className="min-h-[280px] sm:min-h-[400px] w-full max-h-[70vh] rounded-lg overflow-hidden bg-gray-100"
-            />
-            {scanError && <p className="mt-3 text-sm text-red-600">{scanError}</p>}
-            {scanning && !scanError && <p className="mt-2 text-sm text-gray-500">Iniciando cámara...</p>}
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => void closeScanner()}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LiveQrScannerModal
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        containerId={scannerContainerId}
+        onDecoded={onLiveQrDecoded}
+        title="Escanear QR de cédula"
+        description={
+          <p>
+            Mantenga el código dentro del recuadro, con buena luz y sin reflejos. Use el ícono de cámaras abajo a la
+            derecha si necesita la cámara trasera. Acérquese si el QR es pequeño (cédulas y carnés de residente suelen
+            ser densos).
+          </p>
+        }
+      />
     </div>
   )
 }

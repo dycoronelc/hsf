@@ -96,6 +96,52 @@ export async function buildCameraConfigsOrder(): Promise<Array<string | MediaTra
   return configs
 }
 
+/** Cámaras únicas ordenadas: traseras primero, luego neutras, luego frontales (para conmutar con deviceId). */
+export async function getOrderedCameraDevices(): Promise<{ id: string; label: string }[]> {
+  const cameras = await Html5Qrcode.getCameras().catch(() => [] as { id: string; label: string }[])
+  const seen = new Set<string>()
+  const uniq = cameras.filter((c) => {
+    if (seen.has(c.id)) return false
+    seen.add(c.id)
+    return true
+  })
+  const rear = uniq.filter((c) => looksLikeRearCameraLabel(c.label))
+  const neutral = uniq.filter(
+    (c) => !looksLikeRearCameraLabel(c.label) && !looksLikeFrontCameraLabel(c.label),
+  )
+  const front = uniq.filter((c) => looksLikeFrontCameraLabel(c.label))
+  return [...rear, ...neutral, ...front]
+}
+
+/**
+ * Inicia el escáner con una sola restricción de cámara (p. ej. deviceId exacto).
+ */
+export async function startLiveQrScannerWithCamera(
+  elementId: string,
+  cameraConfig: string | MediaTrackConstraints,
+  onDecoded: (decodedText: string) => void,
+  onScanFailure: () => void,
+): Promise<Html5Qrcode> {
+  const scanner = createHtml5QrInstance(elementId)
+  const scanConfig = buildQrScanConfig()
+  try {
+    await scanner.start(cameraConfig, scanConfig, onDecoded, onScanFailure)
+    return scanner
+  } catch (e) {
+    try {
+      await scanner.stop()
+    } catch {
+      /* */
+    }
+    try {
+      scanner.clear()
+    } catch {
+      /* */
+    }
+    throw e
+  }
+}
+
 /**
  * Inicia escaneo QR en vivo. Reintenta con otra cámara si falla (útil en laptops sin cámara trasera).
  */

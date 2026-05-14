@@ -1,11 +1,10 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { useAuth } from '../providers'
 import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../components/SiteLayout'
-import type { Html5Qrcode } from 'html5-qrcode'
-import { startLiveQrScanner } from '@/lib/html5QrcodeScan'
+import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
 import { isAgentOperational } from '@/lib/agentState'
 
 interface Ticket {
@@ -40,12 +39,9 @@ export default function StaffConsolePage() {
   const [checkInLoading, setCheckInLoading] = useState(false)
   const [checkInMessage, setCheckInMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showScanner, setShowScanner] = useState(false)
-  const [scanError, setScanError] = useState<string | null>(null)
-  const [scanning, setScanning] = useState(false)
   const [agentState, setAgentState] = useState<string>(user?.agentState ?? '')
   const [transferringId, setTransferringId] = useState<number | null>(null)
   const [queueView, setQueueView] = useState<'all' | 'priority'>('all')
-  const qrScannerRef = useRef<Html5Qrcode | null>(null)
   const scannerContainerId = 'staff-qr-reader'
 
   const agentStateOptions = [
@@ -309,98 +305,6 @@ export default function StaffConsolePage() {
     await doCheckInByCode(checkInCode)
   }
 
-  useEffect(() => {
-    if (!showScanner) return
-    setScanError(null)
-    setScanning(true)
-    let cancelled = false
-    const startScanner = async () => {
-      try {
-        const scanner = await startLiveQrScanner(
-          scannerContainerId,
-          (decodedText) => {
-            if (cancelled) return
-            void scanner
-              .stop()
-              .then(() => {
-                try {
-                  scanner.clear()
-                } catch {
-                  /* */
-                }
-              })
-              .then(() => {
-                qrScannerRef.current = null
-                if (!cancelled) {
-                  setShowScanner(false)
-                  setScanning(false)
-                  void doCheckInByCode(decodedText)
-                }
-              })
-              .catch(() => {})
-          },
-          () => {},
-        )
-        if (cancelled) {
-          try {
-            await scanner.stop()
-          } catch {
-            /* */
-          }
-          try {
-            scanner.clear()
-          } catch {
-            /* */
-          }
-          return
-        }
-        qrScannerRef.current = scanner
-        setScanning(false)
-      } catch (err) {
-        if (cancelled) return
-        const msg = err instanceof Error ? err.message : 'No se pudo acceder a la cámara'
-        setScanError(msg)
-        setScanning(false)
-        qrScannerRef.current = null
-      }
-    }
-    const timer = setTimeout(startScanner, 350)
-    return () => {
-      cancelled = true
-      clearTimeout(timer)
-      const scanner = qrScannerRef.current
-      if (scanner) {
-        qrScannerRef.current = null
-        scanner.stop().catch(() => {})
-        try {
-          scanner.clear()
-        } catch {
-          /* */
-        }
-      }
-    }
-  }, [showScanner])
-
-  const closeScanner = async () => {
-    const scanner = qrScannerRef.current
-    qrScannerRef.current = null
-    if (scanner) {
-      try {
-        await scanner.stop()
-      } catch {
-        // ignorar si ya está detenido o el DOM fue removido
-      }
-      try {
-        scanner.clear()
-      } catch {
-        /* */
-      }
-    }
-    setShowScanner(false)
-    setScanError(null)
-    setScanning(false)
-  }
-
   const agentCanOperate = isAgentOperational(agentState)
 
   const queueTickets = tickets
@@ -635,32 +539,23 @@ export default function StaffConsolePage() {
       </div>
 
       {/* Modal escanear QR con cámara (celular o navegador/kiosko) */}
-      {showScanner && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Escanear QR con cámara</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Apunte la cámara del celular o del navegador (kiosko) al QR del paciente (turno o preadmisión). Se usará la cámara trasera en móviles si está disponible.
-            </p>
-            <div id={scannerContainerId} className="min-h-[280px] sm:min-h-[400px] w-full rounded-lg overflow-hidden bg-gray-100" />
-            {scanError && (
-              <p className="mt-3 text-sm text-red-600">{scanError}</p>
-            )}
-            {scanning && !scanError && (
-              <p className="mt-2 text-sm text-gray-500">Iniciando cámara...</p>
-            )}
-            <div className="mt-4 flex justify-end">
-              <button
-                type="button"
-                onClick={() => closeScanner()}
-                className="px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <LiveQrScannerModal
+        open={showScanner}
+        onClose={() => setShowScanner(false)}
+        containerId={scannerContainerId}
+        onDecoded={(decodedText) => {
+          setShowScanner(false)
+          void doCheckInByCode(decodedText)
+        }}
+        title="Escanear QR con cámara"
+        panelClassName="max-w-md"
+        description={
+          <p>
+            Apunte la cámara al QR del paciente (turno o preadmisión). Si abre la cámara equivocada, use el ícono de
+            cámaras abajo a la derecha para cambiar.
+          </p>
+        }
+      />
     </SiteLayout>
   )
 }
