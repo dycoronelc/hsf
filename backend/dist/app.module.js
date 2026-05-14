@@ -40,6 +40,7 @@ const audit_log_entity_1 = require("./audit/entities/audit-log.entity");
 const password_reset_token_entity_1 = require("./auth/entities/password-reset-token.entity");
 const verification_code_entity_1 = require("./auth/entities/verification-code.entity");
 const role_permission_entity_1 = require("./admin/entities/role-permission.entity");
+const admin_role_matrix_row_entity_1 = require("./admin/entities/admin-role-matrix-row.entity");
 let AppModule = class AppModule {
 };
 exports.AppModule = AppModule;
@@ -72,6 +73,7 @@ exports.AppModule = AppModule = __decorate([
                     password_reset_token_entity_1.PasswordResetToken,
                     verification_code_entity_1.VerificationCode,
                     role_permission_entity_1.RolePermission,
+                    admin_role_matrix_row_entity_1.AdminRoleMatrixRow,
                 ],
                 synchronize: true,
                 logging: false,

@@ -135,17 +135,6 @@ export class PreadmissionService {
     user: User,
     opts: { arrivalState?: PreadmissionArrivalState; q?: string; skip?: number; limit?: number },
   ): Promise<Preadmission[]> {
-    const allowed = [
-      'admin',
-      'supervisor',
-      'anfitrion',
-      'reception',
-      'oficial_admision',
-    ];
-    if (!allowed.includes(user.role)) {
-      throw new ForbiddenException('Sin acceso a la lista de llegadas');
-    }
-
     const qb = this.preadmissionRepository
       .createQueryBuilder('p')
       .orderBy('p.fechapreadmision', 'DESC')
@@ -168,11 +157,6 @@ export class PreadmissionService {
   }
 
   async confirmArrival(id: number, user: User): Promise<Preadmission> {
-    const allowed = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision'];
-    if (!allowed.includes(user.role)) {
-      throw new ForbiddenException('No autorizado a confirmar llegada');
-    }
-
     const pre = await this.preadmissionRepository.findOne({ where: { id } });
     if (!pre) {
       throw new NotFoundException('Preadmisión no encontrada');
@@ -194,11 +178,6 @@ export class PreadmissionService {
   }
 
   async activateTicket(id: number, user: User): Promise<unknown> {
-    const allowed = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision'];
-    if (!allowed.includes(user.role)) {
-      throw new ForbiddenException('No autorizado a generar ticket');
-    }
-
     return this.ticketsService.createTicketForPreadmission(id);
   }
 

@@ -17,8 +17,8 @@ const common_1 = require("@nestjs/common");
 const preadmission_service_1 = require("./preadmission.service");
 const preadmission_dto_1 = require("./dto/preadmission.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const roles_guard_1 = require("../auth/guards/roles.guard");
-const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const permissions_guard_1 = require("../permissions/permissions.guard");
+const require_permissions_decorator_1 = require("../permissions/require-permissions.decorator");
 const enums_1 = require("../common/enums");
 let PreadmissionController = class PreadmissionController {
     constructor(preadmissionService) {
@@ -117,7 +117,8 @@ __decorate([
 ], PreadmissionController.prototype, "create", null);
 __decorate([
     (0, common_1.Get)('work-list'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('view_host_work_list'),
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('arrivalState')),
     __param(2, (0, common_1.Query)('q')),
@@ -139,7 +140,8 @@ __decorate([
 ], PreadmissionController.prototype, "findAll", null);
 __decorate([
     (0, common_1.Patch)(':id/confirm-arrival'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('confirm_arrival'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -148,7 +150,8 @@ __decorate([
 ], PreadmissionController.prototype, "confirmArrival", null);
 __decorate([
     (0, common_1.Post)(':id/activate-ticket'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('activate_ticket'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -166,8 +169,8 @@ __decorate([
 ], PreadmissionController.prototype, "findOne", null);
 __decorate([
     (0, common_1.Patch)(':id/review'),
-    (0, common_1.UseGuards)(roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.ADMIN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.RECEPTION),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('review_preadmissions'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),

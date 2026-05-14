@@ -16,6 +16,7 @@ const service_entity_1 = require("../services/entities/service.entity");
 const preadmission_entity_1 = require("../preadmission/entities/preadmission.entity");
 const notifications_module_1 = require("../notifications/notifications.module");
 const surveys_module_1 = require("../surveys/surveys.module");
+const permissions_module_1 = require("../permissions/permissions.module");
 let TicketsModule = class TicketsModule {
 };
 exports.TicketsModule = TicketsModule;
@@ -23,6 +24,7 @@ exports.TicketsModule = TicketsModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([ticket_entity_1.Ticket, service_entity_1.Service, preadmission_entity_1.Preadmission]),
+            permissions_module_1.PermissionsModule,
             (0, common_1.forwardRef)(() => notifications_module_1.NotificationsModule),
             (0, common_1.forwardRef)(() => surveys_module_1.SurveysModule),
         ],

@@ -15,12 +15,13 @@ const ticket_entity_1 = require("../tickets/entities/ticket.entity");
 const survey_entity_1 = require("../surveys/entities/survey.entity");
 const service_entity_1 = require("../services/entities/service.entity");
 const preadmission_entity_1 = require("../preadmission/entities/preadmission.entity");
+const permissions_module_1 = require("../permissions/permissions.module");
 let ReportsModule = class ReportsModule {
 };
 exports.ReportsModule = ReportsModule;
 exports.ReportsModule = ReportsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([ticket_entity_1.Ticket, survey_entity_1.Survey, service_entity_1.Service, preadmission_entity_1.Preadmission])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([ticket_entity_1.Ticket, survey_entity_1.Survey, service_entity_1.Service, preadmission_entity_1.Preadmission]), permissions_module_1.PermissionsModule],
         controllers: [reports_controller_1.ReportsController],
         providers: [reports_service_1.ReportsService],
     })

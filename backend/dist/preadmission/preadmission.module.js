@@ -15,6 +15,7 @@ const preadmission_entity_1 = require("./entities/preadmission.entity");
 const verification_code_entity_1 = require("../auth/entities/verification-code.entity");
 const integrations_module_1 = require("../integrations/integrations.module");
 const tickets_module_1 = require("../tickets/tickets.module");
+const permissions_module_1 = require("../permissions/permissions.module");
 let PreadmissionModule = class PreadmissionModule {
 };
 exports.PreadmissionModule = PreadmissionModule;
@@ -22,6 +23,7 @@ exports.PreadmissionModule = PreadmissionModule = __decorate([
     (0, common_1.Module)({
         imports: [
             typeorm_1.TypeOrmModule.forFeature([preadmission_entity_1.Preadmission, verification_code_entity_1.VerificationCode]),
+            permissions_module_1.PermissionsModule,
             integrations_module_1.IntegrationsModule,
             tickets_module_1.TicketsModule,
         ],

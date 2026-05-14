@@ -24,4 +24,17 @@ export declare class UpdateTicketTypeDto {
 export declare class UpdateStaffUserDto {
     role?: UserRole;
     isActive?: boolean;
+    fullName?: string;
+}
+export declare class CreateStaffUserDto {
+    email: string;
+    password: string;
+    fullName?: string;
+    role: UserRole;
+}
+export declare class CreateMatrixRoleDto {
+    role: UserRole;
+}
+export declare class PatchMatrixRoleDto {
+    isActive: boolean;
 }

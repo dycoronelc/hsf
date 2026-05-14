@@ -1,14 +1,20 @@
 import {
   IsBoolean,
+  IsEmail,
   IsEnum,
   IsInt,
   IsObject,
   IsOptional,
   IsString,
+  Matches,
   Max,
   Min,
+  MinLength,
 } from 'class-validator';
 import { UserRole } from '../../common/enums';
+
+const PASSWORD_RULE =
+  /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/;
 
 export class UpdateRolePermissionsDto {
   @IsEnum(UserRole)
@@ -89,4 +95,37 @@ export class UpdateStaffUserDto {
   @IsOptional()
   @IsBoolean()
   isActive?: boolean;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+}
+
+export class CreateStaffUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  @Matches(PASSWORD_RULE, {
+    message: 'La contraseña debe ser alfanumérica e incluir al menos una mayúscula',
+  })
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsEnum(UserRole)
+  role: UserRole;
+}
+
+export class CreateMatrixRoleDto {
+  @IsEnum(UserRole)
+  role: UserRole;
+}
+
+export class PatchMatrixRoleDto {
+  @IsBoolean()
+  isActive: boolean;
 }

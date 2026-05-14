@@ -16,8 +16,8 @@ exports.ReportsController = void 0;
 const common_1 = require("@nestjs/common");
 const reports_service_1 = require("./reports.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const roles_guard_1 = require("../auth/guards/roles.guard");
-const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const permissions_guard_1 = require("../permissions/permissions.guard");
+const require_permissions_decorator_1 = require("../permissions/require-permissions.decorator");
 const enums_1 = require("../common/enums");
 let ReportsController = class ReportsController {
     constructor(reportsService) {
@@ -72,6 +72,7 @@ let ReportsController = class ReportsController {
 exports.ReportsController = ReportsController;
 __decorate([
     (0, common_1.Get)('summary'),
+    (0, require_permissions_decorator_1.RequirePermissions)('view_reports'),
     __param(0, (0, common_1.Query)('startDate')),
     __param(1, (0, common_1.Query)('endDate')),
     __metadata("design:type", Function),
@@ -80,12 +81,14 @@ __decorate([
 ], ReportsController.prototype, "getSummary", null);
 __decorate([
     (0, common_1.Get)('realtime'),
+    (0, require_permissions_decorator_1.RequirePermissions)('view_reports'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", Promise)
 ], ReportsController.prototype, "getRealTime", null);
 __decorate([
     (0, common_1.Get)('efficiency'),
+    (0, require_permissions_decorator_1.RequirePermissions)('view_reports'),
     __param(0, (0, common_1.Query)('startDate')),
     __param(1, (0, common_1.Query)('endDate')),
     __metadata("design:type", Function),
@@ -94,6 +97,7 @@ __decorate([
 ], ReportsController.prototype, "getEfficiency", null);
 __decorate([
     (0, common_1.Get)('service/:serviceId'),
+    (0, require_permissions_decorator_1.RequirePermissions)('view_reports'),
     __param(0, (0, common_1.Param)('serviceId')),
     __param(1, (0, common_1.Query)('startDate')),
     __param(2, (0, common_1.Query)('endDate')),
@@ -103,6 +107,7 @@ __decorate([
 ], ReportsController.prototype, "getServiceReport", null);
 __decorate([
     (0, common_1.Get)('preadmissions'),
+    (0, require_permissions_decorator_1.RequirePermissions)('view_reports'),
     __param(0, (0, common_1.Query)('startDate')),
     __param(1, (0, common_1.Query)('endDate')),
     __param(2, (0, common_1.Query)('tipo')),
@@ -114,6 +119,7 @@ __decorate([
 ], ReportsController.prototype, "getPreadmissionsReport", null);
 __decorate([
     (0, common_1.Get)('preadmissions/export'),
+    (0, require_permissions_decorator_1.RequirePermissions)('export_reports'),
     __param(0, (0, common_1.Query)('format')),
     __param(1, (0, common_1.Query)('startDate')),
     __param(2, (0, common_1.Query)('endDate')),
@@ -126,8 +132,7 @@ __decorate([
 ], ReportsController.prototype, "exportPreadmissions", null);
 exports.ReportsController = ReportsController = __decorate([
     (0, common_1.Controller)('reports'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.ADMIN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.AUDITOR),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [reports_service_1.ReportsService])
 ], ReportsController);
 //# sourceMappingURL=reports.controller.js.map

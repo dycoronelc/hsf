@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../../components/SiteLayout'
+import { RowActionsMenu } from '../../components/RowActionsMenu'
 import { useAuth } from '../../providers'
 
 interface TicketType {
@@ -31,6 +32,8 @@ export default function AdminTicketTypesPage() {
   const router = useRouter()
   const [items, setItems] = useState<TicketType[]>([])
   const [form, setForm] = useState(emptyForm)
+  const [editItem, setEditItem] = useState<TicketType | null>(null)
+  const [editForm, setEditForm] = useState(emptyForm)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -65,6 +68,18 @@ export default function AdminTicketTypesPage() {
     }
     load()
   }, [authHydrated, isAuthenticated, user, router, load])
+
+  useEffect(() => {
+    if (!editItem) return
+    setEditForm({
+      name: editItem.name,
+      code: editItem.code,
+      area: editItem.area,
+      ticketPrefix: editItem.ticketPrefix || editItem.code,
+      priorityLevel: String(editItem.priorityLevel),
+      estimatedTime: String(editItem.estimatedTime ?? 15),
+    })
+  }, [editItem])
 
   const createTicketType = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -122,6 +137,66 @@ export default function AdminTicketTypesPage() {
         throw new Error(data.message || 'No se pudo actualizar el tipo de ticket')
       }
       setMessage('Tipo de ticket actualizado.')
+      await load()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const saveEditModal = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!token || !editItem) return
+    setSaving(true)
+    setMessage('')
+    setError('')
+    try {
+      const response = await fetch(`/api/admin/ticket-types/${editItem.id}`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: editForm.name,
+          code: editForm.code,
+          area: editForm.area,
+          ticketPrefix: editForm.ticketPrefix || editForm.code,
+          priorityLevel: Number(editForm.priorityLevel),
+          estimatedTime: Number(editForm.estimatedTime),
+        }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'No se pudo guardar el tipo de ticket')
+      }
+      setEditItem(null)
+      setMessage('Tipo de ticket actualizado.')
+      await load()
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteTicketType = async (id: number) => {
+    if (!token) return
+    if (!window.confirm('¿Eliminar este tipo de ticket? Solo es posible si no hay tickets asociados.')) return
+    setSaving(true)
+    setMessage('')
+    setError('')
+    try {
+      const response = await fetch(`/api/admin/ticket-types/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'No se pudo eliminar el tipo de ticket')
+      }
+      setMessage('Tipo de ticket eliminado.')
       await load()
     } catch (err: any) {
       setError(err.message)
@@ -239,7 +314,7 @@ export default function AdminTicketTypesPage() {
                     <th className="py-2 pr-3">Prioridad</th>
                     <th className="py-2 pr-3">Minutos</th>
                     <th className="py-2 pr-3">Estado</th>
-                    <th className="py-2">Acciones</th>
+                    <th className="py-2 w-12 text-right"> </th>
                   </tr>
                 </thead>
                 <tbody>
@@ -258,15 +333,29 @@ export default function AdminTicketTypesPage() {
                           {item.isActive ? 'Activo' : 'Inactivo'}
                         </span>
                       </td>
-                      <td className="py-3">
-                        <button
-                          type="button"
-                          disabled={saving}
-                          onClick={() => updateTicketType(item.id, { isActive: !item.isActive })}
-                          className="text-hospital-blue hover:underline disabled:opacity-50"
-                        >
-                          {item.isActive ? 'Desactivar' : 'Activar'}
-                        </button>
+                      <td className="py-3 text-right">
+                        <RowActionsMenu
+                          items={[
+                            {
+                              key: 'edit',
+                              label: 'Editar',
+                              onClick: () => setEditItem(item),
+                            },
+                            {
+                              key: 'toggle',
+                              label: item.isActive ? 'Desactivar' : 'Activar',
+                              onClick: () => updateTicketType(item.id, { isActive: !item.isActive }),
+                              disabled: saving,
+                            },
+                            {
+                              key: 'del',
+                              label: 'Eliminar',
+                              danger: true,
+                              onClick: () => deleteTicketType(item.id),
+                              disabled: saving,
+                            },
+                          ]}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -275,6 +364,95 @@ export default function AdminTicketTypesPage() {
             )}
           </div>
         </div>
+
+        {editItem && (
+          <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4">
+            <form
+              onSubmit={saveEditModal}
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
+            >
+              <h3 className="text-lg font-semibold text-gray-900">Editar tipo de ticket</h3>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <input
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Código interno</label>
+                <input
+                  value={editForm.code}
+                  onChange={(e) => setEditForm({ ...editForm, code: e.target.value.toUpperCase() })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Prefijo de ticket</label>
+                <input
+                  value={editForm.ticketPrefix}
+                  onChange={(e) => setEditForm({ ...editForm, ticketPrefix: e.target.value.toUpperCase() })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Área</label>
+                <select
+                  value={editForm.area}
+                  onChange={(e) => setEditForm({ ...editForm, area: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                >
+                  <option value="ADMISION">Admisión</option>
+                  <option value="LAB">Laboratorio</option>
+                  <option value="RAD">Radiología</option>
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Prioridad</label>
+                  <select
+                    value={editForm.priorityLevel}
+                    onChange={(e) => setEditForm({ ...editForm, priorityLevel: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  >
+                    <option value="1">1</option>
+                    <option value="2">2</option>
+                    <option value="3">3</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Minutos</label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editForm.estimatedTime}
+                    onChange={(e) => setEditForm({ ...editForm, estimatedTime: e.target.value })}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditItem(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="px-4 py-2 rounded-lg bg-hospital-blue text-white font-medium disabled:opacity-50"
+                >
+                  {saving ? 'Guardando...' : 'Guardar'}
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
       </div>
     </SiteLayout>
   )

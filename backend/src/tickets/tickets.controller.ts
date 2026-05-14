@@ -12,9 +12,9 @@ import {
 import { TicketsService } from './tickets.service';
 import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, TicketStatus } from '../common/enums';
+import { PermissionsGuard } from '../permissions/permissions.guard';
+import { RequirePermissions } from '../permissions/require-permissions.decorator';
+import { TicketStatus } from '../common/enums';
 
 @Controller('tickets')
 export class TicketsController {
@@ -22,7 +22,6 @@ export class TicketsController {
 
   @Post('kiosk')
   async createKioskTicket(@Body() createDto: CreateTicketDto) {
-    // Endpoint público para kiosco - crea ticket sin autenticación
     return this.ticketsService.createKioskTicket(createDto);
   }
 
@@ -53,15 +52,8 @@ export class TicketsController {
   }
 
   @Post(':id/call')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.RECEPTION,
-    UserRole.TECHNICIAN,
-    UserRole.SUPERVISOR,
-    UserRole.OFICIAL_ADMISION,
-    UserRole.LABORATORIO,
-    UserRole.RADIOLOGIA,
-  )
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
   async call(
     @Param('id') id: number,
     @Body() callDto: CallTicketDto,
@@ -71,43 +63,22 @@ export class TicketsController {
   }
 
   @Post(':id/start')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.RECEPTION,
-    UserRole.TECHNICIAN,
-    UserRole.SUPERVISOR,
-    UserRole.OFICIAL_ADMISION,
-    UserRole.LABORATORIO,
-    UserRole.RADIOLOGIA,
-  )
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
   async start(@Param('id') id: number, @Request() req) {
     return this.ticketsService.start(+id, req.user);
   }
 
   @Post(':id/complete')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.RECEPTION,
-    UserRole.TECHNICIAN,
-    UserRole.SUPERVISOR,
-    UserRole.OFICIAL_ADMISION,
-    UserRole.LABORATORIO,
-    UserRole.RADIOLOGIA,
-  )
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_complete_ticket')
   async complete(@Param('id') id: number, @Request() req) {
     return this.ticketsService.complete(+id, req.user);
   }
 
   @Post(':id/transfer')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.RECEPTION,
-    UserRole.TECHNICIAN,
-    UserRole.SUPERVISOR,
-    UserRole.LABORATORIO,
-    UserRole.RADIOLOGIA,
-    UserRole.OFICIAL_ADMISION,
-  )
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_transfer_ticket')
   async transfer(
     @Param('id') id: number,
     @Body() dto: TransferTicketDto,
@@ -117,15 +88,8 @@ export class TicketsController {
   }
 
   @Patch(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(
-    UserRole.RECEPTION,
-    UserRole.TECHNICIAN,
-    UserRole.SUPERVISOR,
-    UserRole.OFICIAL_ADMISION,
-    UserRole.LABORATORIO,
-    UserRole.RADIOLOGIA,
-  )
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_check_in')
   async update(@Param('id') id: number, @Body() updateDto: UpdateTicketDto) {
     return this.ticketsService.update(+id, updateDto);
   }

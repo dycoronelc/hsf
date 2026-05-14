@@ -1,17 +1,17 @@
 import { Controller, Get, Query, Param, UseGuards } from '@nestjs/common';
 import { ReportsService } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, PreadmissionArrivalState } from '../common/enums';
+import { PermissionsGuard } from '../permissions/permissions.guard';
+import { RequirePermissions } from '../permissions/require-permissions.decorator';
+import { PreadmissionArrivalState } from '../common/enums';
 
 @Controller('reports')
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.AUDITOR)
+@UseGuards(JwtAuthGuard, PermissionsGuard)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
 
   @Get('summary')
+  @RequirePermissions('view_reports')
   async getSummary(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -22,11 +22,13 @@ export class ReportsController {
   }
 
   @Get('realtime')
+  @RequirePermissions('view_reports')
   async getRealTime() {
     return this.reportsService.getRealTimeReport();
   }
 
   @Get('efficiency')
+  @RequirePermissions('view_reports')
   async getEfficiency(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -37,6 +39,7 @@ export class ReportsController {
   }
 
   @Get('service/:serviceId')
+  @RequirePermissions('view_reports')
   async getServiceReport(
     @Param('serviceId') serviceId: number,
     @Query('startDate') startDate?: string,
@@ -48,6 +51,7 @@ export class ReportsController {
   }
 
   @Get('preadmissions')
+  @RequirePermissions('view_reports')
   async getPreadmissionsReport(
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
@@ -62,6 +66,7 @@ export class ReportsController {
   }
 
   @Get('preadmissions/export')
+  @RequirePermissions('export_reports')
   async exportPreadmissions(
     @Query('format') format: string,
     @Query('startDate') startDate?: string,

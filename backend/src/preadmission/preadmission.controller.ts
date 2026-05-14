@@ -18,9 +18,9 @@ import {
   ConfirmVerificationDto,
 } from './dto/preadmission.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
-import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole, PreadmissionArrivalState } from '../common/enums';
+import { PermissionsGuard } from '../permissions/permissions.guard';
+import { RequirePermissions } from '../permissions/require-permissions.decorator';
+import { PreadmissionArrivalState } from '../common/enums';
 
 @Controller('preadmission')
 export class PreadmissionController {
@@ -71,7 +71,8 @@ export class PreadmissionController {
   }
 
   @Get('work-list')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('view_host_work_list')
   async workList(
     @Request() req,
     @Query('arrivalState') arrivalState?: PreadmissionArrivalState,
@@ -98,13 +99,15 @@ export class PreadmissionController {
   }
 
   @Patch(':id/confirm-arrival')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('confirm_arrival')
   async confirmArrival(@Param('id') id: number, @Request() req) {
     return this.preadmissionService.confirmArrival(+id, req.user);
   }
 
   @Post(':id/activate-ticket')
-  @UseGuards(JwtAuthGuard)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('activate_ticket')
   async activateTicket(@Param('id') id: number, @Request() req) {
     return this.preadmissionService.activateTicket(+id, req.user);
   }
@@ -116,8 +119,8 @@ export class PreadmissionController {
   }
 
   @Patch(':id/review')
-  @UseGuards(RolesGuard)
-  @Roles(UserRole.ADMIN, UserRole.SUPERVISOR, UserRole.RECEPTION)
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('review_preadmissions')
   async review(
     @Param('id') id: number,
     @Body() reviewDto: ReviewPreadmissionDto,

@@ -6,10 +6,12 @@ import { Preadmission } from './entities/preadmission.entity';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { TicketsModule } from '../tickets/tickets.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Preadmission, VerificationCode]),
+    PermissionsModule,
     IntegrationsModule,
     TicketsModule,
   ],

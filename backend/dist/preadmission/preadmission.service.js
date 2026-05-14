@@ -119,16 +119,6 @@ let PreadmissionService = class PreadmissionService {
         });
     }
     async findWorkList(user, opts) {
-        const allowed = [
-            'admin',
-            'supervisor',
-            'anfitrion',
-            'reception',
-            'oficial_admision',
-        ];
-        if (!allowed.includes(user.role)) {
-            throw new common_1.ForbiddenException('Sin acceso a la lista de llegadas');
-        }
         const qb = this.preadmissionRepository
             .createQueryBuilder('p')
             .orderBy('p.fechapreadmision', 'DESC')
@@ -144,10 +134,6 @@ let PreadmissionService = class PreadmissionService {
         return qb.getMany();
     }
     async confirmArrival(id, user) {
-        const allowed = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision'];
-        if (!allowed.includes(user.role)) {
-            throw new common_1.ForbiddenException('No autorizado a confirmar llegada');
-        }
         const pre = await this.preadmissionRepository.findOne({ where: { id } });
         if (!pre) {
             throw new common_1.NotFoundException('Preadmisión no encontrada');
@@ -163,10 +149,6 @@ let PreadmissionService = class PreadmissionService {
         return this.preadmissionRepository.save(pre);
     }
     async activateTicket(id, user) {
-        const allowed = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision'];
-        if (!allowed.includes(user.role)) {
-            throw new common_1.ForbiddenException('No autorizado a generar ticket');
-        }
         return this.ticketsService.createTicketForPreadmission(id);
     }
     async findOne(id, user) {

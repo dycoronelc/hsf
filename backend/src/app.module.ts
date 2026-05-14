@@ -31,6 +31,7 @@ import { AuditLog } from './audit/entities/audit-log.entity';
 import { PasswordResetToken } from './auth/entities/password-reset-token.entity';
 import { VerificationCode } from './auth/entities/verification-code.entity';
 import { RolePermission } from './admin/entities/role-permission.entity';
+import { AdminRoleMatrixRow } from './admin/entities/admin-role-matrix-row.entity';
 
 @Module({
   imports: [
@@ -60,6 +61,7 @@ import { RolePermission } from './admin/entities/role-permission.entity';
         PasswordResetToken,
         VerificationCode,
         RolePermission,
+        AdminRoleMatrixRow,
       ],
       synchronize: true, // Solo para desarrollo, usar migrations en producción
       logging: false,

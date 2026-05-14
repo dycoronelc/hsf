@@ -17,8 +17,8 @@ const common_1 = require("@nestjs/common");
 const tickets_service_1 = require("./tickets.service");
 const ticket_dto_1 = require("./dto/ticket.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const roles_guard_1 = require("../auth/guards/roles.guard");
-const roles_decorator_1 = require("../auth/decorators/roles.decorator");
+const permissions_guard_1 = require("../permissions/permissions.guard");
+const require_permissions_decorator_1 = require("../permissions/require-permissions.decorator");
 const enums_1 = require("../common/enums");
 let TicketsController = class TicketsController {
     constructor(ticketsService) {
@@ -98,8 +98,8 @@ __decorate([
 ], TicketsController.prototype, "checkIn", null);
 __decorate([
     (0, common_1.Post)(':id/call'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('staff_call_ticket'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -109,8 +109,8 @@ __decorate([
 ], TicketsController.prototype, "call", null);
 __decorate([
     (0, common_1.Post)(':id/start'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('staff_call_ticket'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -119,8 +119,8 @@ __decorate([
 ], TicketsController.prototype, "start", null);
 __decorate([
     (0, common_1.Post)(':id/complete'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('staff_complete_ticket'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -129,8 +129,8 @@ __decorate([
 ], TicketsController.prototype, "complete", null);
 __decorate([
     (0, common_1.Post)(':id/transfer'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA, enums_1.UserRole.OFICIAL_ADMISION),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('staff_transfer_ticket'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -140,8 +140,8 @@ __decorate([
 ], TicketsController.prototype, "transfer", null);
 __decorate([
     (0, common_1.Patch)(':id'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.RECEPTION, enums_1.UserRole.TECHNICIAN, enums_1.UserRole.SUPERVISOR, enums_1.UserRole.OFICIAL_ADMISION, enums_1.UserRole.LABORATORIO, enums_1.UserRole.RADIOLOGIA),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('staff_check_in'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __metadata("design:type", Function),

@@ -7,10 +7,12 @@ import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SurveysModule } from '../surveys/surveys.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ticket, Service, Preadmission]),
+    PermissionsModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => SurveysModule),
   ],

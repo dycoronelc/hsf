@@ -16,9 +16,8 @@ exports.AdminController = void 0;
 const common_1 = require("@nestjs/common");
 const admin_service_1 = require("./admin.service");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
-const roles_guard_1 = require("../auth/guards/roles.guard");
-const roles_decorator_1 = require("../auth/decorators/roles.decorator");
-const enums_1 = require("../common/enums");
+const permissions_guard_1 = require("../permissions/permissions.guard");
+const require_permissions_decorator_1 = require("../permissions/require-permissions.decorator");
 const admin_dto_1 = require("./dto/admin.dto");
 let AdminController = class AdminController {
     constructor(adminService) {
@@ -33,6 +32,15 @@ let AdminController = class AdminController {
     updateRolePermissions(dto, req) {
         return this.adminService.updateRolePermissions(dto, req.user.id);
     }
+    addRoleToMatrix(dto, req) {
+        return this.adminService.addRoleToMatrix(dto, req.user.id);
+    }
+    patchMatrixRole(role, dto, req) {
+        return this.adminService.patchMatrixRole(role, dto, req.user.id);
+    }
+    removeRoleFromMatrix(role, req) {
+        return this.adminService.removeRoleFromMatrix(role, req.user.id);
+    }
     listTicketTypes() {
         return this.adminService.listTicketTypes();
     }
@@ -42,31 +50,43 @@ let AdminController = class AdminController {
     updateTicketType(id, dto, req) {
         return this.adminService.updateTicketType(+id, dto, req.user.id);
     }
+    deleteTicketType(id, req) {
+        return this.adminService.deleteTicketType(+id, req.user.id);
+    }
     listStaffUsers() {
         return this.adminService.listStaffUsers();
+    }
+    createStaffUser(dto, req) {
+        return this.adminService.createStaffUser(dto, req.user.id);
     }
     updateStaffUser(id, dto, req) {
         return this.adminService.updateStaffUser(+id, dto, req.user.id);
     }
-    async createService(name, code, area, estimatedTime, req) {
-        return this.adminService.createTicketType({ name, code, area, estimatedTime }, req?.user?.id ?? 0);
+    deleteStaffUser(id, req) {
+        return this.adminService.deleteStaffUser(+id, req.user.id);
+    }
+    async createService(req, name, code, area, estimatedTime) {
+        return this.adminService.createTicketType({ name, code, area, estimatedTime }, req.user.id);
     }
 };
 exports.AdminController = AdminController;
 __decorate([
     (0, common_1.Get)('permission-catalog'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_role_permissions'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getPermissionCatalog", null);
 __decorate([
     (0, common_1.Get)('role-permissions'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_role_permissions'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "getRolePermissions", null);
 __decorate([
     (0, common_1.Put)('role-permissions'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_role_permissions'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -74,13 +94,43 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "updateRolePermissions", null);
 __decorate([
+    (0, common_1.Post)('role-matrix/roles'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_role_permissions'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [admin_dto_1.CreateMatrixRoleDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "addRoleToMatrix", null);
+__decorate([
+    (0, common_1.Patch)('role-matrix/roles/:role'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_role_permissions'),
+    __param(0, (0, common_1.Param)('role')),
+    __param(1, (0, common_1.Body)()),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, admin_dto_1.PatchMatrixRoleDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "patchMatrixRole", null);
+__decorate([
+    (0, common_1.Delete)('role-matrix/roles/:role'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_role_permissions'),
+    __param(0, (0, common_1.Param)('role')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "removeRoleFromMatrix", null);
+__decorate([
     (0, common_1.Get)('ticket-types'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_ticket_types'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "listTicketTypes", null);
 __decorate([
     (0, common_1.Post)('ticket-types'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_ticket_types'),
     __param(0, (0, common_1.Body)()),
     __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
@@ -89,6 +139,7 @@ __decorate([
 ], AdminController.prototype, "createTicketType", null);
 __decorate([
     (0, common_1.Patch)('ticket-types/:id'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_ticket_types'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -97,13 +148,33 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "updateTicketType", null);
 __decorate([
+    (0, common_1.Delete)('ticket-types/:id'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_ticket_types'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteTicketType", null);
+__decorate([
     (0, common_1.Get)('users'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_users'),
     __metadata("design:type", Function),
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "listStaffUsers", null);
 __decorate([
+    (0, common_1.Post)('users'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_users'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [admin_dto_1.CreateStaffUserDto, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "createStaffUser", null);
+__decorate([
     (0, common_1.Patch)('users/:id'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_users'),
     __param(0, (0, common_1.Param)('id')),
     __param(1, (0, common_1.Body)()),
     __param(2, (0, common_1.Request)()),
@@ -112,20 +183,29 @@ __decorate([
     __metadata("design:returntype", void 0)
 ], AdminController.prototype, "updateStaffUser", null);
 __decorate([
-    (0, common_1.Post)('services'),
-    __param(0, (0, common_1.Body)('name')),
-    __param(1, (0, common_1.Body)('code')),
-    __param(2, (0, common_1.Body)('area')),
-    __param(3, (0, common_1.Body)('estimatedTime')),
-    __param(4, (0, common_1.Request)()),
+    (0, common_1.Delete)('users/:id'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_users'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String, String, Number, Object]),
+    __metadata("design:paramtypes", [Number, Object]),
+    __metadata("design:returntype", void 0)
+], AdminController.prototype, "deleteStaffUser", null);
+__decorate([
+    (0, common_1.Post)('services'),
+    (0, require_permissions_decorator_1.RequirePermissions)('manage_ticket_types'),
+    __param(0, (0, common_1.Request)()),
+    __param(1, (0, common_1.Body)('name')),
+    __param(2, (0, common_1.Body)('code')),
+    __param(3, (0, common_1.Body)('area')),
+    __param(4, (0, common_1.Body)('estimatedTime')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, String, String, String, Number]),
     __metadata("design:returntype", Promise)
 ], AdminController.prototype, "createService", null);
 exports.AdminController = AdminController = __decorate([
     (0, common_1.Controller)('admin'),
-    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, roles_guard_1.RolesGuard),
-    (0, roles_decorator_1.Roles)(enums_1.UserRole.ADMIN),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
     __metadata("design:paramtypes", [admin_service_1.AdminService])
 ], AdminController);
 //# sourceMappingURL=admin.controller.js.map
