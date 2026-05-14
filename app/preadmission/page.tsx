@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
-import { formatDateInput, isValidDdMmYyyy } from '@/lib/dateUtils'
+import { isValidDdMmYyyy } from '@/lib/dateUtils'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
+import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
 
 interface LocationData {
@@ -81,6 +82,11 @@ export default function PreadmissionPage() {
     carnetseguro: '',
     certificadoSeguro: '',
   })
+
+  const todayIso = useMemo(() => {
+    const n = new Date()
+    return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
+  }, [])
 
   useEffect(() => {
     loadCatalogs()
@@ -576,20 +582,13 @@ export default function PreadmissionPage() {
                   <option value="LAB">Laboratorio</option>
                 </select>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha Probable de Atención * (DD/MM/YYYY)
-                </label>
-                <input
-                  type="text"
-                  value={formData.fechaprobableatencion}
-                  onChange={(e) => setFormData({ ...formData, fechaprobableatencion: formatDateInput(e.target.value) })}
-                  placeholder="dd/mm/yyyy"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                  maxLength={10}
-                  required
-                />
-              </div>
+              <DdMmYyyyDateField
+                label="Fecha Probable de Atención *"
+                value={formData.fechaprobableatencion}
+                onChange={(v) => setFormData({ ...formData, fechaprobableatencion: v })}
+                minIso={todayIso}
+                required
+              />
             </div>
           )}
 
@@ -728,20 +727,13 @@ export default function PreadmissionPage() {
                     <option value="F">Femenino</option>
                   </select>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Fecha de Nacimiento * (DD/MM/YYYY)
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.fechanac}
-                    onChange={(e) => setFormData({ ...formData, fechanac: formatDateInput(e.target.value) })}
-                    placeholder="dd/mm/yyyy"
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                    maxLength={10}
-                    required
-                  />
-                </div>
+                <DdMmYyyyDateField
+                  label="Fecha de Nacimiento *"
+                  value={formData.fechanac}
+                  onChange={(v) => setFormData({ ...formData, fechanac: v })}
+                  maxIso={todayIso}
+                  required
+                />
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Nacionalidad *

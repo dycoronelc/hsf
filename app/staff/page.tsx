@@ -4,7 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { useAuth } from '../providers'
 import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../components/SiteLayout'
-import { Html5Qrcode } from 'html5-qrcode'
+import type { Html5Qrcode } from 'html5-qrcode'
+import { startLiveQrScanner } from '@/lib/html5QrcodeScan'
 import { isAgentOperational } from '@/lib/agentState'
 
 interface Ticket {
@@ -315,24 +316,46 @@ export default function StaffConsolePage() {
     let cancelled = false
     const startScanner = async () => {
       try {
-        const scanner = new Html5Qrcode(scannerContainerId)
-        qrScannerRef.current = scanner
-        await scanner.start(
-          { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 250 } },
+        const scanner = await startLiveQrScanner(
+          scannerContainerId,
           (decodedText) => {
             if (cancelled) return
-            scanner.stop().then(() => {
-              qrScannerRef.current = null
-              if (!cancelled) {
-                setShowScanner(false)
-                setScanning(false)
-                doCheckInByCode(decodedText)
-              }
-            }).catch(() => {})
+            void scanner
+              .stop()
+              .then(() => {
+                try {
+                  scanner.clear()
+                } catch {
+                  /* */
+                }
+              })
+              .then(() => {
+                qrScannerRef.current = null
+                if (!cancelled) {
+                  setShowScanner(false)
+                  setScanning(false)
+                  void doCheckInByCode(decodedText)
+                }
+              })
+              .catch(() => {})
           },
           () => {},
         )
+        if (cancelled) {
+          try {
+            await scanner.stop()
+          } catch {
+            /* */
+          }
+          try {
+            scanner.clear()
+          } catch {
+            /* */
+          }
+          return
+        }
+        qrScannerRef.current = scanner
+        setScanning(false)
       } catch (err) {
         if (cancelled) return
         const msg = err instanceof Error ? err.message : 'No se pudo acceder a la cámara'
@@ -341,7 +364,7 @@ export default function StaffConsolePage() {
         qrScannerRef.current = null
       }
     }
-    const timer = setTimeout(startScanner, 300)
+    const timer = setTimeout(startScanner, 350)
     return () => {
       cancelled = true
       clearTimeout(timer)
@@ -349,6 +372,11 @@ export default function StaffConsolePage() {
       if (scanner) {
         qrScannerRef.current = null
         scanner.stop().catch(() => {})
+        try {
+          scanner.clear()
+        } catch {
+          /* */
+        }
       }
     }
   }, [showScanner])
@@ -361,6 +389,11 @@ export default function StaffConsolePage() {
         await scanner.stop()
       } catch {
         // ignorar si ya está detenido o el DOM fue removido
+      }
+      try {
+        scanner.clear()
+      } catch {
+        /* */
       }
     }
     setShowScanner(false)
@@ -609,7 +642,7 @@ export default function StaffConsolePage() {
             <p className="text-sm text-gray-600 mb-4">
               Apunte la cámara del celular o del navegador (kiosko) al QR del paciente (turno o preadmisión). Se usará la cámara trasera en móviles si está disponible.
             </p>
-            <div id={scannerContainerId} className="min-h-[250px] w-full rounded-lg overflow-hidden bg-gray-100" />
+            <div id={scannerContainerId} className="min-h-[280px] sm:min-h-[400px] w-full rounded-lg overflow-hidden bg-gray-100" />
             {scanError && (
               <p className="mt-3 text-sm text-red-600">{scanError}</p>
             )}

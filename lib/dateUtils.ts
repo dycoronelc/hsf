@@ -31,18 +31,33 @@ export function parseDdMmYyyy(s: string): Date | null {
   return date
 }
 
-/** Convierte dd/mm/yyyy a yyyy-mm-dd para APIs que esperan ISO/date input */
+/** Convierte dd/mm/yyyy a yyyy-mm-dd para input type="date" (componentes locales, sin UTC). */
 export function ddMmYyyyToIso(s: string): string {
   const date = parseDdMmYyyy(s)
   if (!date) return ''
-  return date.toISOString().split('T')[0]
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
 }
 
-/** Convierte yyyy-mm-dd o ISO a dd/mm/yyyy */
+/** Convierte yyyy-mm-dd a dd/mm/yyyy usando fecha local (evita corrimiento por zona horaria). */
 export function isoToDdMmYyyy(iso: string): string {
   if (!iso || !iso.trim()) return ''
-  const date = new Date(iso.trim())
-  if (Number.isNaN(date.getTime())) return iso
+  const t = iso.trim()
+  const m = t.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (m) {
+    const year = parseInt(m[1]!, 10)
+    const month = parseInt(m[2]!, 10) - 1
+    const day = parseInt(m[3]!, 10)
+    const date = new Date(year, month, day)
+    if (date.getFullYear() !== year || date.getMonth() !== month || date.getDate() !== day) {
+      return ''
+    }
+    return formatDateToDdMmYyyy(date)
+  }
+  const date = new Date(t)
+  if (Number.isNaN(date.getTime())) return ''
   return formatDateToDdMmYyyy(date)
 }
 
@@ -56,6 +71,11 @@ export function isValidDdMmYyyy(s: string): boolean {
  * auto-inserta barras después de dd y mm. Máx 10 caracteres.
  */
 export function formatDateInput(value: string): string {
+  const trimmed = value.trim()
+  const isoDay = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (isoDay) {
+    return isoToDdMmYyyy(trimmed)
+  }
   const digits = value.replace(/\D/g, '')
   if (digits.length <= 2) {
     return digits
