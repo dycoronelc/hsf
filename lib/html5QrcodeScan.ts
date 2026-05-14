@@ -31,27 +31,68 @@ export function buildQrScanConfig(): Html5QrcodeCameraScanConfig {
   }
 }
 
-/** Orden: cámaras traseras por etiqueta, luego todas, luego facingMode. */
+function looksLikeFrontCameraLabel(label: string): boolean {
+  const l = label.toLowerCase()
+  return (
+    /front|selfie|user|facial|face\s*time|delanter|frontal|orientaci[oó]n\s+frontal|facing\s+front|para\s+selfies/i.test(
+      l,
+    )
+  )
+}
+
+function looksLikeRearCameraLabel(label: string): boolean {
+  const l = label.toLowerCase()
+  if (looksLikeFrontCameraLabel(l)) return false
+  return (
+    /back|rear|trasera|posterior|retro|environment|world|wide|tele|facing\s+back|orientaci[oó]n\s+trasera|orientaci[oó]n\s+posterior|cámara\s+trasera|camera\s+\d+\s*,\s*facing\s+back/i.test(
+      l,
+    )
+  )
+}
+
+function pushConstraintUnique(
+  list: Array<string | MediaTrackConstraints>,
+  seen: Set<string>,
+  c: string | MediaTrackConstraints,
+) {
+  const key = typeof c === 'string' ? `s:${c}` : `o:${JSON.stringify(c)}`
+  if (seen.has(key)) return
+  seen.add(key)
+  list.push(c)
+}
+
+/**
+ * Orden de prueba: primero facingMode "environment" (el SO elige la trasera),
+ * luego deviceId de cámaras que por etiqueta parecen traseras,
+ * luego cámaras neutras, luego el resto, y al final la frontal.
+ */
 export async function buildCameraConfigsOrder(): Promise<Array<string | MediaTrackConstraints>> {
   const configs: Array<string | MediaTrackConstraints> = []
-  const cameras = await Html5Qrcode.getCameras().catch(() => [] as { id: string; label: string }[])
   const seen = new Set<string>()
 
-  for (const c of cameras) {
-    if (/back|rear|trasera|wide|environment/i.test(c.label) && !seen.has(c.id)) {
-      seen.add(c.id)
-      configs.push({ deviceId: { exact: c.id } })
-    }
+  pushConstraintUnique(configs, seen, { facingMode: { exact: 'environment' } })
+  pushConstraintUnique(configs, seen, { facingMode: 'environment' })
+  pushConstraintUnique(configs, seen, { facingMode: { ideal: 'environment' } })
+
+  const cameras = await Html5Qrcode.getCameras().catch(() => [] as { id: string; label: string }[])
+
+  const rear = cameras.filter((c) => looksLikeRearCameraLabel(c.label))
+  const neutral = cameras.filter(
+    (c) => !looksLikeRearCameraLabel(c.label) && !looksLikeFrontCameraLabel(c.label),
+  )
+  const front = cameras.filter((c) => looksLikeFrontCameraLabel(c.label))
+
+  for (const c of rear) {
+    pushConstraintUnique(configs, seen, { deviceId: { exact: c.id } })
   }
-  for (const c of cameras) {
-    if (!seen.has(c.id)) {
-      seen.add(c.id)
-      configs.push(c.id)
-    }
+  for (const c of neutral) {
+    pushConstraintUnique(configs, seen, { deviceId: { exact: c.id } })
   }
-  configs.push({ facingMode: { ideal: 'environment' } })
-  configs.push({ facingMode: 'environment' })
-  configs.push({ facingMode: 'user' })
+  for (const c of front) {
+    pushConstraintUnique(configs, seen, { deviceId: { exact: c.id } })
+  }
+
+  pushConstraintUnique(configs, seen, { facingMode: 'user' })
   return configs
 }
 
