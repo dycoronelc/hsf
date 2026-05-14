@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Plataforma de Gestión de Flujo de Pacientes + Preadmisión - Hospital Santa Fe Panamá",
   "scripts": {
+    "postinstall": "node scripts/fix-next-dep0060.cjs",
     "clean": "powershell -Command \"if (Test-Path .next) { Remove-Item -Recurse -Force .next }\"",
     "dev": "next dev",
     "build": "next build",

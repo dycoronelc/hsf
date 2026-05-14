@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import type { Html5Qrcode } from 'html5-qrcode'
 import { SwitchCamera } from 'lucide-react'
 import {
-  getOrderedCameraDevices,
+  getQrCameraFlipConstraints,
   startLiveQrScanner,
   startLiveQrScannerWithCamera,
 } from '@/lib/html5QrcodeScan'
@@ -35,7 +35,7 @@ export function LiveQrScannerModal({
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const onDecodedRef = useRef(onDecoded)
   onDecodedRef.current = onDecoded
-  const cameraListRef = useRef<{ id: string; label: string }[] | null>(null)
+  const flipConstraintsRef = useRef<Array<string | MediaTrackConstraints> | null>(null)
   const cameraSlotRef = useRef(0)
   const [flipNonce, setFlipNonce] = useState(0)
   const [scanning, setScanning] = useState(false)
@@ -58,14 +58,14 @@ export function LiveQrScannerModal({
 
   useEffect(() => {
     if (!open) {
-      cameraListRef.current = null
+      flipConstraintsRef.current = null
       cameraSlotRef.current = 0
       setCanFlipCamera(false)
       setScanError(null)
       return
     }
     cameraSlotRef.current = 0
-    cameraListRef.current = null
+    flipConstraintsRef.current = null
   }, [open])
 
   useEffect(() => {
@@ -77,15 +77,15 @@ export function LiveQrScannerModal({
 
     const run = async () => {
       try {
-        if (!cameraListRef.current) {
-          cameraListRef.current = await getOrderedCameraDevices()
+        if (!flipConstraintsRef.current) {
+          flipConstraintsRef.current = await getQrCameraFlipConstraints()
         }
-        const devices = cameraListRef.current
+        const constraints = flipConstraintsRef.current
         if (cancelled) return
 
-        setCanFlipCamera(devices.length >= 2)
+        setCanFlipCamera(constraints.length >= 2)
 
-        const slot = Math.min(cameraSlotRef.current, Math.max(0, devices.length - 1))
+        const slot = Math.min(cameraSlotRef.current, Math.max(0, constraints.length - 1))
         const onSuccess = (decodedText: string) => {
           if (cancelled) return
           const s = scannerRef.current
@@ -100,10 +100,10 @@ export function LiveQrScannerModal({
         await stopAndClear(prev)
 
         let scanner: Html5Qrcode
-        if (devices.length > 0) {
+        if (constraints.length > 0) {
           scanner = await startLiveQrScannerWithCamera(
             containerId,
-            { deviceId: { exact: devices[slot].id } },
+            constraints[slot],
             onSuccess,
             () => {},
           )
@@ -137,7 +137,7 @@ export function LiveQrScannerModal({
   }, [open, flipNonce, containerId, stopAndClear])
 
   const handleFlip = () => {
-    const list = cameraListRef.current
+    const list = flipConstraintsRef.current
     if (!list || list.length < 2) return
     cameraSlotRef.current = (cameraSlotRef.current + 1) % list.length
     setFlipNonce((n) => n + 1)

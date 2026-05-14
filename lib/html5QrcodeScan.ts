@@ -25,8 +25,9 @@ export function buildQrScanConfig(): Html5QrcodeCameraScanConfig {
       return { width: side, height: side }
     },
     videoConstraints: {
-      width: { ideal: 1920, min: 640 },
-      height: { ideal: 1080, min: 480 },
+      // Ideal muy alto en móvil a veces hace que el SO elija otra cámara o falle el stream trasero.
+      width: { ideal: 1280, min: 320 },
+      height: { ideal: 720, min: 240 },
     },
   }
 }
@@ -111,6 +112,69 @@ export async function getOrderedCameraDevices(): Promise<{ id: string; label: st
   )
   const front = uniq.filter((c) => looksLikeFrontCameraLabel(c.label))
   return [...rear, ...neutral, ...front]
+}
+
+/**
+ * En Chrome/Android (y en parte iOS) las etiquetas de videoinput suelen quedar vacías hasta el primer
+ * getUserMedia. Sin eso, todas las cámaras caen en "neutral" y el deviceId suele abrir siempre la misma.
+ * Una PWA no cambia esto: es comportamiento del navegador, no del “modo app”.
+ */
+export async function primeCameraEnumeration(): Promise<void> {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
+  const tryStream = async (constraints: MediaStreamConstraints) => {
+    const stream = await navigator.mediaDevices.getUserMedia(constraints)
+    for (const t of stream.getTracks()) t.stop()
+  }
+  try {
+    await tryStream({ video: { facingMode: { ideal: 'environment' } }, audio: false })
+    return
+  } catch {
+    /* */
+  }
+  try {
+    await tryStream({ video: { facingMode: { ideal: 'user' } }, audio: false })
+    return
+  } catch {
+    /* */
+  }
+  try {
+    await tryStream({ video: true, audio: false })
+  } catch {
+    /* sin permiso aún: getCameras puede seguir limitado */
+  }
+}
+
+function constraintKey(c: string | MediaTrackConstraints): string {
+  return typeof c === 'string' ? `s:${c}` : `o:${JSON.stringify(c)}`
+}
+
+/**
+ * Lista para el botón “cambiar cámara”: primero facingMode trasera/frontal (muy fiable en móviles),
+ * luego cada videoinput por deviceId (traseras → neutras → frontales) tras enumerar con permiso.
+ */
+export async function getQrCameraFlipConstraints(): Promise<Array<string | MediaTrackConstraints>> {
+  await primeCameraEnumeration()
+  const out: Array<string | MediaTrackConstraints> = []
+  const seen = new Set<string>()
+  const add = (c: string | MediaTrackConstraints) => {
+    const k = constraintKey(c)
+    if (seen.has(k)) return
+    seen.add(k)
+    out.push(c)
+  }
+
+  add({ facingMode: { exact: 'environment' } })
+  add({ facingMode: 'environment' })
+  add({ facingMode: { ideal: 'environment' } })
+  add({ facingMode: { exact: 'user' } })
+  add({ facingMode: 'user' })
+  add({ facingMode: { ideal: 'user' } })
+
+  for (const d of await getOrderedCameraDevices()) {
+    add({ deviceId: { exact: d.id } })
+  }
+
+  return out
 }
 
 /**
