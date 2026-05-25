@@ -33,10 +33,13 @@ Estrategia en caso de indisponibilidad del sistema externo
 Nivel de acoplamiento (impacto en caso de fallos)
 
 6. Comunicación con el Paciente
-Confirmaciones de preadmisión (correo, SMS, WhatsApp)
-Notificaciones de recordatorio
+Confirmaciones de preadmisión por correo electrónico (SMTP / Google Workspace)
+Verificación de correo en el formulario de preadmisión (código por email)
+Notificaciones de turnos y encuestas por correo
+Notificaciones de recordatorio (correo, cuando se configuren)
 Envío de documentos (ej. consentimientos informados)
-Uso del QR como canal de comunicación o acceso
+Uso del QR para llegada / check-in (complementa el correo, no lo sustituye)
+SMS/WhatsApp: fuera del alcance implementado; evolutivo opcional
 
 7. Documentación y Capacitación
 Disponibilidad de manuales de usuario y técnicos

@@ -76,10 +76,13 @@ Documento elaborado en respuesta a los puntos planteados en `aclaraciones.txt`.
 
 | Aspecto | Respuesta |
 |--------|-----------|
-| **Confirmaciones de preadmisión** | Depende de los canales habilitados en la plataforma (p. ej. notificaciones si existe módulo de correo configurado). **SMS o WhatsApp** suelen requerir **proveedor de mensajería**, costos adicionales y cumplimiento normativo; pueden cotizarse como alcance aparte. |
-| **Notificaciones de recordatorio** | Misma consideración: requieren canal (email/SMS) y configuración del hospital. |
+| **Confirmaciones de preadmisión** | Implementado por **correo electrónico** al completar la preadmisión digital (módulo `notifications`, SMTP del hospital, p. ej. Google Workspace). Requiere variables `SMTP_*` en el servidor. |
+| **Verificación de correo en preadmisión** | Código de verificación enviado al **correo** del paciente antes de continuar el formulario (sin SMS). |
+| **Notificaciones de recordatorio** | Mismo canal **correo** cuando se configuren plantillas o disparadores adicionales; depende de SMTP operativo. |
+| **Turnos y encuestas** | Correo al crear turno (paciente autenticado), al **llamar** turno y al invitar a **encuesta** de satisfacción. |
 | **Envío de documentos** | Consentimientos u otros PDF pueden incorporarse con **desarrollo y almacenamiento** acordados explícitamente. |
-| **Uso del QR** | El QR se utiliza como **identificador para llegada / check-in** y en flujos de visualización; no sustituye por sí solo otros canales bidireccionales (SMS, etc.) salvo que se integren. |
+| **Uso del QR** | El QR se utiliza como **identificador para llegada / check-in** y en flujos de visualización; es independiente del canal de correo. |
+| **SMS / WhatsApp** | **No forman parte del alcance implementado**; si el hospital los requiere en el futuro, serían un evolutivo con proveedor de mensajería y costos aparte. |
 
 ---
 
@@ -118,9 +121,9 @@ Documento elaborado en respuesta a los puntos planteados en `aclaraciones.txt`.
 
 | Aspecto | Respuesta |
 |--------|-----------|
-| **Supuestos para la estimación** | Alcance alineado con los documentos de requisitos acordados (p. ej. Preadmision.md, requisitos.pdf); un entorno de **producción gestionado por el hospital**; integración Cellbyte en modalidad **técnica preparada** hasta validación final con el tercero; sin campañas masivas SMS/WhatsApp salvo cotización explícita. |
+| **Supuestos para la estimación** | Alcance alineado con los documentos de requisitos acordados (p. ej. Preadmision.md, requisitos.pdf); un entorno de **producción gestionado por el hospital**; integración Cellbyte en modalidad **técnica preparada** hasta validación final con el tercero; **notificaciones al paciente vía correo (SMTP)**; sin SMS/WhatsApp salvo cotización explícita de evolutivo. |
 | **Exclusiones del alcance** | Costos de **infraestructura cloud**, dominios, licencias de terceros no incluidas en el desarrollo; asesoría legal exclusiva del hospital; **nuevas integraciones** no descritas en el alcance; despliegues **on-premise** no especificados de antemano; capacitación ilimitada fuera de lo contratado. |
-| **Posibles costos adicionales** | Servicios de hosting y **PostgreSQL gestionado**; SMS/WhatsApp u otros canales de mensajería; integraciones adicionales; horas de **acompañamiento con Cellbyte** en ambiente productivo; **soporte más allá de los 3 meses** según tarifa del contrato ampliado; certificados o WAF avanzados si el hospital los exige. |
+| **Posibles costos adicionales** | Servicios de hosting y **PostgreSQL gestionado**; buzón/cuota **Google Workspace** o SMTP institucional; integraciones adicionales; horas de **acompañamiento con Cellbyte** en ambiente productivo; **soporte más allá de los 3 meses** según tarifa del contrato ampliado; certificados o WAF avanzados si el hospital los exige; **SMS/WhatsApp** solo si se contrata como alcance nuevo. |
 
 ---
 

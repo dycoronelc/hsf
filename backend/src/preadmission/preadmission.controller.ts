@@ -52,16 +52,12 @@ export class PreadmissionController {
 
   @Post('verify-contact/request')
   async requestContactVerification(@Body() body: RequestVerificationDto) {
-    return this.preadmissionService.requestContactVerification(body.channel, body.destination);
+    return this.preadmissionService.requestContactVerification(body.destination);
   }
 
   @Post('verify-contact/confirm')
   async confirmContactVerification(@Body() body: ConfirmVerificationDto) {
-    return this.preadmissionService.confirmContactVerification(
-      body.channel,
-      body.destination,
-      body.code,
-    );
+    return this.preadmissionService.confirmContactVerification(body.destination, body.code);
   }
 
   @Post()

@@ -15,9 +15,6 @@ const user_entity_1 = require("../../users/entities/user.entity");
 var NotificationType;
 (function (NotificationType) {
     NotificationType["EMAIL"] = "email";
-    NotificationType["SMS"] = "sms";
-    NotificationType["WHATSAPP"] = "whatsapp";
-    NotificationType["PUSH"] = "push";
 })(NotificationType || (exports.NotificationType = NotificationType = {}));
 var NotificationStatus;
 (function (NotificationStatus) {

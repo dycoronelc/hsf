@@ -22,7 +22,7 @@
 - **Módulo B:** Reserva/Citas (si el hospital confirma que aplica para esas áreas).
 - **Módulo C:** Preadmisión digital (portal paciente) con validaciones + adjuntos (base64) según PDF/JSON. fileciteturn0file1L1-L20
 - **Módulo D:** Consola operativa (recepción/ventanilla) + Pantalla de llamado.
-- **Módulo E:** Notificaciones (email y SMS/WhatsApp opcional).
+- **Módulo E:** Notificaciones por **correo electrónico** (SMTP / Google Workspace).
 - **Módulo F:** Encuestas de satisfacción post-atención.
 
 ### 1.2 Fase 2 (8–12 semanas)
@@ -62,7 +62,7 @@
 4. **Agenda/Citas (opcional según servicio)**
 5. **Consola Operativa (Staff)**
 6. **Pantallas de Llamado (TV/Displays)**
-7. **Notificaciones y Mensajería**
+7. **Notificaciones por correo electrónico**
 8. **Encuestas / Satisfacción**
 9. **Administración y Configuración**
 10. **Reportes y Analítica**
@@ -85,7 +85,7 @@
 
 ## 4.2 Flujo: Reserva/Cita (si aplica)
 1) Paciente selecciona servicio y fecha/hora (calendario).
-2) Confirmación (email/SMS) + recordatorios.
+2) Confirmación por **correo** + recordatorios (cuando estén configurados).
 3) En el día de la cita, se genera turno y se encola con prioridad “CITA”.
 4) Atención y cierre + encuesta.
 
@@ -95,6 +95,7 @@
 3) Adjunta documentos (cédula, orden médica, etc.) en base64. fileciteturn0file1L21-L36  
 4) Sistema valida campos obligatorios y formatos (fechas, códigos, etc.).
 5) Sistema genera un **expediente de preadmisión** con ID/QR.
+5b) Se envía **confirmación por correo** al email del paciente (SMTP del hospital).
 6) Personal del hospital revisa/acepta/rechaza (con observaciones).
 7) Si aceptado: se genera turno/cita según reglas; si requiere subsanación: paciente recibe lista de faltantes.
 
@@ -320,7 +321,7 @@ KPIs por sede/área/servicio:
 - API (FastAPI / Node)  
 - Motor de colas (tabla + reglas + scheduler)  
 - Servicio de documentos (base64→obj storage)  
-- Servicio de notificaciones (email/SMS/WA)  
+- Servicio de notificaciones por **correo** (nodemailer + SMTP; p. ej. Google Workspace)  
 
 ## 11.3 Datos
 - PostgreSQL (transaccional)
@@ -389,4 +390,4 @@ Genera código inicial, modelos, endpoints y pantallas.
 3. Confirmar campos no descritos en PDF (ej. `ssimagen`). fileciteturn0file0  
 4. ¿Habrá integración con el portal de resultados y/o LIS/RIS? citeturn0search6  
 5. ¿Reglas de prioridad (adulto mayor, embarazo, etc.)?
-6. Canales de notificación autorizados (email/SMS/WhatsApp).
+6. Confirmar buzón SMTP institucional (p. ej. `pagos@hospitalsantafepanama.com`) y política de envío; la plataforma implementada usa **solo correo** (sin SMS/WhatsApp).

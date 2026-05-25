@@ -37,10 +37,10 @@ let PreadmissionController = class PreadmissionController {
         return this.preadmissionService.parseCedulaQrPayload(body.raw);
     }
     async requestContactVerification(body) {
-        return this.preadmissionService.requestContactVerification(body.channel, body.destination);
+        return this.preadmissionService.requestContactVerification(body.destination);
     }
     async confirmContactVerification(body) {
-        return this.preadmissionService.confirmContactVerification(body.channel, body.destination, body.code);
+        return this.preadmissionService.confirmContactVerification(body.destination, body.code);
     }
     async create(createDto, req) {
         return this.preadmissionService.create(createDto, req.user.id);

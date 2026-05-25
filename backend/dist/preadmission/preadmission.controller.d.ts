@@ -9,14 +9,12 @@ export declare class PreadmissionController {
     parseCedulaQr(body: ParseCedulaQrDto): Promise<Record<string, string>>;
     requestContactVerification(body: RequestVerificationDto): Promise<{
         message: string;
-        channel: "email" | "sms";
         destination: string;
         expiresAt: Date;
         previewCode: string;
     }>;
     confirmContactVerification(body: ConfirmVerificationDto): Promise<{
         message: string;
-        channel: "email" | "sms";
         destination: string;
     }>;
     create(createDto: CreatePreadmissionDto, req: any): Promise<import("./entities/preadmission.entity").Preadmission>;

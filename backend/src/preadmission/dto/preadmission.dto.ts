@@ -170,18 +170,12 @@ export class ParseCedulaQrDto {
 }
 
 export class RequestVerificationDto {
-  @IsEnum(['email', 'sms'])
-  channel: 'email' | 'sms';
-
-  @IsString()
+  @IsEmail()
   destination: string;
 }
 
 export class ConfirmVerificationDto {
-  @IsEnum(['email', 'sms'])
-  channel: 'email' | 'sms';
-
-  @IsString()
+  @IsEmail()
   destination: string;
 
   @IsString()

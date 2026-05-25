@@ -34,9 +34,7 @@ export default function PreadmissionPage() {
   const [corregimientos, setCorregimientos] = useState<Array<{codigo: string, nombre: string}>>([])
   
   const [emailCode, setEmailCode] = useState('')
-  const [smsCode, setSmsCode] = useState('')
   const [emailVerified, setEmailVerified] = useState(false)
-  const [phoneVerified, setPhoneVerified] = useState(false)
   const [verificationHint, setVerificationHint] = useState('')
 
   const [formData, setFormData] = useState({
@@ -310,21 +308,18 @@ export default function PreadmissionPage() {
     }
   }
 
-  const requestVerification = async (channel: 'email' | 'sms') => {
+  const requestVerification = async () => {
     setVerificationHint('')
-    const destination =
-      channel === 'email'
-        ? formData.email.trim().toLowerCase()
-        : `+${formData.celularPrefix}${formData.celular.replace(/\D/g, '')}`
+    const destination = formData.email.trim().toLowerCase()
     if (!destination) {
-      setError(channel === 'email' ? 'Ingrese un correo válido' : 'Ingrese un celular válido')
+      setError('Ingrese un correo válido')
       return
     }
     try {
       const response = await fetch('/api/preadmission/verify-contact/request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, destination }),
+        body: JSON.stringify({ destination }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
@@ -332,33 +327,28 @@ export default function PreadmissionPage() {
       }
       setVerificationHint(
         data.previewCode
-          ? `Código de prueba (${channel}): ${data.previewCode}`
-          : 'Código enviado. Revise su correo o SMS.',
+          ? `Código de prueba (desarrollo): ${data.previewCode}`
+          : 'Código enviado. Revise su bandeja de correo.',
       )
     } catch (err: any) {
       setError(err.message)
     }
   }
 
-  const confirmVerification = async (channel: 'email' | 'sms') => {
-    const destination =
-      channel === 'email'
-        ? formData.email.trim().toLowerCase()
-        : `+${formData.celularPrefix}${formData.celular.replace(/\D/g, '')}`
-    const code = channel === 'email' ? emailCode : smsCode
+  const confirmVerification = async () => {
+    const destination = formData.email.trim().toLowerCase()
     try {
       const response = await fetch('/api/preadmission/verify-contact/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ channel, destination, code }),
+        body: JSON.stringify({ destination, code: emailCode }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
         throw new Error(data.message || 'Código inválido')
       }
-      if (channel === 'email') setEmailVerified(true)
-      else setPhoneVerified(true)
-      setVerificationHint('Verificación completada')
+      setEmailVerified(true)
+      setVerificationHint('Correo verificado')
     } catch (err: any) {
       setError(err.message)
     }
@@ -377,7 +367,7 @@ export default function PreadmissionPage() {
       case 4:
         return !!(formData.email && formData.celular && formData.provincia1 &&
                   formData.distrito1 && formData.corregimiento1 && formData.direccion1 &&
-                  emailVerified && phoneVerified)
+                  emailVerified)
       case 5:
         return !!(formData.encasourgencia && formData.relacion && 
                   formData.email3 && formData.celular3)
@@ -836,7 +826,6 @@ export default function PreadmissionPage() {
                       type="tel"
                       value={formData.celular}
                       onChange={(e) => {
-                        setPhoneVerified(false)
                         setFormData({ ...formData, celular: e.target.value.replace(/[^\d\s-]/g, '') })
                       }}
                       className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg"
@@ -846,38 +835,22 @@ export default function PreadmissionPage() {
                   </div>
                 </div>
                 <div className="md:col-span-2 border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 space-y-3">
-                  <p className="text-sm text-gray-700 font-medium">Verificación de contacto</p>
+                  <p className="text-sm text-gray-700 font-medium">Verificación de correo electrónico</p>
                   <div className="flex flex-wrap gap-2 items-center">
-                    <button type="button" onClick={() => requestVerification('email')} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">
+                    <button type="button" onClick={() => requestVerification()} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">
                       Enviar código al correo
                     </button>
                     <input
                       type="text"
                       value={emailCode}
                       onChange={(e) => setEmailCode(e.target.value)}
-                      placeholder="Código email"
+                      placeholder="Código recibido"
                       className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
                     />
-                    <button type="button" onClick={() => confirmVerification('email')} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
-                      Confirmar email
+                    <button type="button" onClick={() => confirmVerification()} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
+                      Confirmar correo
                     </button>
                     {emailVerified && <span className="text-green-700 text-sm">Correo verificado</span>}
-                  </div>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <button type="button" onClick={() => requestVerification('sms')} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">
-                      Enviar código SMS
-                    </button>
-                    <input
-                      type="text"
-                      value={smsCode}
-                      onChange={(e) => setSmsCode(e.target.value)}
-                      placeholder="Código SMS"
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                    />
-                    <button type="button" onClick={() => confirmVerification('sms')} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
-                      Confirmar celular
-                    </button>
-                    {phoneVerified && <span className="text-green-700 text-sm">Celular verificado</span>}
                   </div>
                   {verificationHint && <p className="text-xs text-gray-600">{verificationHint}</p>}
                 </div>

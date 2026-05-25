@@ -47,11 +47,9 @@ export declare class ParseCedulaQrDto {
     raw: string;
 }
 export declare class RequestVerificationDto {
-    channel: 'email' | 'sms';
     destination: string;
 }
 export declare class ConfirmVerificationDto {
-    channel: 'email' | 'sms';
     destination: string;
     code: string;
 }

@@ -3,6 +3,7 @@ import {
   NotFoundException,
   BadRequestException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -16,11 +17,17 @@ import { TicketsService } from '../tickets/tickets.service';
 import { parseCedulaQr } from './utils/parse-cedula-qr';
 import { AuditService } from '../audit/audit.service';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
+import {
+  NotificationsService,
+  isSmtpDeliveryEnabled,
+} from '../notifications/notifications.service';
 
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 
 @Injectable()
 export class PreadmissionService {
+  private readonly logger = new Logger(PreadmissionService.name);
+
   constructor(
     @InjectRepository(Preadmission)
     private preadmissionRepository: Repository<Preadmission>,
@@ -29,6 +36,7 @@ export class PreadmissionService {
     private readonly cellbyteService: CellbyteService,
     private readonly ticketsService: TicketsService,
     private readonly auditService: AuditService,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   private generateQrCode(): string {
@@ -112,6 +120,27 @@ export class PreadmissionService {
       saved.cellbyteSentAt = new Date();
       await this.preadmissionRepository.save(saved);
     }).catch(() => undefined);
+
+    this.notificationsService
+      .sendPreadmissionConfirmation({
+        id: saved.id,
+        email: saved.email,
+        name1: saved.name1,
+        name2: saved.name2,
+        apellido1: saved.apellido1,
+        apellido2: saved.apellido2,
+        departamento: saved.departamento,
+        fechaprobableatencion: saved.fechaprobableatencion,
+        qrCode: saved.qrCode,
+        celular: saved.celular,
+        fechapreadmision: saved.fechapreadmision,
+      })
+      .catch((err) => {
+        this.logger.error(
+          `No se pudo enviar confirmación por correo (preadmisión #${saved.id})`,
+          err,
+        );
+      });
 
     return saved;
   }
@@ -226,35 +255,42 @@ export class PreadmissionService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async requestContactVerification(channel: 'email' | 'sms', destination: string) {
+  async requestContactVerification(destination: string) {
     const normalized = destination.trim().toLowerCase();
     if (!normalized) {
-      throw new BadRequestException('Destino de verificación inválido');
+      throw new BadRequestException('Correo de verificación inválido');
     }
     const code = this.generateVerificationCode();
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     await this.verificationRepository.save(
       this.verificationRepository.create({
-        channel,
+        channel: 'email',
         destination: normalized,
         code,
         expiresAt,
         verified: false,
       }),
     );
+
+    try {
+      await this.notificationsService.sendEmailVerificationCode(normalized, code);
+    } catch (err) {
+      this.logger.error(`No se pudo enviar código de verificación a ${normalized}`, err);
+      throw new BadRequestException('No se pudo enviar el código al correo. Intente más tarde.');
+    }
+
     return {
-      message: 'Código de verificación generado',
-      channel,
+      message: 'Código enviado al correo',
       destination: normalized,
       expiresAt,
-      previewCode: process.env.NODE_ENV === 'production' ? undefined : code,
+      previewCode: isSmtpDeliveryEnabled() ? undefined : code,
     };
   }
 
-  async confirmContactVerification(channel: 'email' | 'sms', destination: string, code: string) {
+  async confirmContactVerification(destination: string, code: string) {
     const normalized = destination.trim().toLowerCase();
     const row = await this.verificationRepository.findOne({
-      where: { channel, destination: normalized, code, verified: false },
+      where: { channel: 'email', destination: normalized, code, verified: false },
       order: { createdAt: 'DESC' },
     });
     if (!row || row.expiresAt < new Date()) {
@@ -262,6 +298,6 @@ export class PreadmissionService {
     }
     row.verified = true;
     await this.verificationRepository.save(row);
-    return { message: 'Verificación exitosa', channel, destination: normalized };
+    return { message: 'Correo verificado', destination: normalized };
   }
 }

@@ -7,6 +7,7 @@ import { VerificationCode } from '../auth/entities/verification-code.entity';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PermissionsModule } from '../permissions/permissions.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { PermissionsModule } from '../permissions/permissions.module';
     PermissionsModule,
     IntegrationsModule,
     TicketsModule,
+    NotificationsModule,
   ],
   controllers: [PreadmissionController],
   providers: [PreadmissionService],

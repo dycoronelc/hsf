@@ -16,6 +16,7 @@ const verification_code_entity_1 = require("../auth/entities/verification-code.e
 const integrations_module_1 = require("../integrations/integrations.module");
 const tickets_module_1 = require("../tickets/tickets.module");
 const permissions_module_1 = require("../permissions/permissions.module");
+const notifications_module_1 = require("../notifications/notifications.module");
 let PreadmissionModule = class PreadmissionModule {
 };
 exports.PreadmissionModule = PreadmissionModule;
@@ -26,6 +27,7 @@ exports.PreadmissionModule = PreadmissionModule = __decorate([
             permissions_module_1.PermissionsModule,
             integrations_module_1.IntegrationsModule,
             tickets_module_1.TicketsModule,
+            notifications_module_1.NotificationsModule,
         ],
         controllers: [preadmission_controller_1.PreadmissionController],
         providers: [preadmission_service_1.PreadmissionService],

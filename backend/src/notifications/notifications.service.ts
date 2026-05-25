@@ -5,6 +5,40 @@ import { Notification, NotificationType, NotificationStatus } from './entities/n
 import { User } from '../users/entities/user.entity';
 import { CreateNotificationDto } from './dto/notification.dto';
 import * as nodemailer from 'nodemailer';
+import type { Attachment } from 'nodemailer/lib/mailer';
+import {
+  buildPreadmissionQrEmailParts,
+  preadmissionQrPayload,
+} from './qr-email.util';
+
+export type PreadmissionConfirmationPayload = {
+  id: number;
+  email: string;
+  name1: string;
+  name2?: string | null;
+  apellido1: string;
+  apellido2?: string | null;
+  departamento: string;
+  fechaprobableatencion?: string | null;
+  qrCode?: string | null;
+  celular: string;
+  fechapreadmision: Date;
+};
+
+/** Envío real SMTP: producción o desarrollo con SMTP_SEND_IN_DEV=true */
+export function isSmtpDeliveryEnabled(): boolean {
+  return (
+    process.env.NODE_ENV === 'production' || process.env.SMTP_SEND_IN_DEV === 'true'
+  );
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
 
 @Injectable()
 export class NotificationsService {
@@ -17,11 +51,10 @@ export class NotificationsService {
     @InjectRepository(User)
     private userRepository: Repository<User>,
   ) {
-    // Configurar transporter de email (usar variables de entorno en producción)
     this.emailTransporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || 'smtp.gmail.com',
       port: parseInt(process.env.SMTP_PORT || '587'),
-      secure: false, // true para 465, false para otros puertos
+      secure: false,
       auth: {
         user: process.env.SMTP_USER || 'test@example.com',
         pass: process.env.SMTP_PASS || 'password',
@@ -30,6 +63,10 @@ export class NotificationsService {
   }
 
   async create(createDto: CreateNotificationDto): Promise<Notification> {
+    if (createDto.type !== NotificationType.EMAIL) {
+      throw new Error('Solo se admiten notificaciones por correo electrónico');
+    }
+
     const notification = this.notificationRepository.create({
       ...createDto,
       status: NotificationStatus.PENDING,
@@ -37,7 +74,6 @@ export class NotificationsService {
 
     const saved = await this.notificationRepository.save(notification);
 
-    // Enviar notificación de forma asíncrona
     this.sendNotification(saved).catch((error) => {
       this.logger.error(`Error sending notification ${saved.id}:`, error);
     });
@@ -55,19 +91,11 @@ export class NotificationsService {
         throw new Error('Usuario no encontrado');
       }
 
-      switch (notification.type) {
-        case NotificationType.EMAIL:
-          await this.sendEmail(user.email, notification.subject, notification.content);
-          break;
-        case NotificationType.SMS:
-          await this.sendSMS(user.phone ?? '', notification.content);
-          break;
-        case NotificationType.WHATSAPP:
-          await this.sendWhatsApp(user.phone ?? '', notification.content);
-          break;
-        default:
-          throw new Error(`Tipo de notificación no soportado: ${notification.type}`);
+      if (notification.type !== NotificationType.EMAIL) {
+        throw new Error(`Tipo de notificación no soportado: ${notification.type}`);
       }
+
+      await this.sendEmail(user.email, notification.subject, notification.content);
 
       notification.status = NotificationStatus.SENT;
       notification.sentAt = new Date();
@@ -80,40 +108,42 @@ export class NotificationsService {
     }
   }
 
-  private async sendEmail(to: string, subject: string, content: string): Promise<void> {
-    // En desarrollo, solo loguear. En producción, enviar email real
-    if (process.env.NODE_ENV === 'production') {
+  private async sendEmail(
+    to: string,
+    subject: string,
+    content: string,
+    attachments?: Attachment[],
+  ): Promise<void> {
+    if (isSmtpDeliveryEnabled()) {
       await this.emailTransporter.sendMail({
         from: process.env.SMTP_FROM || 'noreply@hospitalsantafe.com',
         to,
         subject,
         html: content,
+        attachments,
       });
       this.logger.log(`Email sent to ${to}`);
     } else {
       this.logger.log(`[DEV] Email would be sent to ${to}: ${subject}`);
+      if (attachments?.length) {
+        this.logger.debug(`[DEV] ${attachments.length} attachment(s) (e.g. QR inline)`);
+      }
       this.logger.debug(`Content: ${content}`);
     }
   }
 
-  private async sendSMS(phone: string, message: string): Promise<void> {
-    // Implementación básica - en producción usar Twilio u otro servicio
-    if (process.env.NODE_ENV === 'production' && process.env.TWILIO_ACCOUNT_SID) {
-      // TODO: Implementar con Twilio
-      this.logger.log(`SMS would be sent to ${phone}: ${message}`);
-    } else {
-      this.logger.log(`[DEV] SMS would be sent to ${phone}: ${message}`);
-    }
-  }
-
-  private async sendWhatsApp(phone: string, message: string): Promise<void> {
-    // Implementación básica - en producción usar WhatsApp Business API
-    if (process.env.NODE_ENV === 'production' && process.env.WHATSAPP_API_KEY) {
-      // TODO: Implementar con WhatsApp Business API
-      this.logger.log(`WhatsApp would be sent to ${phone}: ${message}`);
-    } else {
-      this.logger.log(`[DEV] WhatsApp would be sent to ${phone}: ${message}`);
-    }
+  /** Código de verificación de correo en preadmisión */
+  async sendEmailVerificationCode(to: string, code: string): Promise<void> {
+    const content = `
+      <div style="font-family: Arial, sans-serif; max-width: 480px;">
+        <h2 style="color: #0066cc;">Verificación de correo</h2>
+        <p>Su código de verificación para la preadmisión digital es:</p>
+        <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">${escapeHtml(code)}</p>
+        <p style="color: #6b7280; font-size: 14px;">Válido por 15 minutos. No comparta este código.</p>
+        <p>Hospital Santa Fe Panamá</p>
+      </div>
+    `;
+    await this.sendEmail(to, 'Código de verificación - Hospital Santa Fe', content);
   }
 
   async sendTicketCreated(
@@ -143,6 +173,76 @@ export class NotificationsService {
     });
   }
 
+  async sendPreadmissionConfirmation(data: PreadmissionConfirmationPayload): Promise<void> {
+    const to = data.email?.trim().toLowerCase();
+    if (!to) {
+      this.logger.warn(`Preadmisión #${data.id}: sin correo, no se envía confirmación`);
+      return;
+    }
+
+    const nombre = [data.name1, data.name2, data.apellido1, data.apellido2]
+      .filter(Boolean)
+      .join(' ');
+    const dept =
+      data.departamento === 'RAD'
+        ? 'Radiología'
+        : data.departamento === 'LAB'
+          ? 'Laboratorio'
+          : data.departamento;
+    const fechaRegistro = data.fechapreadmision.toLocaleDateString('es-PA', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+    const fechaAtencion = data.fechaprobableatencion
+      ? escapeHtml(data.fechaprobableatencion)
+      : 'Por confirmar';
+
+    const qrPayload = preadmissionQrPayload(data.qrCode, data.id);
+    let qrHtmlBlock = '';
+    let attachments: Attachment[] | undefined;
+    try {
+      const qrParts = await buildPreadmissionQrEmailParts(qrPayload);
+      qrHtmlBlock = qrParts.htmlBlock;
+      attachments = qrParts.attachments;
+    } catch (err) {
+      this.logger.warn(
+        `No se pudo generar imagen QR para preadmisión #${data.id}; se envía solo texto`,
+        err,
+      );
+      qrHtmlBlock = `
+        <p style="font-family: monospace; font-size: 14px;"><strong>Código para su llegada:</strong> ${escapeHtml(qrPayload)}</p>`;
+    }
+
+    const content = `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; color: #1f2937;">
+        <h2 style="color: #0066cc;">Preadmisión recibida</h2>
+        <p>Estimado(a) <strong>${escapeHtml(nombre)}</strong>,</p>
+        <p>Hemos recibido su <strong>preadmisión digital</strong> en Hospital Santa Fe Panamá.</p>
+        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Referencia</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">#${data.id}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Área</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(dept)}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Fecha probable de atención</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${fechaAtencion}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Registrado el</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(fechaRegistro)}</td></tr>
+          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Contacto</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(data.celular)}</td></tr>
+        </table>
+        ${qrHtmlBlock}
+        <p>Conserve este correo. Al llegar al hospital, presente el <strong>QR</strong> o el código en recepción para registrar su llegada.</p>
+        <p style="color: #6b7280; font-size: 14px;">Si no realizó esta preadmisión, contacte al hospital.</p>
+        <p style="margin-top: 24px;">Hospital Santa Fe Panamá</p>
+      </div>
+    `;
+
+    await this.sendEmail(
+      to,
+      `Confirmación de preadmisión #${data.id} - Hospital Santa Fe`,
+      content,
+      attachments,
+    );
+  }
+
   async sendTicketCalled(
     userId: number,
     ticketNumber: string,
@@ -157,8 +257,8 @@ export class NotificationsService {
 
     await this.create({
       recipientId: userId,
-      type: NotificationType.SMS,
-      subject: `Turno ${ticketNumber} Llamado`,
+      type: NotificationType.EMAIL,
+      subject: `Turno ${ticketNumber} Llamado - Hospital Santa Fe`,
       content,
       relatedEntityType: 'ticket',
     });

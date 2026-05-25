@@ -80,7 +80,7 @@ Puedes registrar un nuevo paciente desde la página de registro.
 1. Configurar variables de entorno (`.env`)
 2. Configurar base de datos PostgreSQL para producción
 3. Integrar con sistemas del hospital
-4. Configurar notificaciones (email/SMS)
+4. Configurar notificaciones por correo (SMTP) — ver [docs/GUIA_SMTP_GOOGLE_WORKSPACE.md](docs/GUIA_SMTP_GOOGLE_WORKSPACE.md)
 
 ## Solución de Problemas
 

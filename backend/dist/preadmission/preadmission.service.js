@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var PreadmissionService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PreadmissionService = void 0;
 const common_1 = require("@nestjs/common");
@@ -24,14 +25,17 @@ const tickets_service_1 = require("../tickets/tickets.service");
 const parse_cedula_qr_1 = require("./utils/parse-cedula-qr");
 const audit_service_1 = require("../audit/audit.service");
 const verification_code_entity_1 = require("../auth/entities/verification-code.entity");
+const notifications_service_1 = require("../notifications/notifications.service");
 const NAME_RE = /^[\p{L}\s'-]+$/u;
-let PreadmissionService = class PreadmissionService {
-    constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService) {
+let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
+    constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService, notificationsService) {
         this.preadmissionRepository = preadmissionRepository;
         this.verificationRepository = verificationRepository;
         this.cellbyteService = cellbyteService;
         this.ticketsService = ticketsService;
         this.auditService = auditService;
+        this.notificationsService = notificationsService;
+        this.logger = new common_1.Logger(PreadmissionService_1.name);
     }
     generateQrCode() {
         return crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -102,6 +106,23 @@ let PreadmissionService = class PreadmissionService {
             saved.cellbyteSentAt = new Date();
             await this.preadmissionRepository.save(saved);
         }).catch(() => undefined);
+        this.notificationsService
+            .sendPreadmissionConfirmation({
+            id: saved.id,
+            email: saved.email,
+            name1: saved.name1,
+            name2: saved.name2,
+            apellido1: saved.apellido1,
+            apellido2: saved.apellido2,
+            departamento: saved.departamento,
+            fechaprobableatencion: saved.fechaprobableatencion,
+            qrCode: saved.qrCode,
+            celular: saved.celular,
+            fechapreadmision: saved.fechapreadmision,
+        })
+            .catch((err) => {
+            this.logger.error(`No se pudo enviar confirmación por correo (preadmisión #${saved.id})`, err);
+        });
         return saved;
     }
     async findAll(user, skip = 0, limit = 100) {
@@ -184,32 +205,38 @@ let PreadmissionService = class PreadmissionService {
     generateVerificationCode() {
         return Math.floor(100000 + Math.random() * 900000).toString();
     }
-    async requestContactVerification(channel, destination) {
+    async requestContactVerification(destination) {
         const normalized = destination.trim().toLowerCase();
         if (!normalized) {
-            throw new common_1.BadRequestException('Destino de verificación inválido');
+            throw new common_1.BadRequestException('Correo de verificación inválido');
         }
         const code = this.generateVerificationCode();
         const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
         await this.verificationRepository.save(this.verificationRepository.create({
-            channel,
+            channel: 'email',
             destination: normalized,
             code,
             expiresAt,
             verified: false,
         }));
+        try {
+            await this.notificationsService.sendEmailVerificationCode(normalized, code);
+        }
+        catch (err) {
+            this.logger.error(`No se pudo enviar código de verificación a ${normalized}`, err);
+            throw new common_1.BadRequestException('No se pudo enviar el código al correo. Intente más tarde.');
+        }
         return {
-            message: 'Código de verificación generado',
-            channel,
+            message: 'Código enviado al correo',
             destination: normalized,
             expiresAt,
-            previewCode: process.env.NODE_ENV === 'production' ? undefined : code,
+            previewCode: (0, notifications_service_1.isSmtpDeliveryEnabled)() ? undefined : code,
         };
     }
-    async confirmContactVerification(channel, destination, code) {
+    async confirmContactVerification(destination, code) {
         const normalized = destination.trim().toLowerCase();
         const row = await this.verificationRepository.findOne({
-            where: { channel, destination: normalized, code, verified: false },
+            where: { channel: 'email', destination: normalized, code, verified: false },
             order: { createdAt: 'DESC' },
         });
         if (!row || row.expiresAt < new Date()) {
@@ -217,11 +244,11 @@ let PreadmissionService = class PreadmissionService {
         }
         row.verified = true;
         await this.verificationRepository.save(row);
-        return { message: 'Verificación exitosa', channel, destination: normalized };
+        return { message: 'Correo verificado', destination: normalized };
     }
 };
 exports.PreadmissionService = PreadmissionService;
-exports.PreadmissionService = PreadmissionService = __decorate([
+exports.PreadmissionService = PreadmissionService = PreadmissionService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(preadmission_entity_1.Preadmission)),
     __param(1, (0, typeorm_1.InjectRepository)(verification_code_entity_1.VerificationCode)),
@@ -229,6 +256,7 @@ exports.PreadmissionService = PreadmissionService = __decorate([
         typeorm_2.Repository,
         cellbyte_service_1.CellbyteService,
         tickets_service_1.TicketsService,
-        audit_service_1.AuditService])
+        audit_service_1.AuditService,
+        notifications_service_1.NotificationsService])
 ], PreadmissionService);
 //# sourceMappingURL=preadmission.service.js.map

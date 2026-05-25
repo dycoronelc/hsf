@@ -1,9 +1,6 @@
 import { User } from '../../users/entities/user.entity';
 export declare enum NotificationType {
-    EMAIL = "email",
-    SMS = "sms",
-    WHATSAPP = "whatsapp",
-    PUSH = "push"
+    EMAIL = "email"
 }
 export declare enum NotificationStatus {
     PENDING = "pending",

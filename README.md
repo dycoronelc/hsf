@@ -143,6 +143,14 @@ Con ambos en marcha, el sistema queda listo para usar.
 - JWT tokens
 - Roles: paciente, recepción, técnico, supervisor, admin, auditor
 
+### 5. Notificaciones por correo
+- Canal único: **correo electrónico** (SMTP; compatible con Google Workspace)
+- Confirmación al enviar **preadmisión digital**
+- Código de **verificación de correo** en el wizard de preadmisión
+- Avisos de **turno creado**, **turno llamado** y **encuesta** (pacientes con cuenta)
+- Variables: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`
+- En local, envío real opcional: `SMTP_SEND_IN_DEV=true` (ver `.env.example`)
+
 ## API Endpoints
 
 ### Autenticación
@@ -185,18 +193,33 @@ La mayoría de las que reporta el informe están en dependencias de desarrollo (
 
 ## Configuración
 
-Crea un archivo `.env` en la raíz del proyecto (o `.env.local`):
+Crea un archivo `.env` en la raíz del proyecto (o `.env.local`). Plantilla completa en `.env.example`.
 
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
 ```
 
-Si no existe, el frontend suele tomar por defecto `http://localhost:8000` para la API. La base SQLite se genera en `backend/hospital_santa_fe.db` al ejecutar `npm run backend:init`.
+**Correo (backend):** no incluir contraseñas en el código. Configurar en el servidor o en `.env` local (no versionado):
+
+```
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_USER=pagos@hospitalsantafepanama.com
+SMTP_PASS=<contraseña de aplicación de Google Workspace>
+SMTP_FROM="Hospital Santa Fe <pagos@hospitalsantafepanama.com>"
+SMTP_SEND_IN_DEV=true
+```
+
+En producción use `NODE_ENV=production`. Sin `SMTP_SEND_IN_DEV`, en desarrollo solo se registran los correos en log.
+
+**Guía paso a paso para el hospital (Google Workspace + contraseña de aplicación):** [docs/GUIA_SMTP_GOOGLE_WORKSPACE.md](docs/GUIA_SMTP_GOOGLE_WORKSPACE.md)
+
+Si no existe `NEXT_PUBLIC_API_URL`, el frontend suele tomar por defecto `http://localhost:8000` para la API. La base SQLite se genera en `backend/hospital_santa_fe.db` al ejecutar `npm run backend:init`.
 
 ## Próximos Pasos
 
 - [ ] Integración con sistemas HIS/LIS/RIS
-- [ ] Configurar SMTP/SMS para notificaciones en producción
+- [x] Notificaciones por correo (implementado; falta SMTP en producción del hospital)
 - [ ] Call center / videollamada
 - [ ] Kiosko físico para check-in
 

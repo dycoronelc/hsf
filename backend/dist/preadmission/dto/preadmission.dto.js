@@ -220,22 +220,14 @@ class RequestVerificationDto {
 }
 exports.RequestVerificationDto = RequestVerificationDto;
 __decorate([
-    (0, class_validator_1.IsEnum)(['email', 'sms']),
-    __metadata("design:type", String)
-], RequestVerificationDto.prototype, "channel", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], RequestVerificationDto.prototype, "destination", void 0);
 class ConfirmVerificationDto {
 }
 exports.ConfirmVerificationDto = ConfirmVerificationDto;
 __decorate([
-    (0, class_validator_1.IsEnum)(['email', 'sms']),
-    __metadata("design:type", String)
-], ConfirmVerificationDto.prototype, "channel", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
+    (0, class_validator_1.IsEmail)(),
     __metadata("design:type", String)
 ], ConfirmVerificationDto.prototype, "destination", void 0);
 __decorate([

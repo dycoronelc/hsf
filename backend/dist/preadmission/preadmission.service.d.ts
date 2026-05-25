@@ -7,13 +7,16 @@ import { CellbyteService } from '../integrations/cellbyte.service';
 import { TicketsService } from '../tickets/tickets.service';
 import { AuditService } from '../audit/audit.service';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 export declare class PreadmissionService {
     private preadmissionRepository;
     private verificationRepository;
     private readonly cellbyteService;
     private readonly ticketsService;
     private readonly auditService;
-    constructor(preadmissionRepository: Repository<Preadmission>, verificationRepository: Repository<VerificationCode>, cellbyteService: CellbyteService, ticketsService: TicketsService, auditService: AuditService);
+    private readonly notificationsService;
+    private readonly logger;
+    constructor(preadmissionRepository: Repository<Preadmission>, verificationRepository: Repository<VerificationCode>, cellbyteService: CellbyteService, ticketsService: TicketsService, auditService: AuditService, notificationsService: NotificationsService);
     private generateQrCode;
     parseCedulaQrPayload(raw: string): Record<string, string>;
     private assertNamesAndAddress;
@@ -35,16 +38,14 @@ export declare class PreadmissionService {
         status: PreadmissionStatus;
     }>;
     private generateVerificationCode;
-    requestContactVerification(channel: 'email' | 'sms', destination: string): Promise<{
+    requestContactVerification(destination: string): Promise<{
         message: string;
-        channel: "email" | "sms";
         destination: string;
         expiresAt: Date;
         previewCode: string;
     }>;
-    confirmContactVerification(channel: 'email' | 'sms', destination: string, code: string): Promise<{
+    confirmContactVerification(destination: string, code: string): Promise<{
         message: string;
-        channel: "email" | "sms";
         destination: string;
     }>;
 }
