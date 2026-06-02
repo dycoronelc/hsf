@@ -2,9 +2,10 @@
 
 import { useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
+import { HospitalLogo } from './HospitalLogo'
+import { isPatientRole } from '@/lib/authRoles'
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuth()
@@ -37,7 +38,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">
               <Link href={homeHref} className="block">
-                <Image src="/logo-hospital-santa-fe.svg" alt="Hospital Santa Fe" width={140} height={36} className="h-9 w-auto object-contain" />
+                <HospitalLogo />
               </Link>
             </div>
             <nav className="flex items-center gap-4">
@@ -46,12 +47,16 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   <Link href="/dashboard" className="text-white/90 hover:text-white font-medium">
                     Inicio
                   </Link>
-                  <Link href="/preadmission" className="text-white/90 hover:text-white font-medium">
-                    Preadmisión
-                  </Link>
-                  <Link href="/tickets" className="text-white/90 hover:text-white font-medium">
-                    Mis Turnos
-                  </Link>
+                  {isPatientRole(user?.role) && (
+                    <>
+                      <Link href="/preadmission" className="text-white/90 hover:text-white font-medium">
+                        Preadmisión
+                      </Link>
+                      <Link href="/tickets" className="text-white/90 hover:text-white font-medium">
+                        Mis Turnos
+                      </Link>
+                    </>
+                  )}
                   {(user?.role === 'anfitrion' ||
                     user?.role === 'admin' ||
                     user?.role === 'supervisor' ||

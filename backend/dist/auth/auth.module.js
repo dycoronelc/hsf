@@ -17,6 +17,7 @@ const jwt_strategy_1 = require("./jwt.strategy");
 const users_module_1 = require("../users/users.module");
 const typeorm_1 = require("@nestjs/typeorm");
 const password_reset_token_entity_1 = require("./entities/password-reset-token.entity");
+const notifications_module_1 = require("../notifications/notifications.module");
 let AuthModule = class AuthModule {
 };
 exports.AuthModule = AuthModule;
@@ -24,6 +25,7 @@ exports.AuthModule = AuthModule = __decorate([
     (0, common_1.Module)({
         imports: [
             users_module_1.UsersModule,
+            notifications_module_1.NotificationsModule,
             typeorm_1.TypeOrmModule.forFeature([password_reset_token_entity_1.PasswordResetToken]),
             passport_1.PassportModule,
             jwt_1.JwtModule.registerAsync({

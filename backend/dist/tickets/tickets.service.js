@@ -421,7 +421,7 @@ let TicketsService = class TicketsService {
             patientId: pre.patientId ?? null,
             serviceId: admService.id,
             priority: enums_1.Priority.NORMAL,
-            status: enums_1.TicketStatus.CREADO,
+            status: enums_1.TicketStatus.CHECK_IN,
             qrCode: this.generateQrCode(),
             preadmissionId: pre.id,
         });

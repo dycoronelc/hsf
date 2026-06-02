@@ -214,6 +214,8 @@ En producción use `NODE_ENV=production`. Sin `SMTP_SEND_IN_DEV`, en desarrollo 
 
 **Guía paso a paso para el hospital (Google Workspace + contraseña de aplicación):** [docs/GUIA_SMTP_GOOGLE_WORKSPACE.md](docs/GUIA_SMTP_GOOGLE_WORKSPACE.md)
 
+**Documento técnico de infraestructura y despliegue (TI del hospital):** [docs/INFRAESTRUCTURA_DESPLIEGUE_HOSPITAL.md](docs/INFRAESTRUCTURA_DESPLIEGUE_HOSPITAL.md)
+
 Si no existe `NEXT_PUBLIC_API_URL`, el frontend suele tomar por defecto `http://localhost:8000` para la API. La base SQLite se genera en `backend/hospital_santa_fe.db` al ejecutar `npm run backend:init`.
 
 ## Próximos Pasos

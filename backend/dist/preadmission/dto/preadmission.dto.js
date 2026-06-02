@@ -169,11 +169,6 @@ __decorate([
     (0, class_validator_1.IsOptional)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "carnetseguro", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "diagnostico", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
@@ -185,30 +180,6 @@ __decorate([
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "numerocotizacion", void 0);
-__decorate([
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "cedulaimagen", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "ordenimagen", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "preautorizacion", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "certificadoSeguro", void 0);
-__decorate([
-    (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.IsString)(),
-    __metadata("design:type", String)
-], CreatePreadmissionDto.prototype, "ssimagen", void 0);
 class ParseCedulaQrDto {
 }
 exports.ParseCedulaQrDto = ParseCedulaQrDto;

@@ -6,6 +6,7 @@ import { UsersService } from '../users/users.service';
 import { LoginDto, TokenResponseDto } from './dto/auth.dto';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { AuditService } from '../audit/audit.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
@@ -17,6 +18,7 @@ export class AuthService {
     @InjectRepository(PasswordResetToken)
     private resetRepository: Repository<PasswordResetToken>,
     private auditService: AuditService,
+    private notificationsService: NotificationsService,
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -56,7 +58,14 @@ export class AuthService {
         used: false,
       }),
     );
-    const resetUrl = `${process.env.APP_BASE_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+    const resetUrl = `${process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+
+    this.notificationsService
+      .sendPasswordResetEmail(user.email, resetUrl)
+      .catch((err) => {
+        console.error('Error sending password reset email:', err);
+      });
+
     return {
       message: 'Si el correo existe, recibirá instrucciones para restablecer la contraseña',
       resetUrl: process.env.NODE_ENV === 'production' ? undefined : resetUrl,

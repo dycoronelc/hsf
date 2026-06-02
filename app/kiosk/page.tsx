@@ -1,8 +1,8 @@
 'use client'
 
 import { Suspense, useState, useEffect } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
+import { HospitalLogo } from '../components/HospitalLogo'
 import { useRouter, useSearchParams } from 'next/navigation'
 
 interface Service {
@@ -73,8 +73,8 @@ function KioskContent() {
       }
 
       const ticket = await response.json()
-      setTicketNumber(ticket.ticketNumber)
-      setQrCode(ticket.qrCode)
+      setTicketNumber(ticket.ticket_number || ticket.ticketNumber || '')
+      setQrCode(ticket.qr_code || ticket.qrCode || '')
       setTicketCreated(true)
     } catch (err: any) {
       setError(err.message)
@@ -154,9 +154,8 @@ function KioskContent() {
         </div>
         <div className="bg-white rounded-lg shadow-lg p-8">
           <div className="text-center mb-8">
-            <div className="flex justify-center gap-4 items-center mb-4">
-              <Image src="/logo-hospital-santa-fe.svg" alt="Hospital Santa Fe" width={180} height={64} className="h-14 w-auto object-contain" />
-              <Image src="/logo.png" alt="" width={64} height={64} className="h-16 w-16 object-contain shrink-0" role="presentation" />
+            <div className="flex justify-center mb-4">
+              <HospitalLogo width={180} height={64} className="h-14 w-auto object-contain" />
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Kiosco Virtual</h1>
             <p className="text-gray-600">Selecciona el servicio para el cual necesitas un turno</p>

@@ -16,12 +16,11 @@ type LiveQrScannerModalProps = {
   onDecoded: (text: string) => void
   title: string
   description?: ReactNode
-  /** Ancho máximo del panel (Tailwind), p. ej. max-w-lg */
   panelClassName?: string
 }
 
 /**
- * Modal con vista previa html5-qrcode. En móviles con varias cámaras muestra un botón para alternar.
+ * Modal con vista previa html5-qrcode. Prioriza cámara trasera y reintenta otras cámaras si falla.
  */
 export function LiveQrScannerModal({
   open,
@@ -85,7 +84,6 @@ export function LiveQrScannerModal({
 
         setCanFlipCamera(constraints.length >= 2)
 
-        const slot = Math.min(cameraSlotRef.current, Math.max(0, constraints.length - 1))
         const onSuccess = (decodedText: string) => {
           if (cancelled) return
           const s = scannerRef.current
@@ -99,14 +97,29 @@ export function LiveQrScannerModal({
         scannerRef.current = null
         await stopAndClear(prev)
 
-        let scanner: Html5Qrcode
+        let scanner: Html5Qrcode | null = null
+        let lastErr: unknown
+
         if (constraints.length > 0) {
-          scanner = await startLiveQrScannerWithCamera(
-            containerId,
-            constraints[slot],
-            onSuccess,
-            () => {},
-          )
+          const startSlot = Math.min(cameraSlotRef.current, constraints.length - 1)
+          for (let attempt = 0; attempt < constraints.length; attempt++) {
+            const idx = (startSlot + attempt) % constraints.length
+            try {
+              scanner = await startLiveQrScannerWithCamera(
+                containerId,
+                constraints[idx],
+                onSuccess,
+                () => {},
+              )
+              cameraSlotRef.current = idx
+              break
+            } catch (e) {
+              lastErr = e
+            }
+          }
+          if (!scanner) {
+            throw lastErr instanceof Error ? lastErr : new Error('No se pudo acceder a la cámara')
+          }
         } else {
           scanner = await startLiveQrScanner(containerId, onSuccess, () => {})
         }
@@ -171,7 +184,7 @@ export function LiveQrScannerModal({
           )}
         </div>
         {scanError && <p className="mt-3 text-sm text-red-600">{scanError}</p>}
-        {scanning && !scanError && <p className="mt-2 text-sm text-gray-500">Iniciando cámara...</p>}
+        {scanning && !scanError && <p className="mt-2 text-sm text-gray-500">Iniciando cámara trasera...</p>}
         <div className="mt-4 flex justify-end">
           <button
             type="button"

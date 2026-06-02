@@ -8,6 +8,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PreadmissionStorageService } from './preadmission-storage.service';
 
 @Module({
   imports: [
@@ -18,6 +19,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
     NotificationsModule,
   ],
   controllers: [PreadmissionController],
-  providers: [PreadmissionService],
+  providers: [PreadmissionService, PreadmissionStorageService],
 })
 export class PreadmissionModule {}

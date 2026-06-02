@@ -46,3 +46,7 @@ backend/__pycache__/
 backend/.venv/
 *.db
 *.sqlite
+
+# Adjuntos de preadmisión (disco local del API)
+uploads/
+backend/uploads/

@@ -26,16 +26,48 @@ const parse_cedula_qr_1 = require("./utils/parse-cedula-qr");
 const audit_service_1 = require("../audit/audit.service");
 const verification_code_entity_1 = require("../auth/entities/verification-code.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
+const preadmission_storage_service_1 = require("./preadmission-storage.service");
+const preadmission_attachments_constants_1 = require("./preadmission-attachments.constants");
+const phone_util_1 = require("../common/phone.util");
+const preadmission_response_util_1 = require("./preadmission-response.util");
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
-    constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService, notificationsService) {
+    constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService, notificationsService, storageService) {
         this.preadmissionRepository = preadmissionRepository;
         this.verificationRepository = verificationRepository;
         this.cellbyteService = cellbyteService;
         this.ticketsService = ticketsService;
         this.auditService = auditService;
         this.notificationsService = notificationsService;
+        this.storageService = storageService;
         this.logger = new common_1.Logger(PreadmissionService_1.name);
+    }
+    assertPhoneNumbers(dto) {
+        try {
+            (0, phone_util_1.assertValidPhoneNumber)(dto.celularPrefix, dto.celular, 'Celular');
+            (0, phone_util_1.assertValidPhoneNumber)('507', dto.celular3, 'Celular de emergencia');
+        }
+        catch (err) {
+            throw new common_1.BadRequestException(err instanceof Error ? err.message : 'Teléfono inválido');
+        }
+    }
+    async checkActiveDocument(cedula, pasaporte) {
+        if (!cedula?.trim() || !pasaporte?.trim()) {
+            throw new common_1.BadRequestException('Documento inválido');
+        }
+        const existing = await this.preadmissionRepository.findOne({
+            where: { cedula: cedula.trim(), pasaporte: pasaporte.trim() },
+            order: { fechapreadmision: 'DESC' },
+        });
+        if (existing && existing.status !== enums_1.PreadmissionStatus.RECHAZADO) {
+            return {
+                active: true,
+                message: 'Ya existe una preadmisión activa con este documento. Debe finalizar o ser rechazada antes de crear otra.',
+                id: existing.id,
+                status: existing.status,
+            };
+        }
+        return { active: false };
     }
     generateQrCode() {
         return crypto.randomBytes(8).toString('hex').toUpperCase();
@@ -61,12 +93,69 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             return num;
         return `+${p}${num.replace(/^\+/, '')}`;
     }
-    async create(createDto, patientId) {
-        if (!createDto.cedulaimagen) {
-            throw new common_1.BadRequestException('La imagen de cédula es obligatoria');
+    buildEntityFromDto(dto, patientId, attachmentPaths) {
+        const row = {
+            departamento: dto.departamento,
+            registradoComo: dto.registradoComo,
+            name1: dto.name1,
+            name2: dto.name2 ?? null,
+            apellido1: dto.apellido1,
+            apellido2: dto.apellido2 ?? null,
+            pasaporte: dto.pasaporte,
+            cedula: dto.cedula,
+            sexo: dto.sexo,
+            fechanac: dto.fechanac,
+            nacionalidad: dto.nacionalidad,
+            estadocivil: dto.estadocivil,
+            tiposangre: dto.tiposangre,
+            email: dto.email,
+            celularPrefix: dto.celularPrefix || '507',
+            celular: this.formatCelular(dto.celularPrefix, dto.celular),
+            provincia1: dto.provincia1,
+            distrito1: dto.distrito1,
+            corregimiento1: dto.corregimiento1,
+            direccion1: dto.direccion1,
+            encasourgencia: dto.encasourgencia,
+            relacion: dto.relacion,
+            email3: dto.email3,
+            celular3: dto.celular3,
+            provincia3: dto.provincia3 ?? null,
+            distrito3: dto.distrito3 ?? null,
+            corregimiento3: dto.corregimiento3 ?? null,
+            direccion3: dto.direccion3 ?? null,
+            fechaprobableatencion: dto.fechaprobableatencion ?? null,
+            medico: dto.medico ?? null,
+            doblecobertura: dto.doblecobertura,
+            compania1: dto.compania1 ?? null,
+            poliza1: dto.poliza1 ?? null,
+            diagnostico: dto.diagnostico ?? null,
+            procedimientoEstudio: dto.procedimientoEstudio?.trim() || dto.diagnostico?.trim() || null,
+            numerocotizacion: dto.numerocotizacion ?? null,
+            cedulaimagen: attachmentPaths.cedulaimagen ?? null,
+            ordenimagen: attachmentPaths.ordenimagen ?? null,
+            preautorizacion: attachmentPaths.preautorizacion ?? null,
+            carnetseguro: attachmentPaths.carnetseguro ?? null,
+            certificadoSeguro: attachmentPaths.certificadoSeguro ?? null,
+            ssimagen: attachmentPaths.ssimagen ?? null,
+            patientId: patientId !== undefined && patientId !== null ? patientId : null,
+            status: enums_1.PreadmissionStatus.ENVIADO,
+            qrCode: this.generateQrCode(),
+            arrivalState: enums_1.PreadmissionArrivalState.ESPERA_LLEGADA,
+        };
+        if (dto.doblecobertura === 'NO') {
+            row.compania1 = 'PACIENTE PRIVADO';
+            row.poliza1 = '';
+            row.carnetseguro = null;
+            row.certificadoSeguro = null;
         }
+        else if (!dto.compania1 || !dto.poliza1) {
+            throw new common_1.BadRequestException('Compañía y póliza son obligatorias cuando mantiene seguro');
+        }
+        return this.preadmissionRepository.create(row);
+    }
+    async create(createDto, patientId, uploadedFiles = {}) {
         this.assertNamesAndAddress(createDto);
-        const row = { ...createDto };
+        this.assertPhoneNumbers(createDto);
         const existing = await this.preadmissionRepository.findOne({
             where: { cedula: createDto.cedula, pasaporte: createDto.pasaporte },
             order: { fechapreadmision: 'DESC' },
@@ -74,28 +163,19 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         if (existing && existing.status !== enums_1.PreadmissionStatus.RECHAZADO) {
             throw new common_1.BadRequestException('Ya existe una preadmisión activa con este documento');
         }
-        if (createDto.doblecobertura === 'NO') {
-            row.compania1 = 'PACIENTE PRIVADO';
-            row.poliza1 = '';
-            row.carnetseguro = null;
-            row.certificadoSeguro = null;
-            row.preautorizacion = createDto.preautorizacion ?? null;
-        }
-        else if (!createDto.compania1 || !createDto.poliza1) {
-            throw new common_1.BadRequestException('Compañía y póliza son obligatorias cuando mantiene seguro');
-        }
-        row.procedimientoEstudio =
-            createDto.procedimientoEstudio?.trim() || createDto.diagnostico?.trim() || null;
-        row.celularPrefix = createDto.celularPrefix || '507';
-        row.celular = this.formatCelular(row.celularPrefix, createDto.celular);
-        const preadmission = this.preadmissionRepository.create({
-            ...row,
-            patientId: patientId !== undefined && patientId !== null ? patientId : null,
-            status: enums_1.PreadmissionStatus.ENVIADO,
-            qrCode: this.generateQrCode(),
-            arrivalState: enums_1.PreadmissionArrivalState.ESPERA_LLEGADA,
-        });
+        const preadmission = this.buildEntityFromDto(createDto, patientId, {});
         const saved = await this.preadmissionRepository.save(preadmission);
+        const attachmentPaths = this.storageService.saveAttachments(saved.id, uploadedFiles);
+        for (const field of preadmission_attachments_constants_1.PREADMISSION_ATTACHMENT_FIELDS) {
+            if (attachmentPaths[field]) {
+                saved[field] = attachmentPaths[field];
+            }
+        }
+        if (createDto.doblecobertura === 'NO') {
+            saved.carnetseguro = null;
+            saved.certificadoSeguro = null;
+        }
+        await this.preadmissionRepository.save(saved);
         await this.auditService.log('preadmission_created', {
             entityType: 'preadmission',
             entityId: saved.id,
@@ -123,21 +203,37 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             .catch((err) => {
             this.logger.error(`No se pudo enviar confirmación por correo (preadmisión #${saved.id})`, err);
         });
-        return saved;
+        return (0, preadmission_response_util_1.toPreadmissionResponse)(saved);
+    }
+    async getAttachment(id, field, user) {
+        if (!this.storageService.isAttachmentField(field)) {
+            throw new common_1.BadRequestException('Tipo de adjunto no válido');
+        }
+        const preadmission = await this.preadmissionRepository.findOne({ where: { id } });
+        if (!preadmission) {
+            throw new common_1.NotFoundException('Preadmisión no encontrada');
+        }
+        if (user.role === 'patient') {
+            if (preadmission.patientId != null && preadmission.patientId !== user.id) {
+                throw new common_1.ForbiddenException('No autorizado');
+            }
+        }
+        const stored = preadmission[field];
+        return this.storageService.openForDownload(stored, field);
     }
     async findAll(user, skip = 0, limit = 100) {
-        if (user.role === 'patient') {
-            return this.preadmissionRepository.find({
+        const rows = user.role === 'patient'
+            ? await this.preadmissionRepository.find({
                 where: { patientId: user.id },
                 skip,
                 take: limit,
+            })
+            : await this.preadmissionRepository.find({
+                skip,
+                take: limit,
+                order: { fechapreadmision: 'DESC' },
             });
-        }
-        return this.preadmissionRepository.find({
-            skip,
-            take: limit,
-            order: { fechapreadmision: 'DESC' },
-        });
+        return rows.map(preadmission_response_util_1.toPreadmissionResponse);
     }
     async findWorkList(user, opts) {
         const qb = this.preadmissionRepository
@@ -152,7 +248,8 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             const term = `%${opts.q.trim()}%`;
             qb.andWhere('(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)', { term });
         }
-        return qb.getMany();
+        const rows = await qb.getMany();
+        return rows.map(preadmission_response_util_1.toPreadmissionSummary);
     }
     async confirmArrival(id, user) {
         const pre = await this.preadmissionRepository.findOne({ where: { id } });
@@ -167,7 +264,8 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         pre.confirmedArrivalAt = new Date();
         pre.confirmedArrivalBy = { id: user.id };
         pre.checkInAt = new Date();
-        return this.preadmissionRepository.save(pre);
+        const saved = await this.preadmissionRepository.save(pre);
+        return (0, preadmission_response_util_1.toPreadmissionResponse)(saved);
     }
     async activateTicket(id, user) {
         return this.ticketsService.createTicketForPreadmission(id);
@@ -182,13 +280,14 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             preadmission.patientId !== user.id) {
             throw new common_1.ForbiddenException('No autorizado');
         }
-        return preadmission;
+        return (0, preadmission_response_util_1.toPreadmissionResponse)(preadmission);
     }
     async findByCedula(cedula, tipoIdentificacion) {
-        return this.preadmissionRepository.findOne({
+        const row = await this.preadmissionRepository.findOne({
             where: { cedula, pasaporte: tipoIdentificacion },
             order: { fechapreadmision: 'DESC' },
         });
+        return row ? (0, preadmission_response_util_1.toPreadmissionSummary)(row) : null;
     }
     async review(id, reviewDto, reviewerId) {
         const preadmission = await this.preadmissionRepository.findOne({ where: { id } });
@@ -257,6 +356,7 @@ exports.PreadmissionService = PreadmissionService = PreadmissionService_1 = __de
         cellbyte_service_1.CellbyteService,
         tickets_service_1.TicketsService,
         audit_service_1.AuditService,
-        notifications_service_1.NotificationsService])
+        notifications_service_1.NotificationsService,
+        preadmission_storage_service_1.PreadmissionStorageService])
 ], PreadmissionService);
 //# sourceMappingURL=preadmission.service.js.map

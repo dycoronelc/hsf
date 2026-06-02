@@ -146,6 +146,25 @@ export class NotificationsService {
     await this.sendEmail(to, 'Código de verificación - Hospital Santa Fe', content);
   }
 
+  async sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
+    const safeUrl = escapeHtml(resetUrl);
+    const content = `
+      <div style="font-family: Arial, sans-serif; max-width: 480px;">
+        <h2 style="color: #00816D;">Recuperación de contraseña</h2>
+        <p>Recibimos una solicitud para restablecer su contraseña en la plataforma del Hospital Santa Fe.</p>
+        <p style="margin: 24px 0;">
+          <a href="${safeUrl}" style="background:#00816D;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
+            Restablecer contraseña
+          </a>
+        </p>
+        <p style="color:#6b7280;font-size:14px;">El enlace expira en 1 hora. Si no solicitó este cambio, ignore este correo.</p>
+        <p style="color:#6b7280;font-size:12px;word-break:break-all;">Enlace directo: ${safeUrl}</p>
+        <p>Hospital Santa Fe Panamá</p>
+      </div>
+    `;
+    await this.sendEmail(to, 'Recuperación de contraseña - Hospital Santa Fe', content);
+  }
+
   async sendTicketCreated(
     userId: number,
     ticketNumber: string,

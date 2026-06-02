@@ -17,6 +17,7 @@ const integrations_module_1 = require("../integrations/integrations.module");
 const tickets_module_1 = require("../tickets/tickets.module");
 const permissions_module_1 = require("../permissions/permissions.module");
 const notifications_module_1 = require("../notifications/notifications.module");
+const preadmission_storage_service_1 = require("./preadmission-storage.service");
 let PreadmissionModule = class PreadmissionModule {
 };
 exports.PreadmissionModule = PreadmissionModule;
@@ -30,7 +31,7 @@ exports.PreadmissionModule = PreadmissionModule = __decorate([
             notifications_module_1.NotificationsModule,
         ],
         controllers: [preadmission_controller_1.PreadmissionController],
-        providers: [preadmission_service_1.PreadmissionService],
+        providers: [preadmission_service_1.PreadmissionService, preadmission_storage_service_1.PreadmissionStorageService],
     })
 ], PreadmissionModule);
 //# sourceMappingURL=preadmission.module.js.map

@@ -39,11 +39,11 @@ export declare class Preadmission {
     diagnostico: string;
     procedimientoEstudio: string | null;
     numerocotizacion: string;
-    cedulaimagen: string;
-    ordenimagen: string;
-    preautorizacion: string;
-    carnetseguro: string;
-    ssimagen: string;
+    cedulaimagen: string | null;
+    ordenimagen: string | null;
+    preautorizacion: string | null;
+    carnetseguro: string | null;
+    ssimagen: string | null;
     certificadoSeguro: string | null;
     celularPrefix: string | null;
     status: PreadmissionStatus;

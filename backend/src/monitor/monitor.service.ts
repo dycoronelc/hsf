@@ -37,6 +37,7 @@ export class MonitorService {
     // Cola de espera
     const queueTickets = await this.ticketRepository.find({
       where: [
+        { serviceId, status: TicketStatus.CREADO },
         { serviceId, status: TicketStatus.CHECK_IN },
         { serviceId, status: TicketStatus.EN_COLA },
       ],

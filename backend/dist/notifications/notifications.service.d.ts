@@ -26,6 +26,7 @@ export declare class NotificationsService {
     private sendNotification;
     private sendEmail;
     sendEmailVerificationCode(to: string, code: string): Promise<void>;
+    sendPasswordResetEmail(to: string, resetUrl: string): Promise<void>;
     sendTicketCreated(userId: number, ticketNumber: string, serviceName: string, qrCode?: string): Promise<void>;
     sendPreadmissionConfirmation(data: PreadmissionConfirmationPayload): Promise<void>;
     sendTicketCalled(userId: number, ticketNumber: string, windowNumber: string): Promise<void>;

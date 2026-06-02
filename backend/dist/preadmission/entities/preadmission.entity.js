@@ -170,27 +170,27 @@ __decorate([
     __metadata("design:type", String)
 ], Preadmission.prototype, "numerocotizacion", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text', { nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 512, nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "cedulaimagen", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text', { nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 512, nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "ordenimagen", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text', { nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 512, nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "preautorizacion", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text', { nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 512, nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "carnetseguro", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text', { nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 512, nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "ssimagen", void 0);
 __decorate([
-    (0, typeorm_1.Column)('text', { nullable: true }),
+    (0, typeorm_1.Column)({ type: 'varchar', length: 512, nullable: true }),
     __metadata("design:type", String)
 ], Preadmission.prototype, "certificadoSeguro", void 0);
 __decorate([

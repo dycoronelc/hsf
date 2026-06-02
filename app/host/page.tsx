@@ -67,6 +67,8 @@ export default function HostPage() {
       return
     }
     load()
+    const interval = setInterval(load, 15000)
+    return () => clearInterval(interval)
   }, [authHydrated, isAuthenticated, user, router, load])
 
   const confirm = async (id: number) => {

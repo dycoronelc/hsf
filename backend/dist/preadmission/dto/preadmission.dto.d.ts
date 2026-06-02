@@ -33,16 +33,11 @@ export declare class CreatePreadmissionDto {
     doblecobertura: string;
     compania1?: string;
     poliza1?: string;
-    carnetseguro?: string;
     diagnostico?: string;
     procedimientoEstudio?: string;
     numerocotizacion?: string;
-    cedulaimagen: string;
-    ordenimagen?: string;
-    preautorizacion?: string;
-    certificadoSeguro?: string;
-    ssimagen?: string;
 }
+export type CreatePreadmissionBodyDto = CreatePreadmissionDto;
 export declare class ParseCedulaQrDto {
     raw: string;
 }

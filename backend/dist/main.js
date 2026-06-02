@@ -6,8 +6,8 @@ const app_module_1 = require("./app.module");
 const express = require("express");
 async function bootstrap() {
     const app = await core_1.NestFactory.create(app_module_1.AppModule);
-    app.use(express.json({ limit: '50mb' }));
-    app.use(express.urlencoded({ limit: '50mb', extended: true }));
+    app.use(express.json({ limit: '2mb' }));
+    app.use(express.urlencoded({ limit: '2mb', extended: true }));
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
     const corsOrigins = [frontendUrl, 'http://localhost:3000', 'http://localhost:3001'];
     app.enableCors({

@@ -308,7 +308,7 @@ export default function StaffConsolePage() {
   const agentCanOperate = isAgentOperational(agentState)
 
   const queueTickets = tickets
-    .filter((t) => ['check_in', 'en_cola'].includes(t.status))
+    .filter((t) => ['creado', 'check_in', 'en_cola'].includes(t.status))
     .filter((t) => (queueView === 'priority' ? (t.priority_level ?? 2) <= 2 : true))
     .sort((a, b) => {
       const levelA = a.priority_level ?? 2

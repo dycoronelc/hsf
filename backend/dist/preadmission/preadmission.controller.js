@@ -14,15 +14,47 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PreadmissionController = void 0;
 const common_1 = require("@nestjs/common");
+const platform_express_1 = require("@nestjs/platform-express");
+const class_transformer_1 = require("class-transformer");
+const class_validator_1 = require("class-validator");
 const preadmission_service_1 = require("./preadmission.service");
 const preadmission_dto_1 = require("./dto/preadmission.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
 const permissions_guard_1 = require("../permissions/permissions.guard");
 const require_permissions_decorator_1 = require("../permissions/require-permissions.decorator");
 const enums_1 = require("../common/enums");
+const preadmission_attachments_constants_1 = require("./preadmission-attachments.constants");
+const multer_1 = require("multer");
+const preadmission_attachments_constants_2 = require("./preadmission-attachments.constants");
+const attachmentUpload = (0, platform_express_1.FileFieldsInterceptor)(preadmission_attachments_constants_1.PREADMISSION_ATTACHMENT_FIELDS.map((name) => ({ name, maxCount: 1 })), {
+    storage: (0, multer_1.memoryStorage)(),
+    limits: { fileSize: preadmission_attachments_constants_2.MAX_ATTACHMENT_BYTES },
+});
+async function parseCreateBody(data) {
+    if (!data?.trim()) {
+        throw new common_1.BadRequestException('Falta el campo "data" con los datos del formulario (JSON)');
+    }
+    let parsed;
+    try {
+        parsed = JSON.parse(data);
+    }
+    catch {
+        throw new common_1.BadRequestException('El campo "data" no es un JSON válido');
+    }
+    const dto = (0, class_transformer_1.plainToInstance)(preadmission_dto_1.CreatePreadmissionDto, parsed);
+    const errors = await (0, class_validator_1.validate)(dto, { whitelist: true, forbidNonWhitelisted: true });
+    if (errors.length > 0) {
+        const messages = errors.flatMap((e) => e.constraints ? Object.values(e.constraints) : [`${e.property}: inválido`]);
+        throw new common_1.BadRequestException(messages);
+    }
+    return dto;
+}
 let PreadmissionController = class PreadmissionController {
     constructor(preadmissionService) {
         this.preadmissionService = preadmissionService;
+    }
+    async checkActiveDocument(cedula, pasaporte) {
+        return this.preadmissionService.checkActiveDocument(cedula, pasaporte);
     }
     async searchByCedula(cedula, tipoIdentificacion) {
         if (!cedula || !tipoIdentificacion) {
@@ -30,8 +62,9 @@ let PreadmissionController = class PreadmissionController {
         }
         return this.preadmissionService.findByCedula(cedula, tipoIdentificacion);
     }
-    async createPublic(createDto) {
-        return this.preadmissionService.create(createDto, null);
+    async createPublic(data, files) {
+        const createDto = await parseCreateBody(data);
+        return this.preadmissionService.create(createDto, null, files);
     }
     async parseCedulaQr(body) {
         return this.preadmissionService.parseCedulaQrPayload(body.raw);
@@ -42,8 +75,9 @@ let PreadmissionController = class PreadmissionController {
     async confirmContactVerification(body) {
         return this.preadmissionService.confirmContactVerification(body.destination, body.code);
     }
-    async create(createDto, req) {
-        return this.preadmissionService.create(createDto, req.user.id);
+    async create(data, files, req) {
+        const createDto = await parseCreateBody(data);
+        return this.preadmissionService.create(createDto, req.user.id, files);
     }
     async workList(req, arrivalState, q, skip, limit) {
         return this.preadmissionService.findWorkList(req.user, {
@@ -55,6 +89,10 @@ let PreadmissionController = class PreadmissionController {
     }
     async findAll(req, skip, limit) {
         return this.preadmissionService.findAll(req.user, skip || 0, limit || 100);
+    }
+    async getAttachment(id, field, req) {
+        const { stream } = await this.preadmissionService.getAttachment(+id, field, req.user);
+        return stream;
     }
     async confirmArrival(id, req) {
         return this.preadmissionService.confirmArrival(+id, req.user);
@@ -71,6 +109,14 @@ let PreadmissionController = class PreadmissionController {
 };
 exports.PreadmissionController = PreadmissionController;
 __decorate([
+    (0, common_1.Get)('check-active'),
+    __param(0, (0, common_1.Query)('cedula')),
+    __param(1, (0, common_1.Query)('pasaporte')),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "checkActiveDocument", null);
+__decorate([
     (0, common_1.Get)('search'),
     __param(0, (0, common_1.Query)('cedula')),
     __param(1, (0, common_1.Query)('tipoIdentificacion')),
@@ -80,9 +126,11 @@ __decorate([
 ], PreadmissionController.prototype, "searchByCedula", null);
 __decorate([
     (0, common_1.Post)('public'),
-    __param(0, (0, common_1.Body)()),
+    (0, common_1.UseInterceptors)(attachmentUpload),
+    __param(0, (0, common_1.Body)('data')),
+    __param(1, (0, common_1.UploadedFiles)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [preadmission_dto_1.CreatePreadmissionDto]),
+    __metadata("design:paramtypes", [String, Object]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "createPublic", null);
 __decorate([
@@ -109,10 +157,12 @@ __decorate([
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
-    __param(0, (0, common_1.Body)()),
-    __param(1, (0, common_1.Request)()),
+    (0, common_1.UseInterceptors)(attachmentUpload),
+    __param(0, (0, common_1.Body)('data')),
+    __param(1, (0, common_1.UploadedFiles)()),
+    __param(2, (0, common_1.Request)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [preadmission_dto_1.CreatePreadmissionDto, Object]),
+    __metadata("design:paramtypes", [String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "create", null);
 __decorate([
@@ -138,6 +188,17 @@ __decorate([
     __metadata("design:paramtypes", [Object, Number, Number]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "findAll", null);
+__decorate([
+    (0, common_1.Get)(':id/attachments/:field'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
+    (0, common_1.Header)('Cache-Control', 'private, max-age=3600'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Param)('field')),
+    __param(2, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, Object]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "getAttachment", null);
 __decorate([
     (0, common_1.Patch)(':id/confirm-arrival'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

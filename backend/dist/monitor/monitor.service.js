@@ -42,6 +42,7 @@ let MonitorService = class MonitorService {
         });
         const queueTickets = await this.ticketRepository.find({
             where: [
+                { serviceId, status: enums_1.TicketStatus.CREADO },
                 { serviceId, status: enums_1.TicketStatus.CHECK_IN },
                 { serviceId, status: enums_1.TicketStatus.EN_COLA },
             ],

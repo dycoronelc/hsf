@@ -128,24 +128,23 @@ export class Preadmission {
   @Column({ nullable: true })
   numerocotizacion: string;
 
-  // Adjuntos (base64)
-  @Column('text', { nullable: true })
-  cedulaimagen: string;
+  /** Ruta relativa bajo uploads/preadmissions/{id}/ (legado: puede contener base64) */
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  cedulaimagen: string | null;
 
-  @Column('text', { nullable: true })
-  ordenimagen: string;
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  ordenimagen: string | null;
 
-  @Column('text', { nullable: true })
-  preautorizacion: string;
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  preautorizacion: string | null;
 
-  @Column('text', { nullable: true })
-  carnetseguro: string;
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  carnetseguro: string | null;
 
-  @Column('text', { nullable: true })
-  ssimagen: string;
+  @Column({ type: 'varchar', length: 512, nullable: true })
+  ssimagen: string | null;
 
-  /** Certificado de seguro (opcional si tiene seguro, PDF requisitos) */
-  @Column('text', { nullable: true })
+  @Column({ type: 'varchar', length: 512, nullable: true })
   certificadoSeguro: string | null;
 
   /** Prefijo país del celular principal (ej. 507); el número puede ir sin + en celular */

@@ -130,10 +130,6 @@ export class CreatePreadmissionDto {
 
   @IsOptional()
   @IsString()
-  carnetseguro?: string;
-
-  @IsOptional()
-  @IsString()
   diagnostico?: string;
 
   @IsOptional()
@@ -143,26 +139,10 @@ export class CreatePreadmissionDto {
   @IsOptional()
   @IsString()
   numerocotizacion?: string;
-
-  @IsString()
-  cedulaimagen: string; // Base64 (*)
-
-  @IsOptional()
-  @IsString()
-  ordenimagen?: string; // Base64 (opcional según documento)
-
-  @IsOptional()
-  @IsString()
-  preautorizacion?: string; // Base64
-
-  @IsOptional()
-  @IsString()
-  certificadoSeguro?: string;
-
-  @IsOptional()
-  @IsString()
-  ssimagen?: string; // Base64
 }
+
+/** Campos de formulario enviados como JSON en multipart (campo `data`). */
+export type CreatePreadmissionBodyDto = CreatePreadmissionDto;
 
 export class ParseCedulaQrDto {
   @IsString()

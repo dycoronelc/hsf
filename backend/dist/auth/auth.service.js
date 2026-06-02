@@ -20,14 +20,16 @@ const typeorm_2 = require("typeorm");
 const users_service_1 = require("../users/users.service");
 const password_reset_token_entity_1 = require("./entities/password-reset-token.entity");
 const audit_service_1 = require("../audit/audit.service");
+const notifications_service_1 = require("../notifications/notifications.service");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
 let AuthService = class AuthService {
-    constructor(usersService, jwtService, resetRepository, auditService) {
+    constructor(usersService, jwtService, resetRepository, auditService, notificationsService) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.resetRepository = resetRepository;
         this.auditService = auditService;
+        this.notificationsService = notificationsService;
     }
     async validateUser(email, password) {
         const user = await this.usersService.findByEmail(email);
@@ -62,7 +64,12 @@ let AuthService = class AuthService {
             expiresAt,
             used: false,
         }));
-        const resetUrl = `${process.env.APP_BASE_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+        const resetUrl = `${process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
+        this.notificationsService
+            .sendPasswordResetEmail(user.email, resetUrl)
+            .catch((err) => {
+            console.error('Error sending password reset email:', err);
+        });
         return {
             message: 'Si el correo existe, recibirá instrucciones para restablecer la contraseña',
             resetUrl: process.env.NODE_ENV === 'production' ? undefined : resetUrl,
@@ -91,6 +98,7 @@ exports.AuthService = AuthService = __decorate([
     __metadata("design:paramtypes", [users_service_1.UsersService,
         jwt_1.JwtService,
         typeorm_2.Repository,
-        audit_service_1.AuditService])
+        audit_service_1.AuditService,
+        notifications_service_1.NotificationsService])
 ], AuthService);
 //# sourceMappingURL=auth.service.js.map

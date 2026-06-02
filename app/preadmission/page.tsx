@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import Link from 'next/link'
@@ -9,6 +9,25 @@ import { isValidDdMmYyyy } from '@/lib/dateUtils'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
+import { validatePhoneNumber } from '@/lib/phoneValidation'
+import { HospitalLogo } from '../components/HospitalLogo'
+
+const PREADMISSION_ATTACHMENT_FIELDS = [
+  'cedulaimagen',
+  'ordenimagen',
+  'preautorizacion',
+  'carnetseguro',
+  'certificadoSeguro',
+] as const
+type PreadmissionAttachmentField = (typeof PREADMISSION_ATTACHMENT_FIELDS)[number]
+
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'application/pdf',
+])
+const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
 
 interface LocationData {
   provincia: string
@@ -36,6 +55,10 @@ export default function PreadmissionPage() {
   const [emailCode, setEmailCode] = useState('')
   const [emailVerified, setEmailVerified] = useState(false)
   const [verificationHint, setVerificationHint] = useState('')
+  const [attachmentFiles, setAttachmentFiles] = useState<
+    Partial<Record<PreadmissionAttachmentField, File>>
+  >({})
+  const attachmentFilesRef = useRef<Partial<Record<PreadmissionAttachmentField, File>>>({})
 
   const [formData, setFormData] = useState({
     registradoComo: 'paciente',
@@ -74,11 +97,6 @@ export default function PreadmissionPage() {
     diagnostico: '',
     procedimientoEstudio: '',
     numerocotizacion: '',
-    cedulaimagen: '',
-    ordenimagen: '',
-    preautorizacion: '',
-    carnetseguro: '',
-    certificadoSeguro: '',
   })
 
   const todayIso = useMemo(() => {
@@ -241,71 +259,66 @@ export default function PreadmissionPage() {
     }
   }
 
-  const compressImage = (file: File, maxWidth: number = 1440, maxHeight: number = 1080, quality: number = 0.7): Promise<string> => {
-    return new Promise((resolve, reject) => {
-      // Si no es una imagen, convertir directamente a base64 sin comprimir
-      if (!file.type.startsWith('image/')) {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          resolve(reader.result as string)
-        }
-        reader.onerror = reject
-        reader.readAsDataURL(file)
-        return
-      }
-
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        const img = new Image()
-        img.onload = () => {
-          // Calcular nuevas dimensiones manteniendo la proporción
-          let width = img.width
-          let height = img.height
-
-          if (width > maxWidth || height > maxHeight) {
-            if (width > height) {
-              height = (height * maxWidth) / width
-              width = maxWidth
-            } else {
-              width = (width * maxHeight) / height
-              height = maxHeight
-            }
-          }
-
-          // Crear canvas y comprimir
-          const canvas = document.createElement('canvas')
-          canvas.width = width
-          canvas.height = height
-          const ctx = canvas.getContext('2d')
-          
-          if (!ctx) {
-            reject(new Error('No se pudo obtener el contexto del canvas'))
-            return
-          }
-
-          ctx.drawImage(img, 0, 0, width, height)
-          
-          // Convertir a base64 con compresión
-          const compressedBase64 = canvas.toDataURL(file.type, quality)
-          resolve(compressedBase64)
-        }
-        img.onerror = reject
-        img.src = e.target?.result as string
-      }
-      reader.onerror = reject
-      reader.readAsDataURL(file)
-    })
+  const handleFileSelect = (field: PreadmissionAttachmentField, file: File) => {
+    if (file.size > MAX_ATTACHMENT_BYTES) {
+      setError('El archivo supera el tamaño máximo de 15 MB')
+      return
+    }
+    const extOk = /\.(jpe?g|png|pdf)$/i.test(file.name)
+    if (!ALLOWED_ATTACHMENT_TYPES.has(file.type) && !extOk) {
+      setError('Formato no permitido. Use JPG, PNG o PDF.')
+      return
+    }
+    const next = { ...attachmentFilesRef.current, [field]: file }
+    attachmentFilesRef.current = next
+    setAttachmentFiles(next)
+    setError('')
   }
 
-  const handleFileUpload = async (field: string, file: File) => {
+  const checkActiveDocument = async (): Promise<boolean> => {
+    if (!formData.cedula || !formData.pasaporte) return true
     try {
-      // Comprimir imagen antes de convertir a base64
-      const compressedBase64 = await compressImage(file)
-      setFormData(prev => ({ ...prev, [field]: compressedBase64 }))
-    } catch (err) {
-      console.error('Error al procesar imagen:', err)
-      setError('Error al procesar la imagen. Por favor intenta con otra imagen.')
+      const params = new URLSearchParams({
+        cedula: formData.cedula.trim(),
+        pasaporte: formData.pasaporte,
+      })
+      const response = await fetch(`/api/preadmission/check-active?${params.toString()}`)
+      const data = await response.json().catch(() => ({}))
+      if (data.active) {
+        setError(data.message || 'Ya existe una preadmisión activa con este documento')
+        return false
+      }
+      return true
+    } catch {
+      return true
     }
+  }
+
+  const goToNextStep = async () => {
+    if (step === 4) {
+      const phoneOk = validatePhoneNumber(formData.celularPrefix, formData.celular)
+      if (!phoneOk.valid) {
+        setError(phoneOk.message || 'Número de celular inválido')
+        return
+      }
+    }
+    if (step === 5) {
+      const phoneOk = validatePhoneNumber('507', formData.celular3)
+      if (!phoneOk.valid) {
+        setError(phoneOk.message || 'Número de emergencia inválido')
+        return
+      }
+    }
+    if (!validateStep(step)) {
+      setError('Por favor completa todos los campos obligatorios')
+      return
+    }
+    if (step === 2) {
+      const ok = await checkActiveDocument()
+      if (!ok) return
+    }
+    setStep(step + 1)
+    setError('')
   }
 
   const requestVerification = async () => {
@@ -369,7 +382,7 @@ export default function PreadmissionPage() {
                   formData.distrito1 && formData.corregimiento1 && formData.direccion1 &&
                   emailVerified)
       case 5:
-        return !!(formData.encasourgencia && formData.relacion && 
+        return !!(formData.encasourgencia && formData.relacion &&
                   formData.email3 && formData.celular3)
       case 6:
         if (formData.doblecobertura === 'SI') {
@@ -377,8 +390,7 @@ export default function PreadmissionPage() {
         }
         return true
       case 7:
-        if (!formData.cedulaimagen) return false
-        return true
+        return !!(attachmentFilesRef.current.cedulaimagen || attachmentFiles.cedulaimagen)
       default:
         return true
     }
@@ -400,19 +412,26 @@ export default function PreadmissionPage() {
     try {
       const isPublic = !isAuthenticated
       const url = isPublic ? '/api/preadmission/public' : '/api/preadmission/'
-      const headers: HeadersInit = { 'Content-Type': 'application/json' }
+      const headers: HeadersInit = {}
       if (!isPublic && token) headers['Authorization'] = `Bearer ${token}`
-      const payload = {
-        ...formData,
-        celularPrefix: formData.celularPrefix || '507',
-        certificadoSeguro: formData.certificadoSeguro || undefined,
-        ordenimagen: formData.ordenimagen || undefined,
+
+      const body = new FormData()
+      body.append(
+        'data',
+        JSON.stringify({
+          ...formData,
+          celularPrefix: formData.celularPrefix || '507',
+        }),
+      )
+      for (const field of PREADMISSION_ATTACHMENT_FIELDS) {
+        const file = attachmentFilesRef.current[field] || attachmentFiles[field]
+        if (file) body.append(field, file, file.name)
       }
 
       const response = await fetch(url, {
         method: 'POST',
         headers,
-        body: JSON.stringify(payload),
+        body,
       })
 
       if (!response.ok) {
@@ -497,10 +516,11 @@ export default function PreadmissionPage() {
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-4 sm:py-8 overflow-x-hidden">
       <div className="max-w-4xl mx-auto px-3 sm:px-4 w-full min-w-0 box-border">
-        <div className="mb-4">
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Link href="/" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium inline-flex items-center gap-1">
             ← Volver al inicio
           </Link>
+          <HospitalLogo href="/" width={160} height={40} className="h-10 w-auto object-contain" />
         </div>
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 max-w-full min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Preadmisión Digital</h1>
@@ -985,7 +1005,7 @@ export default function PreadmissionPage() {
                   <input
                     type="tel"
                     value={formData.celular3}
-                    onChange={(e) => setFormData({ ...formData, celular3: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, celular3: e.target.value.replace(/[^\d\s-]/g, '') })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     required
                   />
@@ -1096,15 +1116,21 @@ export default function PreadmissionPage() {
                   </label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
                     capture="environment"
+                    key={`cedulaimagen-${attachmentFiles.cedulaimagen?.name ?? 'empty'}`}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleFileUpload('cedulaimagen', file)
+                      if (file) handleFileSelect('cedulaimagen', file)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     required
                   />
+                  {attachmentFiles.cedulaimagen && (
+                    <p className="text-xs text-green-700 mt-1">
+                      Archivo: {attachmentFiles.cedulaimagen.name}
+                    </p>
+                  )}
                   <p className="text-xs text-gray-500 mt-1">
                     Puede usar la cámara del dispositivo o subir un archivo PNG, JPG o PDF.
                   </p>
@@ -1115,13 +1141,19 @@ export default function PreadmissionPage() {
                   </label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
+                    key={`ordenimagen-${attachmentFiles.ordenimagen?.name ?? 'empty'}`}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleFileUpload('ordenimagen', file)
+                      if (file) handleFileSelect('ordenimagen', file)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
+                  {attachmentFiles.ordenimagen && (
+                    <p className="text-xs text-green-700 mt-1">
+                      Archivo: {attachmentFiles.ordenimagen.name}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1129,13 +1161,19 @@ export default function PreadmissionPage() {
                   </label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
+                    key={`preautorizacion-${attachmentFiles.preautorizacion?.name ?? 'empty'}`}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleFileUpload('preautorizacion', file)
+                      if (file) handleFileSelect('preautorizacion', file)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
+                  {attachmentFiles.preautorizacion && (
+                    <p className="text-xs text-green-700 mt-1">
+                      Archivo: {attachmentFiles.preautorizacion.name}
+                    </p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1143,13 +1181,19 @@ export default function PreadmissionPage() {
                   </label>
                   <input
                     type="file"
-                    accept="image/*,.pdf"
+                    accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
+                    key={`carnetseguro-${attachmentFiles.carnetseguro?.name ?? 'empty'}`}
                     onChange={(e) => {
                       const file = e.target.files?.[0]
-                      if (file) handleFileUpload('carnetseguro', file)
+                      if (file) handleFileSelect('carnetseguro', file)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                   />
+                  {attachmentFiles.carnetseguro && (
+                    <p className="text-xs text-green-700 mt-1">
+                      Archivo: {attachmentFiles.carnetseguro.name}
+                    </p>
+                  )}
                 </div>
                 {formData.doblecobertura === 'SI' && (
                   <div>
@@ -1158,13 +1202,19 @@ export default function PreadmissionPage() {
                     </label>
                     <input
                       type="file"
-                      accept="image/*,.pdf"
+                      accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
+                      key={`certificadoSeguro-${attachmentFiles.certificadoSeguro?.name ?? 'empty'}`}
                       onChange={(e) => {
                         const file = e.target.files?.[0]
-                        if (file) handleFileUpload('certificadoSeguro', file)
+                        if (file) handleFileSelect('certificadoSeguro', file)
                       }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg"
                     />
+                    {attachmentFiles.certificadoSeguro && (
+                      <p className="text-xs text-green-700 mt-1">
+                        Archivo: {attachmentFiles.certificadoSeguro.name}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1184,6 +1234,19 @@ export default function PreadmissionPage() {
                   <p><strong>Paciente:</strong> {formData.name1} {formData.apellido1}</p>
                   <p><strong>Cédula:</strong> {formData.cedula}</p>
                   <p><strong>Email:</strong> {formData.email}</p>
+                  <div className="pt-2 border-t border-gray-200 mt-2">
+                    <p className="font-medium mb-1">Documentos adjuntos:</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {PREADMISSION_ATTACHMENT_FIELDS.map((field) => {
+                        const file = attachmentFilesRef.current[field] || attachmentFiles[field]
+                        if (!file) return null
+                        return <li key={field}>{file.name}</li>
+                      })}
+                      {!PREADMISSION_ATTACHMENT_FIELDS.some(
+                        (field) => attachmentFilesRef.current[field] || attachmentFiles[field],
+                      ) && <li className="text-red-600">Falta la imagen de cédula</li>}
+                    </ul>
+                  </div>
                 </div>
               </div>
             </div>
@@ -1200,14 +1263,7 @@ export default function PreadmissionPage() {
             </button>
             {step < 8 ? (
               <button
-                onClick={() => {
-                  if (validateStep(step)) {
-                    setStep(step + 1)
-                    setError('')
-                  } else {
-                    setError('Por favor completa todos los campos obligatorios')
-                  }
-                }}
+                onClick={() => void goToNextStep()}
                 className="w-full sm:w-auto px-6 py-3 sm:py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark shrink-0"
               >
                 Siguiente

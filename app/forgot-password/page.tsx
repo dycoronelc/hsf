@@ -1,8 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
 import Link from 'next/link'
+import { HospitalLogo } from '../components/HospitalLogo'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -47,9 +47,8 @@ export default function ForgotPasswordPage() {
       <div className="flex-1 flex items-center justify-center px-4 pb-8">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <div className="flex justify-center gap-4 items-center mb-4">
-            <Image src="/logo-hospital-santa-fe.svg" alt="Hospital Santa Fe" width={180} height={64} className="h-14 w-auto object-contain" />
-            <Image src="/logo.png" alt="" width={64} height={64} className="h-16 w-16 object-contain shrink-0" role="presentation" />
+          <div className="flex justify-center mb-4">
+            <HospitalLogo width={180} height={64} className="h-14 w-auto object-contain" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">Recuperar Contraseña</h1>
           <p className="text-gray-600 mt-2">Hospital Santa Fe</p>

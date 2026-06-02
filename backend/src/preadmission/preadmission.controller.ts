@@ -8,10 +8,19 @@ import {
   Request,
   Query,
   Patch,
+  UploadedFiles,
+  UseInterceptors,
+  BadRequestException,
+  StreamableFile,
+  Header,
 } from '@nestjs/common';
+import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { plainToInstance } from 'class-transformer';
+import { validate } from 'class-validator';
 import { PreadmissionService } from './preadmission.service';
 import {
   CreatePreadmissionDto,
+  CreatePreadmissionBodyDto,
   ReviewPreadmissionDto,
   ParseCedulaQrDto,
   RequestVerificationDto,
@@ -21,12 +30,52 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RequirePermissions } from '../permissions/require-permissions.decorator';
 import { PreadmissionArrivalState } from '../common/enums';
+import { PREADMISSION_ATTACHMENT_FIELDS } from './preadmission-attachments.constants';
+import { memoryStorage } from 'multer';
+import { MAX_ATTACHMENT_BYTES } from './preadmission-attachments.constants';
+import { PreadmissionUploadedFilesMap } from './preadmission-upload.types';
+
+const attachmentUpload = FileFieldsInterceptor(
+  PREADMISSION_ATTACHMENT_FIELDS.map((name) => ({ name, maxCount: 1 })),
+  {
+    storage: memoryStorage(),
+    limits: { fileSize: MAX_ATTACHMENT_BYTES },
+  },
+);
+
+async function parseCreateBody(data: string | undefined): Promise<CreatePreadmissionBodyDto> {
+  if (!data?.trim()) {
+    throw new BadRequestException('Falta el campo "data" con los datos del formulario (JSON)');
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(data);
+  } catch {
+    throw new BadRequestException('El campo "data" no es un JSON válido');
+  }
+  const dto = plainToInstance(CreatePreadmissionDto, parsed);
+  const errors = await validate(dto as object, { whitelist: true, forbidNonWhitelisted: true });
+  if (errors.length > 0) {
+    const messages = errors.flatMap((e) =>
+      e.constraints ? Object.values(e.constraints) : [`${e.property}: inválido`],
+    );
+    throw new BadRequestException(messages);
+  }
+  return dto;
+}
 
 @Controller('preadmission')
 export class PreadmissionController {
   constructor(private readonly preadmissionService: PreadmissionService) {}
 
-  /** Público: búsqueda por cédula para preadmisión sin login (validar duplicidad) */
+  @Get('check-active')
+  async checkActiveDocument(
+    @Query('cedula') cedula: string,
+    @Query('pasaporte') pasaporte: string,
+  ) {
+    return this.preadmissionService.checkActiveDocument(cedula, pasaporte);
+  }
+
   @Get('search')
   async searchByCedula(
     @Query('cedula') cedula: string,
@@ -38,13 +87,17 @@ export class PreadmissionController {
     return this.preadmissionService.findByCedula(cedula, tipoIdentificacion);
   }
 
-  /** Público: registro de preadmisión sin autenticación (según documento) */
   @Post('public')
-  async createPublic(@Body() createDto: CreatePreadmissionDto) {
-    return this.preadmissionService.create(createDto, null);
+  @UseInterceptors(attachmentUpload)
+  async createPublic(
+    @Body('data') data: string,
+    @UploadedFiles()
+    files: PreadmissionUploadedFilesMap,
+  ) {
+    const createDto = await parseCreateBody(data);
+    return this.preadmissionService.create(createDto, null, files);
   }
 
-  /** Público: parsear texto leído del QR de cédula (autollenado asistido) */
   @Post('parse-cedula-qr')
   async parseCedulaQr(@Body() body: ParseCedulaQrDto) {
     return this.preadmissionService.parseCedulaQrPayload(body.raw);
@@ -62,8 +115,15 @@ export class PreadmissionController {
 
   @Post()
   @UseGuards(JwtAuthGuard)
-  async create(@Body() createDto: CreatePreadmissionDto, @Request() req) {
-    return this.preadmissionService.create(createDto, req.user.id);
+  @UseInterceptors(attachmentUpload)
+  async create(
+    @Body('data') data: string,
+    @UploadedFiles()
+    files: PreadmissionUploadedFilesMap,
+    @Request() req,
+  ) {
+    const createDto = await parseCreateBody(data);
+    return this.preadmissionService.create(createDto, req.user.id, files);
   }
 
   @Get('work-list')
@@ -92,6 +152,18 @@ export class PreadmissionController {
     @Query('limit') limit?: number,
   ) {
     return this.preadmissionService.findAll(req.user, skip || 0, limit || 100);
+  }
+
+  @Get(':id/attachments/:field')
+  @UseGuards(JwtAuthGuard)
+  @Header('Cache-Control', 'private, max-age=3600')
+  async getAttachment(
+    @Param('id') id: string,
+    @Param('field') field: string,
+    @Request() req,
+  ): Promise<StreamableFile> {
+    const { stream } = await this.preadmissionService.getAttachment(+id, field, req.user);
+    return stream;
   }
 
   @Patch(':id/confirm-arrival')

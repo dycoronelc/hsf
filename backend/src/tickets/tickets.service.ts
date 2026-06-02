@@ -513,7 +513,7 @@ export class TicketsService {
       patientId: pre.patientId ?? null,
       serviceId: admService.id,
       priority: Priority.NORMAL,
-      status: TicketStatus.CREADO,
+      status: TicketStatus.CHECK_IN,
       qrCode: this.generateQrCode(),
       preadmissionId: pre.id,
     });
