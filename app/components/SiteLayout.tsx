@@ -24,9 +24,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   }, [userMenuOpen])
 
   const handleLogout = () => {
-    logout()
     setUserMenuOpen(false)
-    router.push('/login')
+    logout()
+    router.replace('/login')
   }
 
   const homeHref = isAuthenticated ? '/dashboard' : '/login'

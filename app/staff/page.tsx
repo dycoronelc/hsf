@@ -53,41 +53,8 @@ export default function StaffConsolePage() {
     { value: 'documentando', label: 'Documentando' },
   ]
 
-  useEffect(() => {
-    if (!authHydrated) return
-    if (!isAuthenticated) {
-      router.push('/login')
-      return
-    }
-    if (user?.role === 'patient') {
-      router.push('/dashboard')
-      return
-    }
-    fetchServices()
-  }, [authHydrated, isAuthenticated, user, router])
-
-  if (!authHydrated) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
-        <div className="text-xl text-gray-600">Cargando...</div>
-      </div>
-    )
-  }
-  if (!isAuthenticated || user?.role === 'patient') {
-    return null
-  }
-
-  useEffect(() => {
-    if (user?.agentState) setAgentState(user.agentState)
-  }, [user?.agentState])
-
-  useEffect(() => {
-    if (selectedService) {
-      fetchTickets()
-      const interval = setInterval(fetchTickets, 3000)
-      return () => clearInterval(interval)
-    }
-  }, [selectedService])
+  const canUseStaff =
+    authHydrated && isAuthenticated && user != null && user.role !== 'patient'
 
   const fetchServices = async () => {
     try {
@@ -123,6 +90,43 @@ export default function StaffConsolePage() {
     } catch (error) {
       console.error('Error fetching tickets:', error)
     }
+  }
+
+  useEffect(() => {
+    if (!authHydrated) return
+    if (!isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+    if (user?.role === 'patient') {
+      router.replace('/dashboard')
+      return
+    }
+    fetchServices()
+  }, [authHydrated, isAuthenticated, user, router])
+
+  useEffect(() => {
+    if (!canUseStaff) return
+    if (user?.agentState) setAgentState(user.agentState)
+  }, [canUseStaff, user?.agentState])
+
+  useEffect(() => {
+    if (!canUseStaff || !selectedService || !token) return
+    fetchTickets()
+    const interval = setInterval(fetchTickets, 3000)
+    return () => clearInterval(interval)
+  }, [canUseStaff, selectedService, token])
+
+  if (!authHydrated) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+        <div className="text-xl text-gray-600">Cargando...</div>
+      </div>
+    )
+  }
+
+  if (!isAuthenticated || user?.role === 'patient') {
+    return null
   }
 
   const handleCallTicket = async (ticketId: number) => {

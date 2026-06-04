@@ -46,6 +46,9 @@ export const DEFAULT_ROLE_PERMISSIONS: Record<string, AdminPermissionKey[]> = {
     'review_preadmissions',
   ],
   [UserRole.RECEPTION]: [
+    'view_host_work_list',
+    'confirm_arrival',
+    'activate_ticket',
     'staff_check_in',
     'staff_call_ticket',
     'staff_transfer_ticket',

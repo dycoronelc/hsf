@@ -58,18 +58,18 @@ export default function HostPage() {
 
   useEffect(() => {
     if (!authHydrated) return
-    if (!isAuthenticated) {
-      router.push('/login')
+    if (!isAuthenticated || !token) {
+      router.replace('/login')
       return
     }
     if (!user || !HOST_ROLES.includes(user.role)) {
-      router.push('/dashboard')
+      router.replace('/dashboard')
       return
     }
     load()
     const interval = setInterval(load, 15000)
     return () => clearInterval(interval)
-  }, [authHydrated, isAuthenticated, user, router, load])
+  }, [authHydrated, isAuthenticated, token, user, router, load])
 
   const confirm = async (id: number) => {
     if (!token) return

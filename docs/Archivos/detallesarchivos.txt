@@ -1,0 +1,9 @@
+ubicacion_geo.xlsx: Contiene la base de datos geográfica de Panamá con códigos de país, provincia, distrito y corregimiento, necesarios para los campos de ubicación del formulario.
+
+ejemplo_json.json: Ejemplo de estructura JSON con datos de un paciente para que puedas visualizar cómo se debe conformar la información que se enviará al sistema.
+
+naionalidad.xlsx: Tabla de nacionalidades con sus códigos correspondientes que deberás integrar en el sistema.
+
+Estructura de JSON.xlsx: Documento que detalla la estructura completa del JSON que se utilizará para las solicitudes de preadmisión, incluyendo campos obligatorios y opcionales.
+
+useCase_preadm_wservice.pdf: Especificaciones técnicas para el consumo del servicio web, incluyendo URLs de prueba, credenciales para autenticación y ejemplos de respuestas.
