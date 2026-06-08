@@ -122,7 +122,7 @@ export function CedulaQrCapture({ onParsed, onError, disabled = false }: CedulaQ
         onChange={(e) => setQrRaw(e.target.value)}
         rows={2}
         disabled={disabled}
-        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono"
+        className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm font-mono text-gray-900 bg-white"
         placeholder="Pegar contenido del QR…"
       />
 

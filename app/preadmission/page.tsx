@@ -576,7 +576,7 @@ export default function PreadmissionPage() {
           {/* Step 1: Departamento y Fecha */}
           {step === 1 && (
             <div className="space-y-6 min-w-0">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 1: Área y Fecha</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 1: Área y Fecha</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Departamento *
@@ -584,7 +584,7 @@ export default function PreadmissionPage() {
                 <select
                   value={formData.departamento}
                   onChange={(e) => setFormData({ ...formData, departamento: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   required
                 >
                   <option value="">Seleccione...</option>
@@ -605,7 +605,7 @@ export default function PreadmissionPage() {
           {/* Step 2: Identificación y Búsqueda */}
           {step === 2 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 2: Identificación del Paciente</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 2: Identificación del Paciente</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   ¿Quién completa el registro? *
@@ -613,7 +613,7 @@ export default function PreadmissionPage() {
                 <select
                   value={formData.registradoComo}
                   onChange={(e) => setFormData({ ...formData, registradoComo: e.target.value })}
-                  className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   required
                 >
                   <option value="paciente">Paciente</option>
@@ -628,7 +628,7 @@ export default function PreadmissionPage() {
                   <select
                     value={formData.pasaporte}
                     onChange={(e) => setFormData({ ...formData, pasaporte: e.target.value, cedula: '' })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   >
                     <option value="C">Cédula</option>
                     <option value="P">Pasaporte</option>
@@ -643,7 +643,7 @@ export default function PreadmissionPage() {
                       type="text"
                       value={formData.cedula}
                       onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
-                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg"
+                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       placeholder={formData.pasaporte === 'C' ? '0-000-000' : 'Número de pasaporte'}
                       required
                     />
@@ -676,7 +676,7 @@ export default function PreadmissionPage() {
           {/* Step 3: Datos Personales */}
           {step === 3 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 3: Datos Personales</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 3: Datos Personales</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -686,7 +686,7 @@ export default function PreadmissionPage() {
                     type="text"
                     value={formData.name1}
                     onChange={(e) => setFormData({ ...formData, name1: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                 </div>
@@ -698,7 +698,7 @@ export default function PreadmissionPage() {
                     type="text"
                     value={formData.name2}
                     onChange={(e) => setFormData({ ...formData, name2: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -709,7 +709,7 @@ export default function PreadmissionPage() {
                     type="text"
                     value={formData.apellido1}
                     onChange={(e) => setFormData({ ...formData, apellido1: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                 </div>
@@ -721,7 +721,7 @@ export default function PreadmissionPage() {
                     type="text"
                     value={formData.apellido2}
                     onChange={(e) => setFormData({ ...formData, apellido2: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                 </div>
                 <div>
@@ -731,7 +731,7 @@ export default function PreadmissionPage() {
                   <select
                     value={formData.sexo}
                     onChange={(e) => setFormData({ ...formData, sexo: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   >
                     <option value="M">Masculino</option>
                     <option value="F">Femenino</option>
@@ -751,7 +751,7 @@ export default function PreadmissionPage() {
                   <select
                     value={formData.nacionalidad}
                     onChange={(e) => setFormData({ ...formData, nacionalidad: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   >
                     <option value="">Seleccione...</option>
@@ -769,7 +769,7 @@ export default function PreadmissionPage() {
                   <select
                     value={formData.estadocivil}
                     onChange={(e) => setFormData({ ...formData, estadocivil: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   >
                     <option value="">Seleccione...</option>
@@ -788,7 +788,7 @@ export default function PreadmissionPage() {
                   <select
                     value={formData.tiposangre}
                     onChange={(e) => setFormData({ ...formData, tiposangre: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   >
                     <option value="">Seleccione...</option>
@@ -810,7 +810,7 @@ export default function PreadmissionPage() {
           {/* Step 4: Contacto y Dirección */}
           {step === 4 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 4: Contacto y Dirección</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 4: Contacto y Dirección</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -823,7 +823,7 @@ export default function PreadmissionPage() {
                       setEmailVerified(false)
                       setFormData({ ...formData, email: e.target.value })
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                 </div>
@@ -835,7 +835,7 @@ export default function PreadmissionPage() {
                     <select
                       value={formData.celularPrefix}
                       onChange={(e) => setFormData({ ...formData, celularPrefix: e.target.value })}
-                      className="sm:w-40 px-4 py-2 border border-gray-300 rounded-lg"
+                      className="sm:w-40 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     >
                       <option value="507">+507 Panamá</option>
                       <option value="506">+506 Costa Rica</option>
@@ -848,7 +848,7 @@ export default function PreadmissionPage() {
                       onChange={(e) => {
                         setFormData({ ...formData, celular: e.target.value.replace(/[^\d\s-]/g, '') })
                       }}
-                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg"
+                      className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       placeholder="Ej: 6123-4567"
                       required
                     />
@@ -865,7 +865,7 @@ export default function PreadmissionPage() {
                       value={emailCode}
                       onChange={(e) => setEmailCode(e.target.value)}
                       placeholder="Código recibido"
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
                     />
                     <button type="button" onClick={() => confirmVerification()} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
                       Confirmar correo
@@ -885,7 +885,7 @@ export default function PreadmissionPage() {
                       setFormData({ ...formData, provincia1: nuevaProvincia, distrito1: '', corregimiento1: '' })
                       await loadDistritos(nuevaProvincia, true)
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   >
                     <option value="">Seleccione una provincia...</option>
@@ -907,7 +907,7 @@ export default function PreadmissionPage() {
                       setFormData({ ...formData, distrito1: nuevoDistrito, corregimiento1: '' })
                       await loadCorregimientos(nuevoDistrito, true)
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     disabled={!formData.provincia1}
                     required
                   >
@@ -926,7 +926,7 @@ export default function PreadmissionPage() {
                   <select
                     value={formData.corregimiento1}
                     onChange={(e) => setFormData({ ...formData, corregimiento1: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     disabled={!formData.distrito1}
                     required
                   >
@@ -947,7 +947,7 @@ export default function PreadmissionPage() {
                     value={formData.direccion1}
                     maxLength={200}
                     onChange={(e) => setFormData({ ...formData, direccion1: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                   <p className="text-xs text-gray-500 mt-1">{formData.direccion1.length}/200 caracteres</p>
@@ -959,7 +959,7 @@ export default function PreadmissionPage() {
           {/* Step 5: Contacto de Urgencia */}
           {step === 5 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 5: Contacto de Urgencia</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 5: Contacto de Urgencia</h2>
               <div className="grid md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -969,7 +969,7 @@ export default function PreadmissionPage() {
                     type="text"
                     value={formData.encasourgencia}
                     onChange={(e) => setFormData({ ...formData, encasourgencia: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                 </div>
@@ -981,7 +981,7 @@ export default function PreadmissionPage() {
                     type="text"
                     value={formData.relacion}
                     onChange={(e) => setFormData({ ...formData, relacion: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     placeholder="Ej: HIJA, ESPOSO, etc."
                     required
                   />
@@ -994,7 +994,7 @@ export default function PreadmissionPage() {
                     type="email"
                     value={formData.email3}
                     onChange={(e) => setFormData({ ...formData, email3: e.target.value })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                 </div>
@@ -1006,7 +1006,7 @@ export default function PreadmissionPage() {
                     type="tel"
                     value={formData.celular3}
                     onChange={(e) => setFormData({ ...formData, celular3: e.target.value.replace(/[^\d\s-]/g, '') })}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                 </div>
@@ -1017,7 +1017,7 @@ export default function PreadmissionPage() {
           {/* Step 6: Seguro/Cobertura */}
           {step === 6 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 6: Seguro y Cobertura</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 6: Seguro y Cobertura</h2>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   ¿Mantiene seguro? *
@@ -1034,7 +1034,7 @@ export default function PreadmissionPage() {
                         : {}),
                     })
                   }}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   required
                 >
                   <option value="NO">No</option>
@@ -1056,7 +1056,7 @@ export default function PreadmissionPage() {
                       type="text"
                       value={formData.compania1}
                       onChange={(e) => setFormData({ ...formData, compania1: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       required
                     />
                   </div>
@@ -1068,7 +1068,7 @@ export default function PreadmissionPage() {
                       type="text"
                       value={formData.poliza1}
                       onChange={(e) => setFormData({ ...formData, poliza1: e.target.value })}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       required
                     />
                   </div>
@@ -1082,7 +1082,7 @@ export default function PreadmissionPage() {
                   type="text"
                   value={formData.medico}
                   onChange={(e) => setFormData({ ...formData, medico: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                 />
               </div>
               <div>
@@ -1098,7 +1098,7 @@ export default function PreadmissionPage() {
                       diagnostico: e.target.value,
                     })
                   }
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   rows={3}
                 />
               </div>
@@ -1108,7 +1108,7 @@ export default function PreadmissionPage() {
           {/* Step 7: Adjuntos */}
           {step === 7 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 7: Documentos Adjuntos</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 7: Documentos Adjuntos</h2>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1123,7 +1123,7 @@ export default function PreadmissionPage() {
                       const file = e.target.files?.[0]
                       if (file) handleFileSelect('cedulaimagen', file)
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
                   {attachmentFiles.cedulaimagen && (
@@ -1147,7 +1147,7 @@ export default function PreadmissionPage() {
                       const file = e.target.files?.[0]
                       if (file) handleFileSelect('ordenimagen', file)
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                   {attachmentFiles.ordenimagen && (
                     <p className="text-xs text-green-700 mt-1">
@@ -1167,7 +1167,7 @@ export default function PreadmissionPage() {
                       const file = e.target.files?.[0]
                       if (file) handleFileSelect('preautorizacion', file)
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                   {attachmentFiles.preautorizacion && (
                     <p className="text-xs text-green-700 mt-1">
@@ -1187,7 +1187,7 @@ export default function PreadmissionPage() {
                       const file = e.target.files?.[0]
                       if (file) handleFileSelect('carnetseguro', file)
                     }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                   {attachmentFiles.carnetseguro && (
                     <p className="text-xs text-green-700 mt-1">
@@ -1208,7 +1208,7 @@ export default function PreadmissionPage() {
                         const file = e.target.files?.[0]
                         if (file) handleFileSelect('certificadoSeguro', file)
                       }}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-lg"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     />
                     {attachmentFiles.certificadoSeguro && (
                       <p className="text-xs text-green-700 mt-1">
@@ -1224,7 +1224,7 @@ export default function PreadmissionPage() {
           {/* Step 8: Confirmación */}
           {step === 8 && (
             <div className="space-y-6">
-              <h2 className="text-lg sm:text-xl font-semibold">Paso 8: Confirmación</h2>
+              <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 8: Confirmación</h2>
               <div className="bg-gray-50 p-6 rounded-lg">
                 <p className="text-gray-700 mb-4">
                   Por favor revisa que toda la información sea correcta antes de enviar.
@@ -1257,7 +1257,7 @@ export default function PreadmissionPage() {
             <button
               onClick={() => setStep(Math.max(1, step - 1))}
               disabled={step === 1}
-              className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+              className="w-full sm:w-auto px-6 py-3 sm:py-2 border border-gray-300 rounded-lg text-gray-900 bg-white disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
             >
               Anterior
             </button>
