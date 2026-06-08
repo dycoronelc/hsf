@@ -14,22 +14,9 @@ export function createHtml5QrInstance(elementId: string): Html5Qrcode {
   })
 }
 
-export function buildQrScanConfig(): Html5QrcodeCameraScanConfig {
-  return {
-    fps: 18,
-    aspectRatio: 1.0,
-    disableFlip: false,
-    qrbox: (viewfinderWidth, viewfinderHeight) => {
-      const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
-      const side = Math.floor(Math.max(240, Math.min(minEdge * 0.82, 560)))
-      return { width: side, height: side }
-    },
-    videoConstraints: {
-      // Ideal muy alto en móvil a veces hace que el SO elija otra cámara o falle el stream trasero.
-      width: { ideal: 1280, min: 320 },
-      height: { ideal: 720, min: 240 },
-    },
-  }
+function isMobileDevice(): boolean {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPhone|iPad|iPod|Mobile|webOS|BlackBerry/i.test(navigator.userAgent)
 }
 
 function looksLikeFrontCameraLabel(label: string): boolean {
@@ -45,10 +32,64 @@ function looksLikeRearCameraLabel(label: string): boolean {
   const l = label.toLowerCase()
   if (looksLikeFrontCameraLabel(l)) return false
   return (
-    /back|rear|trasera|posterior|retro|environment|world|wide|tele|facing\s+back|orientaci[oó]n\s+trasera|orientaci[oó]n\s+posterior|cámara\s+trasera|camera\s+\d+\s*,\s*facing\s+back/i.test(
+    /back|rear|trasera|posterior|retro|environment|world|wide|tele|main|facing\s+back|orientaci[oó]n\s+trasera|orientaci[oó]n\s+posterior|c[aá]mara\s+trasera|camera\s+2,\s*facing\s+back|camera\s+0,\s*facing\s+back/i.test(
       l,
     )
   )
+}
+
+async function enumerateVideoInputs(): Promise<Array<{ id: string; label: string }>> {
+  if (typeof navigator === 'undefined' || !navigator.mediaDevices?.enumerateDevices) {
+    return []
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices()
+  return devices
+    .filter((d) => d.kind === 'videoinput' && d.deviceId)
+    .map((d) => ({ id: d.deviceId, label: d.label || '' }))
+}
+
+/**
+ * html5-qrcode: si scanConfig.videoConstraints está definido, IGNORA cameraIdOrConfig
+ * y solo usa videoConstraints. Por eso facingMode/deviceId deben ir DENTRO de videoConstraints.
+ */
+export function buildQrScanConfig(
+  camera?: string | MediaTrackConstraints,
+): Html5QrcodeCameraScanConfig {
+  const resolution: MediaTrackConstraints = {
+    width: { ideal: 1280, min: 320 },
+    height: { ideal: 720, min: 240 },
+  }
+
+  let videoConstraints: MediaTrackConstraints
+
+  if (!camera) {
+    videoConstraints = {
+      ...resolution,
+      facingMode: { ideal: 'environment' },
+    }
+  } else if (typeof camera === 'string') {
+    videoConstraints = {
+      ...resolution,
+      deviceId: { exact: camera },
+    }
+  } else {
+    videoConstraints = {
+      ...resolution,
+      ...camera,
+    }
+  }
+
+  return {
+    fps: 18,
+    aspectRatio: 1.0,
+    disableFlip: false,
+    qrbox: (viewfinderWidth, viewfinderHeight) => {
+      const minEdge = Math.min(viewfinderWidth, viewfinderHeight)
+      const side = Math.floor(Math.max(240, Math.min(minEdge * 0.82, 560)))
+      return { width: side, height: side }
+    },
+    videoConstraints,
+  }
 }
 
 function pushConstraintUnique(
@@ -62,44 +103,8 @@ function pushConstraintUnique(
   list.push(c)
 }
 
-/**
- * Orden de prueba: primero facingMode "environment" (el SO elige la trasera),
- * luego deviceId de cámaras que por etiqueta parecen traseras,
- * luego cámaras neutras, luego el resto, y al final la frontal.
- */
-export async function buildCameraConfigsOrder(): Promise<Array<string | MediaTrackConstraints>> {
-  const configs: Array<string | MediaTrackConstraints> = []
-  const seen = new Set<string>()
-
-  pushConstraintUnique(configs, seen, { facingMode: { exact: 'environment' } })
-  pushConstraintUnique(configs, seen, { facingMode: 'environment' })
-  pushConstraintUnique(configs, seen, { facingMode: { ideal: 'environment' } })
-
-  const cameras = await Html5Qrcode.getCameras().catch(() => [] as { id: string; label: string }[])
-
-  const rear = cameras.filter((c) => looksLikeRearCameraLabel(c.label))
-  const neutral = cameras.filter(
-    (c) => !looksLikeRearCameraLabel(c.label) && !looksLikeFrontCameraLabel(c.label),
-  )
-  const front = cameras.filter((c) => looksLikeFrontCameraLabel(c.label))
-
-  for (const c of rear) {
-    pushConstraintUnique(configs, seen, { deviceId: { exact: c.id } })
-  }
-  for (const c of neutral) {
-    pushConstraintUnique(configs, seen, { deviceId: { exact: c.id } })
-  }
-  for (const c of front) {
-    pushConstraintUnique(configs, seen, { deviceId: { exact: c.id } })
-  }
-
-  pushConstraintUnique(configs, seen, { facingMode: 'user' })
-  return configs
-}
-
-/** Cámaras únicas ordenadas: traseras primero, luego neutras, luego frontales (para conmutar con deviceId). */
 export async function getOrderedCameraDevices(): Promise<{ id: string; label: string }[]> {
-  const cameras = await Html5Qrcode.getCameras().catch(() => [] as { id: string; label: string }[])
+  const cameras = await enumerateVideoInputs()
   const seen = new Set<string>()
   const uniq = cameras.filter((c) => {
     if (seen.has(c.id)) return false
@@ -115,9 +120,7 @@ export async function getOrderedCameraDevices(): Promise<{ id: string; label: st
 }
 
 /**
- * En Chrome/Android (y en parte iOS) las etiquetas de videoinput suelen quedar vacías hasta el primer
- * getUserMedia. Sin eso, todas las cámaras caen en "neutral" y el deviceId suele abrir siempre la misma.
- * Una PWA no cambia esto: es comportamiento del navegador, no del “modo app”.
+ * Pide permiso con cámara trasera para que enumerateDevices devuelva etiquetas (Android/iOS).
  */
 export async function primeCameraEnumeration(): Promise<void> {
   if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) return
@@ -126,21 +129,25 @@ export async function primeCameraEnumeration(): Promise<void> {
     for (const t of stream.getTracks()) t.stop()
   }
   try {
+    await tryStream({ video: { facingMode: { exact: 'environment' } }, audio: false })
+    return
+  } catch {
+    /* */
+  }
+  try {
     await tryStream({ video: { facingMode: { ideal: 'environment' } }, audio: false })
     return
   } catch {
     /* */
   }
   try {
-    await tryStream({ video: { facingMode: { ideal: 'user' } }, audio: false })
-    return
+    await tryStream({ video: { facingMode: 'environment' }, audio: false })
   } catch {
-    /* */
-  }
-  try {
-    await tryStream({ video: true, audio: false })
-  } catch {
-    /* sin permiso aún: getCameras puede seguir limitado */
+    try {
+      await tryStream({ video: true, audio: false })
+    } catch {
+      /* sin permiso */
+    }
   }
 }
 
@@ -149,11 +156,11 @@ function constraintKey(c: string | MediaTrackConstraints): string {
 }
 
 /**
- * Lista para el botón “cambiar cámara”: primero facingMode trasera/frontal (muy fiable en móviles),
- * luego cada videoinput por deviceId (traseras → neutras → frontales) tras enumerar con permiso.
+ * Orden de cámaras para escaneo: trasera primero (facingMode y deviceId).
  */
 export async function getQrCameraFlipConstraints(): Promise<Array<string | MediaTrackConstraints>> {
   await primeCameraEnumeration()
+
   const out: Array<string | MediaTrackConstraints> = []
   const seen = new Set<string>()
   const add = (c: string | MediaTrackConstraints) => {
@@ -163,23 +170,59 @@ export async function getQrCameraFlipConstraints(): Promise<Array<string | Media
     out.push(c)
   }
 
-  add({ facingMode: { exact: 'environment' } })
   add({ facingMode: 'environment' })
+  add({ facingMode: { exact: 'environment' } })
   add({ facingMode: { ideal: 'environment' } })
-  add({ facingMode: { exact: 'user' } })
-  add({ facingMode: 'user' })
-  add({ facingMode: { ideal: 'user' } })
 
-  for (const d of await getOrderedCameraDevices()) {
-    add({ deviceId: { exact: d.id } })
+  const cameras = await getOrderedCameraDevices()
+  const rear = cameras.filter((c) => looksLikeRearCameraLabel(c.label))
+  const neutral = cameras.filter(
+    (c) => !looksLikeRearCameraLabel(c.label) && !looksLikeFrontCameraLabel(c.label),
+  )
+  const front = cameras.filter((c) => looksLikeFrontCameraLabel(c.label))
+
+  for (const c of rear) {
+    add({ deviceId: { exact: c.id } })
+  }
+
+  if (isMobileDevice() && rear.length === 0 && cameras.length >= 2) {
+    // Sin etiquetas: en muchos Android la trasera es la primera; en algunos iPhone la última.
+    add({ deviceId: { exact: cameras[0].id } })
+    if (cameras.length > 1) {
+      add({ deviceId: { exact: cameras[cameras.length - 1].id } })
+    }
+    for (const c of cameras.slice(1, -1)) {
+      add({ deviceId: { exact: c.id } })
+    }
+  } else {
+    for (const c of neutral) {
+      add({ deviceId: { exact: c.id } })
+    }
+  }
+
+  add({ facingMode: 'user' })
+  for (const c of front) {
+    add({ deviceId: { exact: c.id } })
   }
 
   return out
 }
 
-/**
- * Inicia el escáner con una sola restricción de cámara (p. ej. deviceId exacto).
- */
+export async function buildCameraConfigsOrder(): Promise<Array<string | MediaTrackConstraints>> {
+  return getQrCameraFlipConstraints()
+}
+
+function dummyCameraIdForStart(cameraConfig: string | MediaTrackConstraints): string | MediaTrackConstraints {
+  if (typeof cameraConfig === 'string') return cameraConfig
+  if ('facingMode' in cameraConfig && cameraConfig.facingMode) {
+    return { facingMode: 'environment' }
+  }
+  if ('deviceId' in cameraConfig) {
+    return cameraConfig
+  }
+  return { facingMode: 'environment' }
+}
+
 export async function startLiveQrScannerWithCamera(
   elementId: string,
   cameraConfig: string | MediaTrackConstraints,
@@ -187,9 +230,14 @@ export async function startLiveQrScannerWithCamera(
   onScanFailure: () => void,
 ): Promise<Html5Qrcode> {
   const scanner = createHtml5QrInstance(elementId)
-  const scanConfig = buildQrScanConfig()
+  const scanConfig = buildQrScanConfig(cameraConfig)
   try {
-    await scanner.start(cameraConfig, scanConfig, onDecoded, onScanFailure)
+    await scanner.start(
+      dummyCameraIdForStart(cameraConfig),
+      scanConfig,
+      onDecoded,
+      onScanFailure,
+    )
     return scanner
   } catch (e) {
     try {
@@ -206,22 +254,23 @@ export async function startLiveQrScannerWithCamera(
   }
 }
 
-/**
- * Inicia escaneo QR en vivo. Reintenta con otra cámara si falla (útil en laptops sin cámara trasera).
- */
 export async function startLiveQrScanner(
   elementId: string,
   onDecoded: (decodedText: string) => void,
   onScanFailure: () => void,
 ): Promise<Html5Qrcode> {
-  const scanConfig = buildQrScanConfig()
   const cameraConfigs = await buildCameraConfigsOrder()
   let lastErr: unknown
 
   for (const cam of cameraConfigs) {
     const scanner = createHtml5QrInstance(elementId)
     try {
-      await scanner.start(cam, scanConfig, onDecoded, onScanFailure)
+      await scanner.start(
+        dummyCameraIdForStart(cam),
+        buildQrScanConfig(cam),
+        onDecoded,
+        onScanFailure,
+      )
       return scanner
     } catch (e) {
       lastErr = e

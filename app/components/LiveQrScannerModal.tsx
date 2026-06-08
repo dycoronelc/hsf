@@ -171,20 +171,28 @@ export function LiveQrScannerModal({
         {description != null && <div className="text-sm text-gray-600 mb-4">{description}</div>}
         <div className="relative rounded-lg overflow-hidden bg-gray-100">
           <div id={containerId} className="min-h-[280px] sm:min-h-[400px] w-full max-h-[70vh]" />
-          {canFlipCamera && !scanning && (
+          {canFlipCamera && (
             <button
               type="button"
               onClick={handleFlip}
-              className="absolute bottom-3 right-3 flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white shadow-md hover:bg-black/70 active:scale-95 transition"
+              disabled={scanning}
+              className="absolute bottom-3 right-3 flex h-12 w-12 items-center justify-center rounded-full bg-black/55 text-white shadow-md hover:bg-black/70 active:scale-95 transition disabled:opacity-40"
               aria-label="Cambiar de cámara"
-              title="Cambiar de cámara"
+              title="Cambiar de cámara (si ve su rostro, pulse aquí para usar la trasera)"
             >
               <SwitchCamera className="h-6 w-6" strokeWidth={2} />
             </button>
           )}
         </div>
         {scanError && <p className="mt-3 text-sm text-red-600">{scanError}</p>}
-        {scanning && !scanError && <p className="mt-2 text-sm text-gray-500">Iniciando cámara trasera...</p>}
+        {scanning && !scanError && (
+          <p className="mt-2 text-sm text-gray-500">Iniciando cámara trasera… Permita el acceso si el navegador lo solicita.</p>
+        )}
+        {!scanning && !scanError && canFlipCamera && (
+          <p className="mt-2 text-sm text-gray-500">
+            Si la vista es la cámara frontal (selfie), use el botón de cámaras abajo a la derecha.
+          </p>
+        )}
         <div className="mt-4 flex justify-end">
           <button
             type="button"

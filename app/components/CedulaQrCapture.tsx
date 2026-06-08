@@ -134,9 +134,9 @@ export function CedulaQrCapture({ onParsed, onError, disabled = false }: CedulaQ
         title="Escanear QR de cédula"
         description={
           <p>
-            Mantenga el código dentro del recuadro, con buena luz y sin reflejos. Use el ícono de cámaras abajo a la
-            derecha si necesita la cámara trasera. Acérquese si el QR es pequeño (cédulas y carnés de residente suelen
-            ser densos).
+            Se intentará abrir la <strong>cámara trasera</strong> automáticamente. Mantenga el QR dentro del recuadro,
+            con buena luz y sin reflejos. Si ve su rostro en pantalla, pulse el ícono de cámaras (abajo a la derecha).
+            En iPhone use Safari; en Android, Chrome. Acérquese si el QR es pequeño.
           </p>
         }
       />
