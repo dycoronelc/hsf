@@ -9,6 +9,12 @@
  *   cédula | primer apellido | segundo apellido | nombre(s) | sexo | lugar nacimiento |
  *   fecha nacimiento | nacionalidad | donante | fecha expedición | fecha vencimiento | cadena verificación
  *
+ * Variante frecuente en carné de residente y algunas cédulas (sexo en índice 3):
+ *   cédula | nombre(s) | apellidos | sexo | lugar nacimiento | ...
+ *
+ * Variante con apellidos separados antes del sexo (sexo en índice 4):
+ *   cédula | nombre(s) | primer apellido | segundo apellido | sexo | ...
+ *
  * Variante compacta (10 campos): sin donante ni verificación, o con donante omitido — ver tryTeTableLayout.
  *
  * Si el formato cambia, ajustar índices aquí o ampliar variantes; se mantienen JSON y heurísticas legacy.
@@ -150,109 +156,173 @@ function splitNombresToName12(nombres: string): { name1: string; name2: string }
   return { name1: parts[0], name2: parts.slice(1).join(' ') };
 }
 
+function splitApellidosToAp12(apellidos: string): { apellido1: string; apellido2: string } {
+  const parts = apellidos.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return { apellido1: '', apellido2: '' };
+  if (parts.length === 1) return { apellido1: parts[0], apellido2: '' };
+  return { apellido1: parts[0], apellido2: parts.slice(1).join(' ') };
+}
+
+type TeLayout = 'apellidos_first' | 'nombres_first_split' | 'nombres_first_combined';
+
+function isSexToken(s: string): boolean {
+  const u = s.trim().toUpperCase();
+  return /^[MF]$/.test(u) || u === 'MASCULINO' || u === 'FEMENINO';
+}
+
+/** Detecta si el sexo está en [3] (nombres|apellidos|sexo) o en [4] (apellidos|nombres o nombres|ap1|ap2). */
+function detectTeLayout(f: string[]): TeLayout {
+  if (f.length >= 10 && isSexToken(f[3] ?? '')) {
+    return 'nombres_first_combined';
+  }
+  if (f.length >= 11 && isSexToken(f[4] ?? '')) {
+    const f1 = (f[1] ?? '').trim().split(/\s+/).filter(Boolean).length;
+    const f2 = (f[2] ?? '').trim().split(/\s+/).filter(Boolean).length;
+    const f3 = (f[3] ?? '').trim().split(/\s+/).filter(Boolean).length;
+    if (f1 >= 2 && f2 === 1 && f3 === 1) {
+      return 'nombres_first_split';
+    }
+  }
+  return 'apellidos_first';
+}
+
+type TeNameFields = {
+  nombres: string;
+  apellido1: string;
+  apellido2: string;
+  name1: string;
+  name2: string;
+  apellidos: string;
+};
+
+function extractTeNameFields(layout: TeLayout, f: string[]): { names: TeNameFields; sexIdx: number } {
+  if (layout === 'nombres_first_combined') {
+    const nombres = (f[1] ?? '').trim();
+    const apellidosRaw = (f[2] ?? '').trim();
+    const { apellido1, apellido2 } = splitApellidosToAp12(apellidosRaw);
+    const { name1, name2 } = splitNombresToName12(nombres);
+    return {
+      sexIdx: 3,
+      names: {
+        nombres,
+        apellido1,
+        apellido2,
+        name1,
+        name2,
+        apellidos: apellidosRaw || [apellido1, apellido2].filter(Boolean).join(' ').trim(),
+      },
+    };
+  }
+  if (layout === 'nombres_first_split') {
+    const nombres = (f[1] ?? '').trim();
+    const apellido1 = (f[2] ?? '').trim();
+    const apellido2 = (f[3] ?? '').trim();
+    const { name1, name2 } = splitNombresToName12(nombres);
+    return {
+      sexIdx: 4,
+      names: {
+        nombres,
+        apellido1,
+        apellido2,
+        name1,
+        name2,
+        apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
+      },
+    };
+  }
+  const apellido1 = (f[1] ?? '').trim();
+  const apellido2 = (f[2] ?? '').trim();
+  const nombres = (f[3] ?? '').trim();
+  const { name1, name2 } = splitNombresToName12(nombres);
+  return {
+    sexIdx: 4,
+    names: {
+      nombres,
+      apellido1,
+      apellido2,
+      name1,
+      name2,
+      apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
+    },
+  };
+}
+
 /** Intenta mapear tablas TE de 10–12 columnas (primera columna = cédula). */
 function tryTeTableLayout(fields: string[]): Record<string, string> | null {
   const f = fields.map((x) => x.trim());
   if (f.length < 10 || !looksLikePanamaCedula(f[0])) return null;
 
+  const layout = detectTeLayout(f);
+  const { names, sexIdx } = extractTeNameFields(layout, f);
   const n = f.length;
 
-  // 12 campos: layout completo documentado arriba
-  if (n >= 12) {
-    const [
-      cedula,
-      apellido1,
-      apellido2,
-      nombres,
-      sexo,
-      lugarNac,
-      fechaNac,
-      nacionalidad,
-      donante,
-      fechaExp,
-      fechaVenc,
-      ...rest
-    ] = f;
-    const verificacion = rest.join('|');
-    const { name1, name2 } = splitNombresToName12(nombres);
-    return {
-      cedula: normalizeCedulaToken(cedula),
-      apellido1,
-      apellido2,
-      apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
-      nombres: nombres.trim(),
-      name1,
-      name2,
-      sexo: normalizeSexo(sexo),
-      lugarNacimiento: lugarNac,
-      fechanac: normalizeDateToDdMmYyyy(fechaNac),
-      nacionalidad: nacionalidad.trim(),
-      donante: donante.trim(),
-      fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
-      fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
-      verificacion: verificacion.trim(),
-      _qrFormat: 'te_pipe_12',
-    };
+  const sexo = f[sexIdx] ?? '';
+  const lugarNac = f[sexIdx + 1] ?? '';
+  const fechaNac = f[sexIdx + 2] ?? '';
+  const nacionalidad = f[sexIdx + 3] ?? '';
+
+  let donante = '';
+  let fechaExp = '';
+  let fechaVenc = '';
+  let verificacion = '';
+  let formatSuffix = '';
+
+  if (layout === 'nombres_first_combined') {
+    if (n >= 12) {
+      donante = f[7] ?? '';
+      fechaExp = f[8] ?? '';
+      fechaVenc = f[9] ?? '';
+      verificacion = f.slice(10).join('|');
+      formatSuffix = '12_nombres_combined';
+    } else if (n === 11) {
+      donante = f[7] ?? '';
+      fechaExp = f[8] ?? '';
+      fechaVenc = f[9] ?? '';
+      verificacion = (f[10] ?? '').trim();
+      formatSuffix = '11_nombres_combined';
+    } else if (n === 10) {
+      fechaExp = f[7] ?? '';
+      fechaVenc = f[8] ?? '';
+      verificacion = (f[9] ?? '').trim();
+      formatSuffix = '10_nombres_combined';
+    }
+  } else if (n >= 12) {
+    donante = f[8] ?? '';
+    fechaExp = f[9] ?? '';
+    fechaVenc = f[10] ?? '';
+    verificacion = f.slice(11).join('|');
+    formatSuffix = layout === 'nombres_first_split' ? '12_nombres_split' : '12';
+  } else if (n === 11) {
+    donante = f[8] ?? '';
+    fechaExp = f[9] ?? '';
+    fechaVenc = f[10] ?? '';
+    formatSuffix = layout === 'nombres_first_split' ? '11_nombres_split' : '11';
+  } else if (n === 10) {
+    fechaExp = f[8] ?? '';
+    fechaVenc = f[9] ?? '';
+    formatSuffix = layout === 'nombres_first_split' ? '10_nombres_split' : '10';
   }
 
-  // 11 campos: sin cadena de verificación al final (o sin donante — poco frecuente)
-  if (n === 11) {
-    const [
-      cedula,
-      apellido1,
-      apellido2,
-      nombres,
-      sexo,
-      lugarNac,
-      fechaNac,
-      nacionalidad,
-      donante,
-      fechaExp,
-      fechaVenc,
-    ] = f;
-    const { name1, name2 } = splitNombresToName12(nombres);
-    return {
-      cedula: normalizeCedulaToken(cedula),
-      apellido1,
-      apellido2,
-      apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
-      nombres: nombres.trim(),
-      name1,
-      name2,
-      sexo: normalizeSexo(sexo),
-      lugarNacimiento: lugarNac,
-      fechanac: normalizeDateToDdMmYyyy(fechaNac),
-      nacionalidad: nacionalidad.trim(),
-      donante: donante.trim(),
-      fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
-      fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
-      _qrFormat: 'te_pipe_11',
-    };
-  }
+  if (!formatSuffix) return null;
 
-  // 10 campos: cédula | ap1 | ap2 | nombres | sexo | lugar | fnac | nac | fexp | fvenc
-  if (n === 10) {
-    const [cedula, apellido1, apellido2, nombres, sexo, lugarNac, fechaNac, nacionalidad, fechaExp, fechaVenc] = f;
-    const { name1, name2 } = splitNombresToName12(nombres);
-    return {
-      cedula: normalizeCedulaToken(cedula),
-      apellido1,
-      apellido2,
-      apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
-      nombres: nombres.trim(),
-      name1,
-      name2,
-      sexo: normalizeSexo(sexo),
-      lugarNacimiento: lugarNac,
-      fechanac: normalizeDateToDdMmYyyy(fechaNac),
-      nacionalidad: nacionalidad.trim(),
-      fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
-      fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
-      _qrFormat: 'te_pipe_10',
-    };
-  }
-
-  return null;
+  return {
+    cedula: normalizeCedulaToken(f[0]),
+    apellido1: names.apellido1,
+    apellido2: names.apellido2,
+    apellidos: names.apellidos,
+    nombres: names.nombres,
+    name1: names.name1,
+    name2: names.name2,
+    sexo: normalizeSexo(sexo),
+    lugarNacimiento: lugarNac,
+    fechanac: normalizeDateToDdMmYyyy(fechaNac),
+    nacionalidad: nacionalidad.trim(),
+    ...(donante ? { donante: donante.trim() } : {}),
+    fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
+    fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
+    ...(verificacion ? { verificacion: verificacion.trim() } : {}),
+    _qrFormat: `te_pipe_${formatSuffix}`,
+  };
 }
 
 /**
@@ -514,8 +584,22 @@ export function parseCedulaQr(raw: string): Record<string, string> {
       _qrFormat: 'legacy_guess',
     };
     const idx = looseParts.indexOf(cedulaPart);
-    if (looseParts[idx + 1]) out.rawSegment1 = looseParts[idx + 1];
-    if (looseParts[idx + 2]) out.rawSegment2 = looseParts[idx + 2];
+    const segNombres = looseParts[idx + 1]?.trim() ?? '';
+    const segApellidos = looseParts[idx + 2]?.trim() ?? '';
+    if (segNombres) {
+      out.rawSegment1 = segNombres;
+      out.nombres = segNombres;
+      const { name1, name2 } = splitNombresToName12(segNombres);
+      out.name1 = name1;
+      out.name2 = name2;
+    }
+    if (segApellidos) {
+      out.rawSegment2 = segApellidos;
+      out.apellidos = segApellidos;
+      const { apellido1, apellido2 } = splitApellidosToAp12(segApellidos);
+      out.apellido1 = apellido1;
+      out.apellido2 = apellido2;
+    }
     return out;
   }
 

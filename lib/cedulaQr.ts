@@ -46,9 +46,14 @@ export function mapParsedToPreadmissionFields<T extends Record<string, unknown>>
     parsed.nombres ||
     parsed.NOMBRE ||
     parsed.nombre ||
+    parsed.rawSegment1 ||
+    ''
+  const ape =
+    parsed.apellidos ||
+    parsed.APELLIDO ||
+    parsed.apellido ||
     parsed.rawSegment2 ||
     ''
-  const ape = parsed.apellidos || parsed.APELLIDO || parsed.apellido || ''
   const partsNom = nom.trim() ? nom.trim().split(/\s+/) : []
   const partsApe = ape.trim() ? ape.trim().split(/\s+/) : []
   const name1 = parsed.name1 || partsNom[0] || (prev.name1 as string | undefined) || ''
