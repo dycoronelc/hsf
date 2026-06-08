@@ -665,7 +665,9 @@ export default function PreadmissionPage() {
                 <CedulaQrCapture
                   onParsed={(_, parsed) => {
                     setError('')
-                    setFormData((prev) => mapParsedToPreadmissionFields(prev, parsed))
+                    setFormData((prev) =>
+                      mapParsedToPreadmissionFields(prev, parsed, { nationalities }),
+                    )
                   }}
                   onError={(message) => setError(message)}
                 />

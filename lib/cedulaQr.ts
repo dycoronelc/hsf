@@ -2,6 +2,34 @@ import { isValidDdMmYyyy } from '@/lib/dateUtils'
 
 export type CedulaQrParsed = Record<string, string>
 
+export type NacionalidadCatalogItem = {
+  codigo: string
+  nacionalidad: string
+  pais: string
+}
+
+export function resolveNacionalidadCodigo(
+  raw: string,
+  catalog: NacionalidadCatalogItem[],
+): string {
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+
+  const upper = trimmed.toUpperCase()
+  const byCodigo = catalog.find((item) => item.codigo === trimmed)
+  if (byCodigo) return byCodigo.codigo
+
+  const byNacionalidad = catalog.find(
+    (item) => item.nacionalidad.trim().toUpperCase() === upper,
+  )
+  if (byNacionalidad) return byNacionalidad.codigo
+
+  const byPais = catalog.find((item) => item.pais.trim().toUpperCase() === upper)
+  if (byPais) return byPais.codigo
+
+  return ''
+}
+
 export async function parseCedulaQrRaw(raw: string): Promise<CedulaQrParsed> {
   const response = await fetch('/api/preadmission/parse-cedula-qr', {
     method: 'POST',
@@ -33,6 +61,7 @@ export function buildFullNameFromParsed(parsed: CedulaQrParsed): string {
 export function mapParsedToPreadmissionFields<T extends Record<string, unknown>>(
   prev: T,
   parsed: CedulaQrParsed,
+  options?: { nationalities?: NacionalidadCatalogItem[] },
 ): T {
   const cedula =
     parsed.cedula ||
@@ -61,6 +90,13 @@ export function mapParsedToPreadmissionFields<T extends Record<string, unknown>>
   const apellido1 = parsed.apellido1 || partsApe[0] || (prev.apellido1 as string | undefined) || ''
   const apellido2 = parsed.apellido2 || partsApe.slice(1).join(' ') || (prev.apellido2 as string | undefined) || ''
 
+  const nacionalidadRaw = parsed.nacionalidad?.trim() ?? ''
+  let nacionalidad = nacionalidadRaw
+  if (nacionalidadRaw && options?.nationalities?.length) {
+    const codigo = resolveNacionalidadCodigo(nacionalidadRaw, options.nationalities)
+    if (codigo) nacionalidad = codigo
+  }
+
   return {
     ...prev,
     pasaporte: 'C',
@@ -71,7 +107,7 @@ export function mapParsedToPreadmissionFields<T extends Record<string, unknown>>
     apellido2,
     ...(parsed.fechanac && isValidDdMmYyyy(parsed.fechanac) ? { fechanac: parsed.fechanac } : {}),
     ...(parsed.sexo === 'M' || parsed.sexo === 'F' ? { sexo: parsed.sexo } : {}),
-    ...(parsed.nacionalidad ? { nacionalidad: parsed.nacionalidad } : {}),
+    ...(nacionalidad ? { nacionalidad } : {}),
   }
 }
 

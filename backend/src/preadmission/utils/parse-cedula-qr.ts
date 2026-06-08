@@ -12,6 +12,9 @@
  * Variante frecuente en carné de residente y algunas cédulas (sexo en índice 3):
  *   cédula | nombre(s) | apellidos | sexo | lugar nacimiento | ...
  *
+ * Carné de residente permanente (campo vacío entre apellidos y sexo, sexo en índice 4):
+ *   cédula | nombre(s) | apellidos | (vacío) | sexo | lugar nacimiento | fecha nac | nacionalidad | ... | fexp | fvenc | verif
+ *
  * Variante con apellidos separados antes del sexo (sexo en índice 4):
  *   cédula | nombre(s) | primer apellido | segundo apellido | sexo | ...
  *
@@ -170,9 +173,25 @@ function isSexToken(s: string): boolean {
   return /^[MF]$/.test(u) || u === 'MASCULINO' || u === 'FEMENINO';
 }
 
+function isBlankField(s: string): boolean {
+  return !s.trim();
+}
+
+function isDateLike(s: string): boolean {
+  const t = s.trim();
+  return DATE_DMY_RE.test(t) || DATE_YMD_RE.test(t);
+}
+
+function findCombinedLayoutSexIdx(f: string[]): number {
+  if (isSexToken(f[3] ?? '')) return 3;
+  if (isSexToken(f[4] ?? '') && isBlankField(f[3] ?? '')) return 4;
+  return -1;
+}
+
 /** Detecta si el sexo está en [3] (nombres|apellidos|sexo) o en [4] (apellidos|nombres o nombres|ap1|ap2). */
 function detectTeLayout(f: string[]): TeLayout {
-  if (f.length >= 10 && isSexToken(f[3] ?? '')) {
+  const combinedSexIdx = findCombinedLayoutSexIdx(f);
+  if (combinedSexIdx >= 0 && !isBlankField(f[1] ?? '') && !isBlankField(f[2] ?? '')) {
     return 'nombres_first_combined';
   }
   if (f.length >= 11 && isSexToken(f[4] ?? '')) {
@@ -181,6 +200,9 @@ function detectTeLayout(f: string[]): TeLayout {
     const f3 = (f[3] ?? '').trim().split(/\s+/).filter(Boolean).length;
     if (f1 >= 2 && f2 === 1 && f3 === 1) {
       return 'nombres_first_split';
+    }
+    if (!isBlankField(f[3] ?? '')) {
+      return 'apellidos_first';
     }
   }
   return 'apellidos_first';
@@ -195,14 +217,52 @@ type TeNameFields = {
   apellidos: string;
 };
 
+function extractTeTailFields(
+  f: string[],
+  fromIdx: number,
+): { donante: string; fechaExp: string; fechaVenc: string; verificacion: string } {
+  const dateIndices: number[] = [];
+  for (let i = fromIdx; i < f.length; i++) {
+    if (isDateLike(f[i] ?? '')) dateIndices.push(i);
+  }
+
+  let fechaExp = '';
+  let fechaVenc = '';
+  let verificacion = '';
+  let donante = '';
+
+  if (dateIndices.length >= 2) {
+    fechaExp = (f[dateIndices[dateIndices.length - 2]] ?? '').trim();
+    fechaVenc = (f[dateIndices[dateIndices.length - 1]] ?? '').trim();
+    for (let i = dateIndices[dateIndices.length - 1] + 1; i < f.length; i++) {
+      const v = (f[i] ?? '').trim();
+      if (v) verificacion = v;
+    }
+  } else if (dateIndices.length === 1) {
+    fechaVenc = (f[dateIndices[0]] ?? '').trim();
+  }
+
+  const firstDateIdx = dateIndices[0] ?? f.length;
+  for (let i = fromIdx; i < firstDateIdx; i++) {
+    const v = (f[i] ?? '').trim();
+    if (v && !isDateLike(v)) {
+      donante = v;
+      break;
+    }
+  }
+
+  return { donante, fechaExp, fechaVenc, verificacion };
+}
+
 function extractTeNameFields(layout: TeLayout, f: string[]): { names: TeNameFields; sexIdx: number } {
   if (layout === 'nombres_first_combined') {
+    const sexIdx = findCombinedLayoutSexIdx(f);
     const nombres = (f[1] ?? '').trim();
     const apellidosRaw = (f[2] ?? '').trim();
     const { apellido1, apellido2 } = splitApellidosToAp12(apellidosRaw);
     const { name1, name2 } = splitNombresToName12(nombres);
     return {
-      sexIdx: 3,
+      sexIdx: sexIdx >= 0 ? sexIdx : 3,
       names: {
         nombres,
         apellido1,
@@ -266,26 +326,42 @@ function tryTeTableLayout(fields: string[]): Record<string, string> | null {
   let fechaVenc = '';
   let verificacion = '';
   let formatSuffix = '';
+  const tailStart = sexIdx + 4;
 
-  if (layout === 'nombres_first_combined') {
+  if (layout === 'nombres_first_combined' && n > 11) {
+    const tail = extractTeTailFields(f, tailStart);
+    donante = tail.donante;
+    fechaExp = tail.fechaExp;
+    fechaVenc = tail.fechaVenc;
+    verificacion = tail.verificacion;
+    formatSuffix = `${n}_nombres_combined`;
+  } else if (layout === 'nombres_first_combined') {
     if (n >= 12) {
-      donante = f[7] ?? '';
-      fechaExp = f[8] ?? '';
-      fechaVenc = f[9] ?? '';
-      verificacion = f.slice(10).join('|');
+      donante = f[sexIdx + 4] ?? '';
+      fechaExp = f[sexIdx + 5] ?? '';
+      fechaVenc = f[sexIdx + 6] ?? '';
+      verificacion = f.slice(sexIdx + 7).join('|');
       formatSuffix = '12_nombres_combined';
     } else if (n === 11) {
-      donante = f[7] ?? '';
-      fechaExp = f[8] ?? '';
-      fechaVenc = f[9] ?? '';
-      verificacion = (f[10] ?? '').trim();
+      donante = f[sexIdx + 4] ?? '';
+      fechaExp = f[sexIdx + 5] ?? '';
+      fechaVenc = f[sexIdx + 6] ?? '';
+      verificacion = (f[sexIdx + 7] ?? '').trim();
       formatSuffix = '11_nombres_combined';
     } else if (n === 10) {
-      fechaExp = f[7] ?? '';
-      fechaVenc = f[8] ?? '';
-      verificacion = (f[9] ?? '').trim();
+      fechaExp = f[sexIdx + 4] ?? '';
+      fechaVenc = f[sexIdx + 5] ?? '';
+      verificacion = (f[sexIdx + 6] ?? '').trim();
       formatSuffix = '10_nombres_combined';
     }
+  } else if (n > 11) {
+    const tail = extractTeTailFields(f, tailStart);
+    donante = tail.donante;
+    fechaExp = tail.fechaExp;
+    fechaVenc = tail.fechaVenc;
+    verificacion = tail.verificacion;
+    formatSuffix =
+      layout === 'nombres_first_split' ? `${n}_nombres_split` : `${n}_std`;
   } else if (n >= 12) {
     donante = f[8] ?? '';
     fechaExp = f[9] ?? '';
