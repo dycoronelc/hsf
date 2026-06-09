@@ -2,11 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import { formatDateInput, isValidDdMmYyyy } from '@/lib/dateUtils'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { mapParsedToRegisterFields } from '@/lib/cedulaQr'
+import { HospitalLogo } from '../components/HospitalLogo'
 
 const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/
 
@@ -76,9 +76,7 @@ export default function RegisterPage() {
             className="flex items-center justify-center py-5 px-4"
             style={{ backgroundColor: '#00816D' }}
           >
-            <Image
-              src="/logo-blanco.png"
-              alt="Hospital Santa Fe"
+            <HospitalLogo
               width={200}
               height={56}
               className="h-12 w-auto max-w-[90%] object-contain object-center"

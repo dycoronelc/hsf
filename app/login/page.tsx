@@ -2,10 +2,10 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import { useAuth } from '../providers'
 import { getPostLoginPath } from '@/lib/authRedirect'
 import Link from 'next/link'
+import { HospitalLogo } from '../components/HospitalLogo'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -44,9 +44,7 @@ export default function LoginPage() {
           className="flex items-center justify-center py-5 px-4"
           style={{ backgroundColor: '#00816D' }}
         >
-          <Image
-            src="/logo-blanco.png"
-            alt="Hospital Santa Fe"
+          <HospitalLogo
             width={200}
             height={56}
             className="h-12 w-auto max-w-[90%] object-contain object-center"

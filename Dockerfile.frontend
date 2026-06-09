@@ -6,6 +6,11 @@ WORKDIR /app
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
+# Cache bust de logos: cada commit en Railway genera un ?v= distinto en las URLs del logo.
+ARG RAILWAY_GIT_COMMIT_SHA=local
+ARG RAILWAY_DEPLOYMENT_ID=
+ENV NEXT_PUBLIC_BUILD_ID=${RAILWAY_GIT_COMMIT_SHA}
+
 COPY package.json package-lock.json ./
 COPY scripts ./scripts
 # No usar NODE_ENV=production aquí: npm ci omitiría devDependencies (tailwindcss, postcss, typescript).

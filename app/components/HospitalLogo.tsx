@@ -1,5 +1,6 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { logoBlancoUrl } from '@/lib/publicAssetUrl'
 
 type HospitalLogoProps = {
   href?: string
@@ -16,12 +17,13 @@ export function HospitalLogo({
 }: HospitalLogoProps) {
   const img = (
     <Image
-      src="/logo-blanco.png"
+      src={logoBlancoUrl()}
       alt="Hospital Santa Fe Panamá"
       width={width}
       height={height}
       className={className}
       priority
+      unoptimized
     />
   )
 
