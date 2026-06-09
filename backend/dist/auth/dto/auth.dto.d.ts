@@ -8,6 +8,14 @@ export declare class CreateUserDto {
     birthDate?: string;
     role?: UserRole;
 }
+export declare class RegisterPublicUserDto {
+    email: string;
+    password: string;
+    fullName?: string;
+    phone?: string;
+    nationalId?: string;
+    birthDate?: string;
+}
 export declare class LoginDto {
     email: string;
     password: string;

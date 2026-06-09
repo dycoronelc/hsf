@@ -6,6 +6,9 @@ import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../components/SiteLayout'
 import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
 import { isAgentOperational } from '@/lib/agentState'
+import { canAccessStaffConsole } from '@/lib/authRoles'
+import { authHeaders, isAuthFailureStatus } from '@/lib/authToken'
+import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
 interface Ticket {
   id: number
@@ -42,6 +45,7 @@ export default function StaffConsolePage() {
   const [agentState, setAgentState] = useState<string>(user?.agentState ?? '')
   const [transferringId, setTransferringId] = useState<number | null>(null)
   const [queueView, setQueueView] = useState<'all' | 'priority'>('all')
+  const [apiError, setApiError] = useState('')
   const scannerContainerId = 'staff-qr-reader'
 
   const agentStateOptions = [
@@ -54,7 +58,7 @@ export default function StaffConsolePage() {
   ]
 
   const canUseStaff =
-    authHydrated && isAuthenticated && user != null && user.role !== 'patient'
+    authHydrated && isAuthenticated && user != null && canAccessStaffConsole(user.role)
 
   const fetchServices = async () => {
     try {
@@ -77,15 +81,19 @@ export default function StaffConsolePage() {
     try {
       const response = await fetch(
         `/api/tickets/?service_id=${selectedService}`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
+        { headers: authHeaders(token) },
       )
+      if (isAuthFailureStatus(response.status)) {
+        setApiError('Sesión expirada o sin permiso. Cierre sesión e ingrese de nuevo.')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setTickets(data)
+        setApiError('')
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo cargar la cola de turnos'))
       }
     } catch (error) {
       console.error('Error fetching tickets:', error)
@@ -98,7 +106,7 @@ export default function StaffConsolePage() {
       router.replace('/login')
       return
     }
-    if (user?.role === 'patient') {
+    if (user && !canAccessStaffConsole(user.role)) {
       router.replace('/dashboard')
       return
     }
@@ -125,7 +133,7 @@ export default function StaffConsolePage() {
     )
   }
 
-  if (!isAuthenticated || user?.role === 'patient') {
+  if (!isAuthenticated || !user || !canAccessStaffConsole(user.role)) {
     return null
   }
 
@@ -145,15 +153,19 @@ export default function StaffConsolePage() {
         `/api/tickets/${ticketId}/call`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-          },
+          headers: authHeaders(token, { 'Content-Type': 'application/json' }),
           body: JSON.stringify({ windowNumber }),
         }
       )
+      if (isAuthFailureStatus(response.status)) {
+        setApiError('Sesión expirada o sin permiso para llamar turnos.')
+        return
+      }
       if (response.ok) {
         fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo llamar el turno'))
       }
     } catch (error) {
       console.error('Error calling ticket:', error)
@@ -165,17 +177,19 @@ export default function StaffConsolePage() {
   const handleStartTicket = async (ticketId: number) => {
     setLoading(true)
     try {
-      const response = await fetch(
-        `/api/tickets/${ticketId}/start`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      const response = await fetch(`/api/tickets/${ticketId}/start`, {
+        method: 'POST',
+        headers: authHeaders(token),
+      })
+      if (isAuthFailureStatus(response.status)) {
+        setApiError('Sesión expirada o sin permiso.')
+        return
+      }
       if (response.ok) {
         fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo iniciar la atención'))
       }
     } catch (error) {
       console.error('Error starting ticket:', error)
@@ -189,10 +203,7 @@ export default function StaffConsolePage() {
     try {
       await fetch('/api/auth/agent-state', {
         method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ agentState: newState || null }),
       })
     } catch (err) {
@@ -205,14 +216,18 @@ export default function StaffConsolePage() {
     try {
       const response = await fetch(`/api/tickets/${ticketId}/transfer`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ targetArea }),
       })
+      if (isAuthFailureStatus(response.status)) {
+        setApiError('Sesión expirada o sin permiso.')
+        return
+      }
       if (response.ok) {
         fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo transferir el turno'))
       }
     } catch (err) {
       console.error('Error transferring ticket:', err)
@@ -224,17 +239,19 @@ export default function StaffConsolePage() {
   const handleCompleteTicket = async (ticketId: number) => {
     setLoading(true)
     try {
-      const response = await fetch(
-        `/api/tickets/${ticketId}/complete`,
-        {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-          },
-        }
-      )
+      const response = await fetch(`/api/tickets/${ticketId}/complete`, {
+        method: 'POST',
+        headers: authHeaders(token),
+      })
+      if (isAuthFailureStatus(response.status)) {
+        setApiError('Sesión expirada o sin permiso.')
+        return
+      }
       if (response.ok) {
         fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo finalizar el turno'))
       }
     } catch (error) {
       console.error('Error completing ticket:', error)
@@ -330,6 +347,12 @@ export default function StaffConsolePage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-lg p-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-6">Consola Operativa</h1>
+
+          {apiError && (
+            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+              {apiError}
+            </div>
+          )}
 
           {/* Check-in al llegar (QR) - Recepción registra que el paciente llegó */}
           <div className="mb-8 p-4 bg-green-50 border border-green-200 rounded-lg">

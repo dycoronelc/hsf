@@ -43,6 +43,9 @@ exports.DEFAULT_ROLE_PERMISSIONS = {
         'review_preadmissions',
     ],
     [enums_1.UserRole.RECEPTION]: [
+        'view_host_work_list',
+        'confirm_arrival',
+        'activate_ticket',
         'staff_check_in',
         'staff_call_ticket',
         'staff_transfer_ticket',

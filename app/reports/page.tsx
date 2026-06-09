@@ -4,7 +4,10 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useAuth } from '../providers'
 import { useRouter } from 'next/navigation'
+import { SiteLayout } from '../components/SiteLayout'
 import { formatDateInput, ddMmYyyyToIso } from '@/lib/dateUtils'
+import { canAccessReports } from '@/lib/authRoles'
+import { authHeaders, isAuthFailureStatus } from '@/lib/authToken'
 
 interface SummaryReport {
   period: { start: string; end: string }
@@ -63,7 +66,7 @@ const ARRIVAL_LABELS: Record<string, string> = {
 }
 
 export default function ReportsPage() {
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, user, authHydrated } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'summary' | 'realtime' | 'efficiency' | 'preadmissions'>('summary')
   const [summary, setSummary] = useState<SummaryReport | null>(null)
@@ -71,6 +74,7 @@ export default function ReportsPage() {
   const [preadmissions, setPreadmissions] = useState<PreadmissionRow[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingPre, setLoadingPre] = useState(false)
+  const [accessError, setAccessError] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [preTipo, setPreTipo] = useState('')
@@ -88,10 +92,12 @@ export default function ReportsPage() {
 
       const response = await fetch(
         `/api/reports/summary?${params.toString()}`,
-        {
-          headers: { Authorization: `Bearer ${token}` },
-        },
+        { headers: authHeaders(token) },
       )
+      if (isAuthFailureStatus(response.status)) {
+        setAccessError('Sesión expirada o sin permiso para reportes. Vuelva a iniciar sesión.')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setSummary(data)
@@ -106,8 +112,12 @@ export default function ReportsPage() {
   const loadRealTime = async () => {
     try {
       const response = await fetch('/api/reports/realtime', {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       })
+      if (isAuthFailureStatus(response.status)) {
+        setAccessError('Sesión expirada o sin permiso para reportes. Vuelva a iniciar sesión.')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setRealtime(data)
@@ -131,8 +141,12 @@ export default function ReportsPage() {
       if (preArrivalState) params.append('arrivalState', preArrivalState)
 
       const response = await fetch(`/api/reports/preadmissions?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       })
+      if (isAuthFailureStatus(response.status)) {
+        setAccessError('Sesión expirada o sin permiso para reportes. Vuelva a iniciar sesión.')
+        return
+      }
       if (response.ok) {
         const data = await response.json()
         setPreadmissions(Array.isArray(data) ? data : [])
@@ -157,8 +171,12 @@ export default function ReportsPage() {
       if (preArrivalState) params.append('arrivalState', preArrivalState)
 
       const response = await fetch(`/api/reports/preadmissions/export?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       })
+      if (isAuthFailureStatus(response.status)) {
+        setAccessError('Sesión expirada o sin permiso para exportar reportes.')
+        return
+      }
       if (!response.ok) return
       const data = await response.json()
       const excel = data.excel as string
@@ -186,8 +204,12 @@ export default function ReportsPage() {
       if (preArrivalState) params.append('arrivalState', preArrivalState)
 
       const response = await fetch(`/api/reports/preadmissions/export?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       })
+      if (isAuthFailureStatus(response.status)) {
+        setAccessError('Sesión expirada o sin permiso para exportar reportes.')
+        return
+      }
       if (!response.ok) return
       const data = await response.json()
       const csv = data.csv as string
@@ -203,17 +225,22 @@ export default function ReportsPage() {
   }
 
   useEffect(() => {
+    if (!authHydrated) return
     if (!isAuthenticated) {
-      router.push('/login')
+      router.replace('/login')
+      return
+    }
+    if (!canAccessReports(user?.role)) {
+      router.replace('/dashboard')
       return
     }
     loadRealTime()
     const interval = setInterval(loadRealTime, 30000)
     return () => clearInterval(interval)
-  }, [isAuthenticated])
+  }, [authHydrated, isAuthenticated, user?.role, router])
 
   useEffect(() => {
-    if (!isAuthenticated) return
+    if (!authHydrated || !isAuthenticated || !canAccessReports(user?.role)) return
     if (activeTab === 'summary') {
       loadSummary()
     } else if (activeTab === 'realtime') {
@@ -221,16 +248,26 @@ export default function ReportsPage() {
     } else if (activeTab === 'preadmissions') {
       loadPreadmissions()
     }
-  }, [isAuthenticated, activeTab, startDate, endDate, preTipo, preDocumento, preArrivalState, token])
+  }, [authHydrated, isAuthenticated, user?.role, activeTab, startDate, endDate, preTipo, preDocumento, preArrivalState, token])
+
+  if (!authHydrated || !isAuthenticated || !canAccessReports(user?.role)) {
+    return null
+  }
 
   return (
+    <SiteLayout>
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-4">
-          <Link href="/" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium inline-flex items-center gap-1">
-            ← Volver al inicio
+          <Link href="/dashboard" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium inline-flex items-center gap-1">
+            ← Volver al dashboard
           </Link>
         </div>
+        {accessError && (
+          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+            {accessError}
+          </div>
+        )}
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Reportes y Analítica</h1>
 
         {/* Tabs */}
@@ -597,5 +634,6 @@ export default function ReportsPage() {
         </>
       </div>
     </div>
+    </SiteLayout>
   )
 }

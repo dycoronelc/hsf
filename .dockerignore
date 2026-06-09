@@ -1,0 +1,19 @@
+# Backend y datos (solo se despliega el frontend con Dockerfile.frontend)
+backend
+db
+docs
+*.md
+.git
+.github
+.next
+node_modules
+backend/node_modules
+
+# Archivos locales / desarrollo
+.env
+.env.*
+*.log
+terminals
+
+# Docker del otro servicio (si se añade después)
+Dockerfile.backend

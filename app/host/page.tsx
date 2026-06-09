@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../providers'
 import { SiteLayout } from '../components/SiteLayout'
+import { canAccessHost } from '@/lib/authRoles'
+import { authHeaders, isAuthFailureStatus } from '@/lib/authToken'
+import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
 const ARRIVAL_LABELS: Record<string, string> = {
   registrado: 'Registrado',
@@ -12,8 +15,6 @@ const ARRIVAL_LABELS: Record<string, string> = {
   paciente_presente: 'Paciente presente',
   ticket_generado: 'Ticket generado',
 }
-
-const HOST_ROLES = ['anfitrion', 'admin', 'supervisor', 'reception', 'oficial_admision']
 
 export default function HostPage() {
   const { isAuthenticated, token, user, authHydrated } = useAuth()
@@ -36,7 +37,6 @@ export default function HostPage() {
   const [loading, setLoading] = useState(false)
 
   const load = useCallback(async () => {
-    if (!token) return
     setLoading(true)
     setMsg('')
     try {
@@ -44,10 +44,15 @@ export default function HostPage() {
       if (q.trim()) params.set('q', q.trim())
       if (arrivalState) params.set('arrivalState', arrivalState)
       const res = await fetch(`/api/preadmission/work-list?${params.toString()}`, {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: authHeaders(token),
       })
+      if (isAuthFailureStatus(res.status)) {
+        setMsg('Sesión expirada o sin permiso. Cierre sesión e ingrese de nuevo.')
+        return
+      }
       if (!res.ok) {
-        setMsg('No se pudo cargar la lista')
+        const body = await res.json().catch(() => ({}))
+        setMsg(apiErrorMessage(body, 'No se pudo cargar la lista'))
         return
       }
       setList(await res.json())
@@ -58,41 +63,39 @@ export default function HostPage() {
 
   useEffect(() => {
     if (!authHydrated) return
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       router.replace('/login')
       return
     }
-    if (!user || !HOST_ROLES.includes(user.role)) {
+    if (!user || !canAccessHost(user.role)) {
       router.replace('/dashboard')
       return
     }
     load()
     const interval = setInterval(load, 15000)
     return () => clearInterval(interval)
-  }, [authHydrated, isAuthenticated, token, user, router, load])
+  }, [authHydrated, isAuthenticated, user, router, load])
 
   const confirm = async (id: number) => {
-    if (!token) return
     setMsg('')
     const res = await fetch(`/api/preadmission/${id}/confirm-arrival`, {
       method: 'PATCH',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
     })
     if (res.ok) {
       setMsg('Llegada confirmada.')
       await load()
     } else {
       const body = await res.json().catch(() => ({}))
-      setMsg(body.message || 'No se pudo confirmar la llegada')
+      setMsg(apiErrorMessage(body, 'No se pudo confirmar la llegada'))
     }
   }
 
   const activate = async (id: number) => {
-    if (!token) return
     setMsg('')
     const res = await fetch(`/api/preadmission/${id}/activate-ticket`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}` },
+      headers: authHeaders(token),
     })
     if (res.ok) {
       const data = await res.json()
@@ -100,12 +103,11 @@ export default function HostPage() {
       await load()
     } else {
       const body = await res.json().catch(() => ({}))
-      const m = body.message
-      setMsg(Array.isArray(m) ? m.join(', ') : m || 'No se pudo generar el ticket')
+      setMsg(apiErrorMessage(body, 'No se pudo generar el ticket'))
     }
   }
 
-  if (!authHydrated || !isAuthenticated || !user || !HOST_ROLES.includes(user.role)) {
+  if (!authHydrated || !isAuthenticated || !user || !canAccessHost(user.role)) {
     return null
   }
 

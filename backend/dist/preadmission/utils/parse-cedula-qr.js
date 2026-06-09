@@ -125,76 +125,228 @@ function splitNombresToName12(nombres) {
         return { name1: parts[0], name2: '' };
     return { name1: parts[0], name2: parts.slice(1).join(' ') };
 }
+function splitApellidosToAp12(apellidos) {
+    const parts = apellidos.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0)
+        return { apellido1: '', apellido2: '' };
+    if (parts.length === 1)
+        return { apellido1: parts[0], apellido2: '' };
+    return { apellido1: parts[0], apellido2: parts.slice(1).join(' ') };
+}
+function isSexToken(s) {
+    const u = s.trim().toUpperCase();
+    return /^[MF]$/.test(u) || u === 'MASCULINO' || u === 'FEMENINO';
+}
+function isBlankField(s) {
+    return !s.trim();
+}
+function isDateLike(s) {
+    const t = s.trim();
+    return DATE_DMY_RE.test(t) || DATE_YMD_RE.test(t);
+}
+function findCombinedLayoutSexIdx(f) {
+    if (isSexToken(f[3] ?? ''))
+        return 3;
+    if (isSexToken(f[4] ?? '') && isBlankField(f[3] ?? ''))
+        return 4;
+    return -1;
+}
+function detectTeLayout(f) {
+    const combinedSexIdx = findCombinedLayoutSexIdx(f);
+    if (combinedSexIdx >= 0 && !isBlankField(f[1] ?? '') && !isBlankField(f[2] ?? '')) {
+        return 'nombres_first_combined';
+    }
+    if (f.length >= 11 && isSexToken(f[4] ?? '')) {
+        const f1 = (f[1] ?? '').trim().split(/\s+/).filter(Boolean).length;
+        const f2 = (f[2] ?? '').trim().split(/\s+/).filter(Boolean).length;
+        const f3 = (f[3] ?? '').trim().split(/\s+/).filter(Boolean).length;
+        if (f1 >= 2 && f2 === 1 && f3 === 1) {
+            return 'nombres_first_split';
+        }
+        if (!isBlankField(f[3] ?? '')) {
+            return 'apellidos_first';
+        }
+    }
+    return 'apellidos_first';
+}
+function extractTeTailFields(f, fromIdx) {
+    const dateIndices = [];
+    for (let i = fromIdx; i < f.length; i++) {
+        if (isDateLike(f[i] ?? ''))
+            dateIndices.push(i);
+    }
+    let fechaExp = '';
+    let fechaVenc = '';
+    let verificacion = '';
+    let donante = '';
+    if (dateIndices.length >= 2) {
+        fechaExp = (f[dateIndices[dateIndices.length - 2]] ?? '').trim();
+        fechaVenc = (f[dateIndices[dateIndices.length - 1]] ?? '').trim();
+        for (let i = dateIndices[dateIndices.length - 1] + 1; i < f.length; i++) {
+            const v = (f[i] ?? '').trim();
+            if (v)
+                verificacion = v;
+        }
+    }
+    else if (dateIndices.length === 1) {
+        fechaVenc = (f[dateIndices[0]] ?? '').trim();
+    }
+    const firstDateIdx = dateIndices[0] ?? f.length;
+    for (let i = fromIdx; i < firstDateIdx; i++) {
+        const v = (f[i] ?? '').trim();
+        if (v && !isDateLike(v)) {
+            donante = v;
+            break;
+        }
+    }
+    return { donante, fechaExp, fechaVenc, verificacion };
+}
+function extractTeNameFields(layout, f) {
+    if (layout === 'nombres_first_combined') {
+        const sexIdx = findCombinedLayoutSexIdx(f);
+        const nombres = (f[1] ?? '').trim();
+        const apellidosRaw = (f[2] ?? '').trim();
+        const { apellido1, apellido2 } = splitApellidosToAp12(apellidosRaw);
+        const { name1, name2 } = splitNombresToName12(nombres);
+        return {
+            sexIdx: sexIdx >= 0 ? sexIdx : 3,
+            names: {
+                nombres,
+                apellido1,
+                apellido2,
+                name1,
+                name2,
+                apellidos: apellidosRaw || [apellido1, apellido2].filter(Boolean).join(' ').trim(),
+            },
+        };
+    }
+    if (layout === 'nombres_first_split') {
+        const nombres = (f[1] ?? '').trim();
+        const apellido1 = (f[2] ?? '').trim();
+        const apellido2 = (f[3] ?? '').trim();
+        const { name1, name2 } = splitNombresToName12(nombres);
+        return {
+            sexIdx: 4,
+            names: {
+                nombres,
+                apellido1,
+                apellido2,
+                name1,
+                name2,
+                apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
+            },
+        };
+    }
+    const apellido1 = (f[1] ?? '').trim();
+    const apellido2 = (f[2] ?? '').trim();
+    const nombres = (f[3] ?? '').trim();
+    const { name1, name2 } = splitNombresToName12(nombres);
+    return {
+        sexIdx: 4,
+        names: {
+            nombres,
+            apellido1,
+            apellido2,
+            name1,
+            name2,
+            apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
+        },
+    };
+}
 function tryTeTableLayout(fields) {
     const f = fields.map((x) => x.trim());
     if (f.length < 10 || !looksLikePanamaCedula(f[0]))
         return null;
+    const layout = detectTeLayout(f);
+    const { names, sexIdx } = extractTeNameFields(layout, f);
     const n = f.length;
-    if (n >= 12) {
-        const [cedula, apellido1, apellido2, nombres, sexo, lugarNac, fechaNac, nacionalidad, donante, fechaExp, fechaVenc, ...rest] = f;
-        const verificacion = rest.join('|');
-        const { name1, name2 } = splitNombresToName12(nombres);
-        return {
-            cedula: normalizeCedulaToken(cedula),
-            apellido1,
-            apellido2,
-            apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
-            nombres: nombres.trim(),
-            name1,
-            name2,
-            sexo: normalizeSexo(sexo),
-            lugarNacimiento: lugarNac,
-            fechanac: normalizeDateToDdMmYyyy(fechaNac),
-            nacionalidad: nacionalidad.trim(),
-            donante: donante.trim(),
-            fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
-            fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
-            verificacion: verificacion.trim(),
-            _qrFormat: 'te_pipe_12',
-        };
+    const sexo = f[sexIdx] ?? '';
+    const lugarNac = f[sexIdx + 1] ?? '';
+    const fechaNac = f[sexIdx + 2] ?? '';
+    const nacionalidad = f[sexIdx + 3] ?? '';
+    let donante = '';
+    let fechaExp = '';
+    let fechaVenc = '';
+    let verificacion = '';
+    let formatSuffix = '';
+    const tailStart = sexIdx + 4;
+    if (layout === 'nombres_first_combined' && n > 11) {
+        const tail = extractTeTailFields(f, tailStart);
+        donante = tail.donante;
+        fechaExp = tail.fechaExp;
+        fechaVenc = tail.fechaVenc;
+        verificacion = tail.verificacion;
+        formatSuffix = `${n}_nombres_combined`;
     }
-    if (n === 11) {
-        const [cedula, apellido1, apellido2, nombres, sexo, lugarNac, fechaNac, nacionalidad, donante, fechaExp, fechaVenc,] = f;
-        const { name1, name2 } = splitNombresToName12(nombres);
-        return {
-            cedula: normalizeCedulaToken(cedula),
-            apellido1,
-            apellido2,
-            apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
-            nombres: nombres.trim(),
-            name1,
-            name2,
-            sexo: normalizeSexo(sexo),
-            lugarNacimiento: lugarNac,
-            fechanac: normalizeDateToDdMmYyyy(fechaNac),
-            nacionalidad: nacionalidad.trim(),
-            donante: donante.trim(),
-            fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
-            fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
-            _qrFormat: 'te_pipe_11',
-        };
+    else if (layout === 'nombres_first_combined') {
+        if (n >= 12) {
+            donante = f[sexIdx + 4] ?? '';
+            fechaExp = f[sexIdx + 5] ?? '';
+            fechaVenc = f[sexIdx + 6] ?? '';
+            verificacion = f.slice(sexIdx + 7).join('|');
+            formatSuffix = '12_nombres_combined';
+        }
+        else if (n === 11) {
+            donante = f[sexIdx + 4] ?? '';
+            fechaExp = f[sexIdx + 5] ?? '';
+            fechaVenc = f[sexIdx + 6] ?? '';
+            verificacion = (f[sexIdx + 7] ?? '').trim();
+            formatSuffix = '11_nombres_combined';
+        }
+        else if (n === 10) {
+            fechaExp = f[sexIdx + 4] ?? '';
+            fechaVenc = f[sexIdx + 5] ?? '';
+            verificacion = (f[sexIdx + 6] ?? '').trim();
+            formatSuffix = '10_nombres_combined';
+        }
     }
-    if (n === 10) {
-        const [cedula, apellido1, apellido2, nombres, sexo, lugarNac, fechaNac, nacionalidad, fechaExp, fechaVenc] = f;
-        const { name1, name2 } = splitNombresToName12(nombres);
-        return {
-            cedula: normalizeCedulaToken(cedula),
-            apellido1,
-            apellido2,
-            apellidos: [apellido1, apellido2].filter(Boolean).join(' ').trim(),
-            nombres: nombres.trim(),
-            name1,
-            name2,
-            sexo: normalizeSexo(sexo),
-            lugarNacimiento: lugarNac,
-            fechanac: normalizeDateToDdMmYyyy(fechaNac),
-            nacionalidad: nacionalidad.trim(),
-            fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
-            fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
-            _qrFormat: 'te_pipe_10',
-        };
+    else if (n > 11) {
+        const tail = extractTeTailFields(f, tailStart);
+        donante = tail.donante;
+        fechaExp = tail.fechaExp;
+        fechaVenc = tail.fechaVenc;
+        verificacion = tail.verificacion;
+        formatSuffix =
+            layout === 'nombres_first_split' ? `${n}_nombres_split` : `${n}_std`;
     }
-    return null;
+    else if (n >= 12) {
+        donante = f[8] ?? '';
+        fechaExp = f[9] ?? '';
+        fechaVenc = f[10] ?? '';
+        verificacion = f.slice(11).join('|');
+        formatSuffix = layout === 'nombres_first_split' ? '12_nombres_split' : '12';
+    }
+    else if (n === 11) {
+        donante = f[8] ?? '';
+        fechaExp = f[9] ?? '';
+        fechaVenc = f[10] ?? '';
+        formatSuffix = layout === 'nombres_first_split' ? '11_nombres_split' : '11';
+    }
+    else if (n === 10) {
+        fechaExp = f[8] ?? '';
+        fechaVenc = f[9] ?? '';
+        formatSuffix = layout === 'nombres_first_split' ? '10_nombres_split' : '10';
+    }
+    if (!formatSuffix)
+        return null;
+    return {
+        cedula: normalizeCedulaToken(f[0]),
+        apellido1: names.apellido1,
+        apellido2: names.apellido2,
+        apellidos: names.apellidos,
+        nombres: names.nombres,
+        name1: names.name1,
+        name2: names.name2,
+        sexo: normalizeSexo(sexo),
+        lugarNacimiento: lugarNac,
+        fechanac: normalizeDateToDdMmYyyy(fechaNac),
+        nacionalidad: nacionalidad.trim(),
+        ...(donante ? { donante: donante.trim() } : {}),
+        fechaExpedicion: normalizeDateToDdMmYyyy(fechaExp),
+        fechaVencimiento: normalizeDateToDdMmYyyy(fechaVenc),
+        ...(verificacion ? { verificacion: verificacion.trim() } : {}),
+        _qrFormat: `te_pipe_${formatSuffix}`,
+    };
 }
 function tryTeCompactNameLayout(fields) {
     const f = fields.map((x) => x.trim());
@@ -420,10 +572,22 @@ function parseCedulaQr(raw) {
             _qrFormat: 'legacy_guess',
         };
         const idx = looseParts.indexOf(cedulaPart);
-        if (looseParts[idx + 1])
-            out.rawSegment1 = looseParts[idx + 1];
-        if (looseParts[idx + 2])
-            out.rawSegment2 = looseParts[idx + 2];
+        const segNombres = looseParts[idx + 1]?.trim() ?? '';
+        const segApellidos = looseParts[idx + 2]?.trim() ?? '';
+        if (segNombres) {
+            out.rawSegment1 = segNombres;
+            out.nombres = segNombres;
+            const { name1, name2 } = splitNombresToName12(segNombres);
+            out.name1 = name1;
+            out.name2 = name2;
+        }
+        if (segApellidos) {
+            out.rawSegment2 = segApellidos;
+            out.apellidos = segApellidos;
+            const { apellido1, apellido2 } = splitApellidosToAp12(segApellidos);
+            out.apellido1 = apellido1;
+            out.apellido2 = apellido2;
+        }
         return out;
     }
     if (/^(?:AE|E|\d)[\d-]{5,}$/i.test(normalizeCedulaToken(t))) {

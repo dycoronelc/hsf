@@ -43,6 +43,35 @@ export class CreateUserDto {
   role?: UserRole;
 }
 
+/** Registro público: no admite campo `role` (siempre se crea como paciente). */
+export class RegisterPublicUserDto {
+  @IsEmail()
+  email: string;
+
+  @IsString()
+  @MinLength(8)
+  @Matches(PASSWORD_RULE, {
+    message: 'La contraseña debe ser alfanumérica e incluir al menos una mayúscula',
+  })
+  password: string;
+
+  @IsOptional()
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsString()
+  phone?: string;
+
+  @IsOptional()
+  @IsString()
+  nationalId?: string;
+
+  @IsOptional()
+  @IsString()
+  birthDate?: string;
+}
+
 export class LoginDto {
   @IsEmail()
   email: string;

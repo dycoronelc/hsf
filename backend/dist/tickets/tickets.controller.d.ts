@@ -46,6 +46,7 @@ export declare class TicketsController {
         priority_level: number;
         created_at: Date;
         qr_code: string;
+        window_number: string;
     }[]>;
     checkInByCode(dto: CheckInByCodeDto): Promise<{
         status: TicketStatus.CHECK_IN;

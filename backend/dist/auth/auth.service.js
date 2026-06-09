@@ -11,6 +11,7 @@ var __metadata = (this && this.__metadata) || function (k, v) {
 var __param = (this && this.__param) || function (paramIndex, decorator) {
     return function (target, key) { decorator(target, key, paramIndex); }
 };
+var AuthService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.AuthService = void 0;
 const common_1 = require("@nestjs/common");
@@ -23,13 +24,14 @@ const audit_service_1 = require("../audit/audit.service");
 const notifications_service_1 = require("../notifications/notifications.service");
 const bcrypt = require("bcrypt");
 const crypto = require("crypto");
-let AuthService = class AuthService {
+let AuthService = AuthService_1 = class AuthService {
     constructor(usersService, jwtService, resetRepository, auditService, notificationsService) {
         this.usersService = usersService;
         this.jwtService = jwtService;
         this.resetRepository = resetRepository;
         this.auditService = auditService;
         this.notificationsService = notificationsService;
+        this.logger = new common_1.Logger(AuthService_1.name);
     }
     async validateUser(email, password) {
         const user = await this.usersService.findByEmail(email);
@@ -52,9 +54,16 @@ let AuthService = class AuthService {
         };
     }
     async requestPasswordReset(email) {
-        const user = await this.usersService.findByEmail(email);
+        const normalized = email.trim().toLowerCase();
+        const user = await this.usersService.findByEmail(normalized);
+        const genericMessage = 'Si el correo está registrado como usuario de la plataforma, recibirá instrucciones para restablecer la contraseña. Revise también la carpeta de spam.';
         if (!user) {
-            return { message: 'Si el correo existe, recibirá instrucciones para restablecer la contraseña' };
+            return {
+                message: genericMessage,
+                debugHint: process.env.NODE_ENV !== 'production'
+                    ? 'No hay una cuenta de usuario registrada con ese correo. Debe crear cuenta en Registrarse o usar un correo de prueba del sistema.'
+                    : undefined,
+            };
         }
         const token = crypto.randomBytes(24).toString('hex');
         const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
@@ -65,14 +74,22 @@ let AuthService = class AuthService {
             used: false,
         }));
         const resetUrl = `${process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
-        this.notificationsService
-            .sendPasswordResetEmail(user.email, resetUrl)
-            .catch((err) => {
-            console.error('Error sending password reset email:', err);
-        });
+        try {
+            await this.notificationsService.sendPasswordResetEmail(user.email, resetUrl);
+        }
+        catch (err) {
+            this.logger.error(`No se pudo enviar correo de recuperación a ${user.email}`, err);
+            if ((0, notifications_service_1.isSmtpDeliveryEnabled)()) {
+                throw new common_1.BadRequestException('No se pudo enviar el correo de recuperación. Intente más tarde o contacte al hospital.');
+            }
+        }
+        const isDev = process.env.NODE_ENV !== 'production';
         return {
-            message: 'Si el correo existe, recibirá instrucciones para restablecer la contraseña',
-            resetUrl: process.env.NODE_ENV === 'production' ? undefined : resetUrl,
+            message: (0, notifications_service_1.isSmtpDeliveryEnabled)()
+                ? genericMessage
+                : `${genericMessage} En desarrollo el correo no se envía por SMTP; use el enlace de prueba que aparece abajo.`,
+            resetUrl: isDev ? resetUrl : undefined,
+            emailSent: (0, notifications_service_1.isSmtpDeliveryEnabled)(),
         };
     }
     async resetPassword(token, password) {
@@ -92,7 +109,7 @@ let AuthService = class AuthService {
     }
 };
 exports.AuthService = AuthService;
-exports.AuthService = AuthService = __decorate([
+exports.AuthService = AuthService = AuthService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(2, (0, typeorm_1.InjectRepository)(password_reset_token_entity_1.PasswordResetToken)),
     __metadata("design:paramtypes", [users_service_1.UsersService,

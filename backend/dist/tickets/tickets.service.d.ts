@@ -64,6 +64,7 @@ export declare class TicketsService {
         priority_level: number;
         created_at: Date;
         qr_code: string;
+        window_number: string;
     }[]>;
     checkIn(id: number): Promise<{
         message: string;

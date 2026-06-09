@@ -150,6 +150,11 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 
 - **Solo se desplegó el backend**: En el proyecto Railway debe haber **dos servicios** (backend y frontend). Si solo existe uno, crea el servicio frontend (Paso 3), asigna `API_URL` y haz **Deploy** manual.
 - **El frontend no se reconstruye al hacer push**: Los archivos `railway.*.toml` ya no usan *watch paths* restrictivos; cualquier push a `main` debe disparar build en el servicio conectado. Si quieres optimizar costos, puedes volver a añadir `watchPatterns` más adelante.
+- **`frontend grpc server closed unexpectedly`**: Error **transitorio de la infraestructura de Railway** (Metal builder), no de tu código. Acciones:
+  1. Espera 2–5 minutos y vuelve a desplegar: `Ctrl+K` → **Deploy Latest Commit** (no solo Redeploy del fallido).
+  2. Repite hasta 2–3 veces; suele asignar otro builder sano.
+  3. Revisa [status.railway.com](https://status.railway.com/) por incidentes.
+  4. El repo incluye `Dockerfile.frontend` + `railway.frontend.toml` con `builder = "DOCKERFILE"` para builds más estables que Nixpacks/Railpack.
 - **"No start command found"**: Revisa que Build y Start estén configurados en Settings.
 - **CORS errors**: Verifica que `FRONTEND_URL` en el backend coincida con la URL real del frontend.
 - **API no responde**: Confirma que `NEXT_PUBLIC_API_URL` en el frontend apunte a la URL del backend (sin `/api` al final).

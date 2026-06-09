@@ -2,7 +2,7 @@ import { ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
-import { CreateUserDto, UserResponseDto } from '../auth/dto/auth.dto';
+import { CreateUserDto, RegisterPublicUserDto, UserResponseDto } from '../auth/dto/auth.dto';
 import { AgentState, UserRole } from '../common/enums';
 import * as bcrypt from 'bcrypt';
 
@@ -12,6 +12,18 @@ export class UsersService {
     @InjectRepository(User)
     private usersRepository: Repository<User>,
   ) {}
+
+  async registerPublicPatient(dto: RegisterPublicUserDto): Promise<UserResponseDto> {
+    return this.create({
+      email: dto.email,
+      password: dto.password,
+      fullName: dto.fullName,
+      phone: dto.phone,
+      nationalId: dto.nationalId,
+      birthDate: dto.birthDate,
+      role: UserRole.PATIENT,
+    });
+  }
 
   async create(createUserDto: CreateUserDto): Promise<UserResponseDto> {
     const existingEmail = await this.findByEmail(createUserDto.email);

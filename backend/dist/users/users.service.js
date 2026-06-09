@@ -23,6 +23,17 @@ let UsersService = class UsersService {
     constructor(usersRepository) {
         this.usersRepository = usersRepository;
     }
+    async registerPublicPatient(dto) {
+        return this.create({
+            email: dto.email,
+            password: dto.password,
+            fullName: dto.fullName,
+            phone: dto.phone,
+            nationalId: dto.nationalId,
+            birthDate: dto.birthDate,
+            role: enums_1.UserRole.PATIENT,
+        });
+    }
     async create(createUserDto) {
         const existingEmail = await this.findByEmail(createUserDto.email);
         if (existingEmail) {
@@ -38,7 +49,7 @@ let UsersService = class UsersService {
         }
         const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
         const user = this.usersRepository.create({
-            email: createUserDto.email,
+            email: createUserDto.email.trim().toLowerCase(),
             fullName: createUserDto.fullName,
             phone: createUserDto.phone,
             nationalId: createUserDto.nationalId ?? null,
@@ -56,7 +67,13 @@ let UsersService = class UsersService {
         };
     }
     async findByEmail(email) {
-        return this.usersRepository.findOne({ where: { email } });
+        const normalized = email.trim().toLowerCase();
+        if (!normalized)
+            return null;
+        return this.usersRepository
+            .createQueryBuilder('user')
+            .where('LOWER(user.email) = :email', { email: normalized })
+            .getOne();
     }
     async updateAgentState(userId, agentState) {
         await this.usersRepository.update(userId, { agentState });

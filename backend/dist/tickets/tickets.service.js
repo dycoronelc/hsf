@@ -195,6 +195,7 @@ let TicketsService = class TicketsService {
                 priority_level: ticket.service?.priorityLevel ?? 2,
                 created_at: ticket.createdAt,
                 qr_code: ticket.qrCode,
+                window_number: ticket.windowNumber ?? null,
                 ...qi,
             };
         });

@@ -2,12 +2,12 @@ import { Controller, Post, Body, Get, Patch, UseGuards, Request } from '@nestjs/
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
 import {
-  CreateUserDto,
   LoginDto,
   UserResponseDto,
   TokenResponseDto,
   ForgotPasswordDto,
   ResetPasswordDto,
+  RegisterPublicUserDto,
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AgentState } from '../common/enums';
@@ -22,8 +22,8 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() createUserDto: CreateUserDto): Promise<UserResponseDto> {
-    const user = await this.usersService.create(createUserDto);
+  async register(@Body() body: RegisterPublicUserDto): Promise<UserResponseDto> {
+    const user = await this.usersService.registerPublicPatient(body);
     await this.auditService.log('user_registered', {
       entityType: 'user',
       entityId: user.id,

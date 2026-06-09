@@ -11,15 +11,20 @@ export declare class AuthService {
     private resetRepository;
     private auditService;
     private notificationsService;
+    private readonly logger;
     constructor(usersService: UsersService, jwtService: JwtService, resetRepository: Repository<PasswordResetToken>, auditService: AuditService, notificationsService: NotificationsService);
     validateUser(email: string, password: string): Promise<any>;
     login(loginDto: LoginDto): Promise<TokenResponseDto>;
     requestPasswordReset(email: string): Promise<{
         message: string;
+        debugHint: string;
         resetUrl?: undefined;
+        emailSent?: undefined;
     } | {
         message: string;
         resetUrl: string;
+        emailSent: boolean;
+        debugHint?: undefined;
     }>;
     resetPassword(token: string, password: string): Promise<{
         message: string;

@@ -329,7 +329,7 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             message: 'Código enviado al correo',
             destination: normalized,
             expiresAt,
-            previewCode: (0, notifications_service_1.isSmtpDeliveryEnabled)() ? undefined : code,
+            previewCode: process.env.NODE_ENV !== 'production' ? code : undefined,
         };
     }
     async confirmContactVerification(destination, code) {

@@ -1,6 +1,7 @@
 # Servicio FRONTEND en Railway → Settings → Config file path: /railway.frontend.toml
 [build]
-buildCommand = "npm install && npm run build"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.frontend"
 
 [deploy]
 startCommand = "npm run start"

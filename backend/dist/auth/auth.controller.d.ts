@@ -1,6 +1,6 @@
 import { AuthService } from './auth.service';
 import { UsersService } from '../users/users.service';
-import { CreateUserDto, LoginDto, UserResponseDto, TokenResponseDto, ForgotPasswordDto, ResetPasswordDto } from './dto/auth.dto';
+import { LoginDto, UserResponseDto, TokenResponseDto, ForgotPasswordDto, ResetPasswordDto, RegisterPublicUserDto } from './dto/auth.dto';
 import { AgentState } from '../common/enums';
 import { AuditService } from '../audit/audit.service';
 export declare class AuthController {
@@ -8,14 +8,18 @@ export declare class AuthController {
     private usersService;
     private auditService;
     constructor(authService: AuthService, usersService: UsersService, auditService: AuditService);
-    register(createUserDto: CreateUserDto): Promise<UserResponseDto>;
+    register(body: RegisterPublicUserDto): Promise<UserResponseDto>;
     login(loginDto: LoginDto): Promise<TokenResponseDto>;
     forgotPassword(body: ForgotPasswordDto): Promise<{
         message: string;
+        debugHint: string;
         resetUrl?: undefined;
+        emailSent?: undefined;
     } | {
         message: string;
         resetUrl: string;
+        emailSent: boolean;
+        debugHint?: undefined;
     }>;
     resetPassword(body: ResetPasswordDto): Promise<{
         message: string;

@@ -26,8 +26,8 @@ let AuthController = class AuthController {
         this.usersService = usersService;
         this.auditService = auditService;
     }
-    async register(createUserDto) {
-        const user = await this.usersService.create(createUserDto);
+    async register(body) {
+        const user = await this.usersService.registerPublicPatient(body);
         await this.auditService.log('user_registered', {
             entityType: 'user',
             entityId: user.id,
@@ -63,7 +63,7 @@ __decorate([
     (0, common_1.Post)('register'),
     __param(0, (0, common_1.Body)()),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [auth_dto_1.CreateUserDto]),
+    __metadata("design:paramtypes", [auth_dto_1.RegisterPublicUserDto]),
     __metadata("design:returntype", Promise)
 ], AuthController.prototype, "register", null);
 __decorate([

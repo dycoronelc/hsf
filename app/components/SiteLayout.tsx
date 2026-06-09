@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import { HospitalLogo } from './HospitalLogo'
-import { isPatientRole } from '@/lib/authRoles'
+import { isPatientRole, canAccessHost, canAccessStaffConsole, canAccessReports } from '@/lib/authRoles'
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuth()
@@ -57,16 +57,12 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                       </Link>
                     </>
                   )}
-                  {(user?.role === 'anfitrion' ||
-                    user?.role === 'admin' ||
-                    user?.role === 'supervisor' ||
-                    user?.role === 'reception' ||
-                    user?.role === 'oficial_admision') && (
+                  {canAccessHost(user?.role) && (
                     <Link href="/host" className="text-white/90 hover:text-white font-medium">
                       Llegadas (Anfitrión)
                     </Link>
                   )}
-                  {(user?.role === 'admin' || user?.role === 'reception' || user?.role === 'technician' || user?.role === 'supervisor' || user?.role === 'auditor') && (
+                  {canAccessStaffConsole(user?.role) && (
                     <Link href="/staff" className="text-white/90 hover:text-white font-medium">
                       Consola Staff
                     </Link>
@@ -74,6 +70,11 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   {user?.role === 'admin' && (
                     <Link href="/admin" className="text-white/90 hover:text-white font-medium">
                       Administración
+                    </Link>
+                  )}
+                  {canAccessReports(user?.role) && (
+                    <Link href="/reports" className="text-white/90 hover:text-white font-medium">
+                      Reportes
                     </Link>
                   )}
                   <div className="relative" ref={menuRef}>

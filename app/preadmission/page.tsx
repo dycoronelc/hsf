@@ -47,6 +47,7 @@ export default function PreadmissionPage() {
   const [createdPreadmissionId, setCreatedPreadmissionId] = useState<number | null>(null)
   const [createdQrCode, setCreatedQrCode] = useState<string | null>(null)
   const [patientFound, setPatientFound] = useState(false)
+  const [searchNotice, setSearchNotice] = useState('')
   const [locations, setLocations] = useState<LocationData[]>([])
   const [nationalities, setNationalities] = useState<Array<{codigo: string, nacionalidad: string, pais: string}>>([])
   const [provincias, setProvincias] = useState<Array<{codigo: string, nombre: string}>>([])
@@ -64,6 +65,7 @@ export default function PreadmissionPage() {
   >({})
   const attachmentFilesRef = useRef<Partial<Record<PreadmissionAttachmentField, File>>>({})
   const emailInputRef = useRef<HTMLInputElement>(null)
+  const cedulaInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     registradoComo: 'paciente',
@@ -121,6 +123,15 @@ export default function PreadmissionPage() {
   const getEmailDestination = () =>
     (emailInputRef.current?.value ?? formData.email).trim().toLowerCase()
 
+  const syncCedulaFromInput = (value: string) => {
+    setSearchNotice('')
+    setPatientFound(false)
+    setError('')
+    setFormData((prev) => (prev.cedula === value ? prev : { ...prev, cedula: value }))
+  }
+
+  const getCedulaValue = () => (cedulaInputRef.current?.value ?? formData.cedula).trim()
+
   const canSendEmailCode = useMemo(
     () => isValidEmailAddress(formData.email) && !emailVerified && !verificationSending,
     [formData.email, emailVerified, verificationSending],
@@ -136,6 +147,17 @@ export default function PreadmissionPage() {
     }, 300)
     return () => window.clearTimeout(timer)
   }, [step, formData.email])
+
+  useEffect(() => {
+    if (step !== 2) return
+    const timer = window.setTimeout(() => {
+      const autofilled = cedulaInputRef.current?.value?.trim()
+      if (autofilled && autofilled !== formData.cedula) {
+        syncCedulaFromInput(autofilled)
+      }
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [step, formData.cedula])
 
   useEffect(() => {
     if (emailVerified) {
@@ -217,83 +239,93 @@ export default function PreadmissionPage() {
   }
 
   const searchPatient = async () => {
-    if (!formData.cedula || !formData.pasaporte) {
+    const cedula = getCedulaValue()
+    const tipoIdentificacion = formData.pasaporte
+
+    if (!cedula || !tipoIdentificacion) {
       setError('Por favor ingresa el tipo y número de identificación')
       return
     }
 
+    if (cedula !== formData.cedula) {
+      setFormData((prev) => ({ ...prev, cedula }))
+    }
+
     setSearching(true)
     setError('')
+    setSearchNotice('')
     setPatientFound(false)
 
     try {
-      const authToken = isAuthenticated ? (token || localStorage.getItem('token')) : null
-      const headers: HeadersInit = {}
-      if (authToken) headers['Authorization'] = `Bearer ${authToken}`
       const response = await fetch(
-        `/api/preadmission/search?cedula=${formData.cedula}&tipoIdentificacion=${formData.pasaporte}`,
-        { headers }
+        `/api/preadmission/search?cedula=${encodeURIComponent(cedula)}&tipoIdentificacion=${encodeURIComponent(tipoIdentificacion)}`,
       )
 
-      if (response.ok) {
-        const patient = await response.json()
-        if (patient) {
-          // Pre-llenar datos del paciente encontrado
-          const updatedFormData = {
-            ...formData,
-            name1: patient.name1 || '',
-            name2: patient.name2 || '',
-            apellido1: patient.apellido1 || '',
-            apellido2: patient.apellido2 || '',
-            sexo: patient.sexo || 'M',
-            fechanac: patient.fechanac || '',
-            nacionalidad: patient.nacionalidad || '',
-            estadocivil: patient.estadocivil || '',
-            tiposangre: patient.tiposangre || '',
-            email: patient.email || '',
-            celularPrefix: patient.celularPrefix || '507',
-            celular: (() => {
-              const cel = patient.celular || ''
-              const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
-              if (m) return m[2].replace(/\D/g, '')
-              return cel.replace(/^\+/, '').replace(/\D/g, '') || ''
-            })(),
-            provincia1: patient.provincia1 || '',
-            distrito1: patient.distrito1 || '',
-            corregimiento1: patient.corregimiento1 || '',
-            direccion1: patient.direccion1 || '',
-            encasourgencia: patient.encasourgencia || '',
-            relacion: patient.relacion || '',
-            email3: patient.email3 || '',
-            celular3: patient.celular3 || '',
-            provincia3: patient.provincia3 || '',
-            distrito3: patient.distrito3 || '',
-            corregimiento3: patient.corregimiento3 || '',
-            direccion3: patient.direccion3 || '',
-            doblecobertura: patient.doblecobertura || 'NO',
-            compania1: patient.compania1 || '',
-            poliza1: patient.poliza1 || '',
-            carnetseguro: patient.carnetseguro || '',
-            certificadoSeguro: patient.certificadoSeguro || '',
-          }
-          setFormData(updatedFormData)
-          
-          // Cargar distritos y corregimientos si hay provincia y distrito
-          if (updatedFormData.provincia1) {
-            await loadDistritos(updatedFormData.provincia1, false)
-            if (updatedFormData.distrito1) {
-              await loadCorregimientos(updatedFormData.distrito1, false)
-            }
-          }
-          
-          setPatientFound(true)
-        } else {
-          setPatientFound(false)
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(apiErrorMessage(data, 'No se pudo buscar el paciente'))
+      }
+
+      const patient = await response.json()
+      if (patient) {
+        const updatedFormData = {
+          ...formData,
+          cedula,
+          name1: patient.name1 || '',
+          name2: patient.name2 || '',
+          apellido1: patient.apellido1 || '',
+          apellido2: patient.apellido2 || '',
+          sexo: patient.sexo || 'M',
+          fechanac: patient.fechanac || '',
+          nacionalidad: patient.nacionalidad || '',
+          estadocivil: patient.estadocivil || '',
+          tiposangre: patient.tiposangre || '',
+          email: patient.email || '',
+          celularPrefix: patient.celularPrefix || '507',
+          celular: (() => {
+            const cel = patient.celular || ''
+            const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
+            if (m) return m[2].replace(/\D/g, '')
+            return cel.replace(/^\+/, '').replace(/\D/g, '') || ''
+          })(),
+          provincia1: patient.provincia1 || '',
+          distrito1: patient.distrito1 || '',
+          corregimiento1: patient.corregimiento1 || '',
+          direccion1: patient.direccion1 || '',
+          encasourgencia: patient.encasourgencia || '',
+          relacion: patient.relacion || '',
+          email3: patient.email3 || '',
+          celular3: patient.celular3 || '',
+          provincia3: patient.provincia3 || '',
+          distrito3: patient.distrito3 || '',
+          corregimiento3: patient.corregimiento3 || '',
+          direccion3: patient.direccion3 || '',
+          doblecobertura: patient.doblecobertura || 'NO',
+          compania1: patient.compania1 || '',
+          poliza1: patient.poliza1 || '',
+          carnetseguro: patient.carnetseguro || '',
+          certificadoSeguro: patient.certificadoSeguro || '',
         }
+        setFormData(updatedFormData)
+
+        if (updatedFormData.provincia1) {
+          await loadDistritos(updatedFormData.provincia1, false)
+          if (updatedFormData.distrito1) {
+            await loadCorregimientos(updatedFormData.distrito1, false)
+          }
+        }
+
+        setPatientFound(true)
+      } else {
+        setPatientFound(false)
+        setSearchNotice(
+          'No se encontraron datos previos para este documento. Puede continuar completando el formulario.',
+        )
       }
     } catch (err) {
       console.error('Error searching patient:', err)
       setPatientFound(false)
+      setError(fetchNetworkErrorMessage(err, 'No se pudo buscar el paciente'))
     } finally {
       setSearching(false)
     }
@@ -699,7 +731,11 @@ export default function PreadmissionPage() {
                   </label>
                   <select
                     value={formData.pasaporte}
-                    onChange={(e) => setFormData({ ...formData, pasaporte: e.target.value, cedula: '' })}
+                    onChange={(e) => {
+                      setSearchNotice('')
+                      setPatientFound(false)
+                      setFormData({ ...formData, pasaporte: e.target.value, cedula: '' })
+                    }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   >
                     <option value="C">Cédula</option>
@@ -712,22 +748,36 @@ export default function PreadmissionPage() {
                   </label>
                   <div className="flex flex-col sm:flex-row gap-2">
                     <input
+                      ref={cedulaInputRef}
                       type="text"
                       value={formData.cedula}
-                      onChange={(e) => setFormData({ ...formData, cedula: e.target.value })}
+                      onChange={(e) => syncCedulaFromInput(e.target.value)}
+                      onInput={(e) => syncCedulaFromInput((e.target as HTMLInputElement).value)}
+                      onBlur={(e) => syncCedulaFromInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault()
+                          void searchPatient()
+                        }
+                      }}
                       className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                       placeholder={formData.pasaporte === 'C' ? '0-000-000' : 'Número de pasaporte'}
                       required
                     />
                     <button
                       type="button"
-                      onClick={searchPatient}
-                      disabled={searching || !formData.cedula}
+                      onClick={() => void searchPatient()}
+                      disabled={searching || !formData.cedula.trim()}
                       className="w-full sm:w-auto px-6 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
                     >
                       {searching ? 'Buscando...' : 'Buscar'}
                     </button>
                   </div>
+                  {searchNotice && (
+                    <div className="mt-2 bg-blue-50 border border-blue-200 text-blue-800 px-4 py-3 rounded text-sm">
+                      {searchNotice}
+                    </div>
+                  )}
                   <p className="mt-2 text-sm text-gray-500">
                     Busca si el paciente ya tiene datos registrados en el sistema
                   </p>
