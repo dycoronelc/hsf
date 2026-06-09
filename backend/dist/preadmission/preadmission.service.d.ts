@@ -23,16 +23,24 @@ export declare class PreadmissionService {
     private readonly logger;
     constructor(preadmissionRepository: Repository<Preadmission>, verificationRepository: Repository<VerificationCode>, cellbyteService: CellbyteService, ticketsService: TicketsService, auditService: AuditService, notificationsService: NotificationsService, storageService: PreadmissionStorageService);
     private assertPhoneNumbers;
-    checkActiveDocument(cedula: string, pasaporte: string): Promise<{
+    private departamentoLabel;
+    private assertDuplicateCheckParams;
+    private findDuplicateForServiceDay;
+    private duplicatePreadmissionMessage;
+    checkActiveDocument(cedula: string, pasaporte: string, departamento: string, fechaprobableatencion: string): Promise<{
         active: boolean;
         message: string;
         id: number;
-        status: PreadmissionStatus.BORRADOR | PreadmissionStatus.ENVIADO | PreadmissionStatus.EN_REVISION | PreadmissionStatus.ACEPTADO | PreadmissionStatus.REQUIERE_SUBSANACION;
+        status: PreadmissionStatus;
+        departamento: string;
+        fechaprobableatencion: string;
     } | {
         active: boolean;
         message?: undefined;
         id?: undefined;
         status?: undefined;
+        departamento?: undefined;
+        fechaprobableatencion?: undefined;
     }>;
     private generateQrCode;
     parseCedulaQrPayload(raw: string): Record<string, string>;

@@ -347,22 +347,39 @@ export default function PreadmissionPage() {
     setError('')
   }
 
-  const checkActiveDocument = async (): Promise<boolean> => {
-    if (!formData.cedula || !formData.pasaporte) return true
+  const checkDuplicatePreadmission = async (): Promise<boolean> => {
+    if (
+      !formData.cedula ||
+      !formData.pasaporte ||
+      !formData.departamento ||
+      !formData.fechaprobableatencion
+    ) {
+      return true
+    }
     try {
       const params = new URLSearchParams({
         cedula: formData.cedula.trim(),
         pasaporte: formData.pasaporte,
+        departamento: formData.departamento,
+        fechaprobableatencion: formData.fechaprobableatencion.trim(),
       })
       const response = await fetch(`/api/preadmission/check-active?${params.toString()}`)
       const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        setError(apiErrorMessage(data, 'No se pudo verificar preadmisiones existentes'))
+        return false
+      }
       if (data.active) {
-        setError(data.message || 'Ya existe una preadmisión activa con este documento')
+        setError(
+          data.message ||
+            'Ya existe una preadmisión para este servicio y fecha de atención',
+        )
         return false
       }
       return true
     } catch {
-      return true
+      setError('No se pudo verificar preadmisiones existentes. Intente de nuevo.')
+      return false
     }
   }
 
@@ -386,7 +403,7 @@ export default function PreadmissionPage() {
       return
     }
     if (step === 2) {
-      const ok = await checkActiveDocument()
+      const ok = await checkDuplicatePreadmission()
       if (!ok) return
     }
     setStep(step + 1)
@@ -504,6 +521,9 @@ export default function PreadmissionPage() {
       setError('Las fechas deben estar en formato DD/MM/YYYY y ser válidas')
       return
     }
+
+    const duplicateOk = await checkDuplicatePreadmission()
+    if (!duplicateOk) return
 
     setLoading(true)
     setError('')

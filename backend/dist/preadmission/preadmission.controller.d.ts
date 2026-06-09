@@ -6,16 +6,20 @@ import { PreadmissionUploadedFilesMap } from './preadmission-upload.types';
 export declare class PreadmissionController {
     private readonly preadmissionService;
     constructor(preadmissionService: PreadmissionService);
-    checkActiveDocument(cedula: string, pasaporte: string): Promise<{
+    checkActiveDocument(cedula: string, pasaporte: string, departamento: string, fechaprobableatencion: string): Promise<{
         active: boolean;
         message: string;
         id: number;
-        status: import("../common/enums").PreadmissionStatus.BORRADOR | import("../common/enums").PreadmissionStatus.ENVIADO | import("../common/enums").PreadmissionStatus.EN_REVISION | import("../common/enums").PreadmissionStatus.ACEPTADO | import("../common/enums").PreadmissionStatus.REQUIERE_SUBSANACION;
+        status: import("../common/enums").PreadmissionStatus;
+        departamento: string;
+        fechaprobableatencion: string;
     } | {
         active: boolean;
         message?: undefined;
         id?: undefined;
         status?: undefined;
+        departamento?: undefined;
+        fechaprobableatencion?: undefined;
     }>;
     searchByCedula(cedula: string, tipoIdentificacion: string): Promise<{
         id: number;

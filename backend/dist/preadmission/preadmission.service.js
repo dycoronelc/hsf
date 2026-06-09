@@ -51,20 +51,51 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             throw new common_1.BadRequestException(err instanceof Error ? err.message : 'Teléfono inválido');
         }
     }
-    async checkActiveDocument(cedula, pasaporte) {
+    departamentoLabel(code) {
+        if (code === 'LAB')
+            return 'Laboratorio';
+        if (code === 'RAD')
+            return 'Radiología';
+        return code;
+    }
+    assertDuplicateCheckParams(cedula, pasaporte, departamento, fechaprobableatencion) {
         if (!cedula?.trim() || !pasaporte?.trim()) {
             throw new common_1.BadRequestException('Documento inválido');
         }
-        const existing = await this.preadmissionRepository.findOne({
-            where: { cedula: cedula.trim(), pasaporte: pasaporte.trim() },
+        if (!departamento?.trim() || !['RAD', 'LAB'].includes(departamento.trim().toUpperCase())) {
+            throw new common_1.BadRequestException('Departamento inválido');
+        }
+        if (!fechaprobableatencion?.trim()) {
+            throw new common_1.BadRequestException('Fecha probable de atención requerida');
+        }
+    }
+    async findDuplicateForServiceDay(cedula, pasaporte, departamento, fechaprobableatencion) {
+        return this.preadmissionRepository.findOne({
+            where: {
+                cedula: cedula.trim(),
+                pasaporte: pasaporte.trim(),
+                departamento: departamento.trim().toUpperCase(),
+                fechaprobableatencion: fechaprobableatencion.trim(),
+                status: (0, typeorm_2.Not)(enums_1.PreadmissionStatus.RECHAZADO),
+            },
             order: { fechapreadmision: 'DESC' },
         });
-        if (existing && existing.status !== enums_1.PreadmissionStatus.RECHAZADO) {
+    }
+    duplicatePreadmissionMessage(departamento, fechaprobableatencion) {
+        const servicio = this.departamentoLabel(departamento.trim().toUpperCase());
+        return `Ya existe una preadmisión para ${servicio} con fecha de atención ${fechaprobableatencion.trim()}. Solo se permite una preadmisión por servicio y día. Puede registrar otro servicio distinto (por ejemplo, Laboratorio y Radiología) para la misma fecha.`;
+    }
+    async checkActiveDocument(cedula, pasaporte, departamento, fechaprobableatencion) {
+        this.assertDuplicateCheckParams(cedula, pasaporte, departamento, fechaprobableatencion);
+        const existing = await this.findDuplicateForServiceDay(cedula, pasaporte, departamento, fechaprobableatencion);
+        if (existing) {
             return {
                 active: true,
-                message: 'Ya existe una preadmisión activa con este documento. Debe finalizar o ser rechazada antes de crear otra.',
+                message: this.duplicatePreadmissionMessage(departamento, fechaprobableatencion),
                 id: existing.id,
                 status: existing.status,
+                departamento: existing.departamento,
+                fechaprobableatencion: existing.fechaprobableatencion,
             };
         }
         return { active: false };
@@ -156,12 +187,12 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
     async create(createDto, patientId, uploadedFiles = {}) {
         this.assertNamesAndAddress(createDto);
         this.assertPhoneNumbers(createDto);
-        const existing = await this.preadmissionRepository.findOne({
-            where: { cedula: createDto.cedula, pasaporte: createDto.pasaporte },
-            order: { fechapreadmision: 'DESC' },
-        });
-        if (existing && existing.status !== enums_1.PreadmissionStatus.RECHAZADO) {
-            throw new common_1.BadRequestException('Ya existe una preadmisión activa con este documento');
+        if (!createDto.fechaprobableatencion?.trim()) {
+            throw new common_1.BadRequestException('Fecha probable de atención requerida');
+        }
+        const duplicate = await this.findDuplicateForServiceDay(createDto.cedula, createDto.pasaporte, createDto.departamento, createDto.fechaprobableatencion);
+        if (duplicate) {
+            throw new common_1.BadRequestException(this.duplicatePreadmissionMessage(createDto.departamento, createDto.fechaprobableatencion));
         }
         const preadmission = this.buildEntityFromDto(createDto, patientId, {});
         const saved = await this.preadmissionRepository.save(preadmission);

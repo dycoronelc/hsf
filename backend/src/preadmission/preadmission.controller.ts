@@ -72,8 +72,15 @@ export class PreadmissionController {
   async checkActiveDocument(
     @Query('cedula') cedula: string,
     @Query('pasaporte') pasaporte: string,
+    @Query('departamento') departamento: string,
+    @Query('fechaprobableatencion') fechaprobableatencion: string,
   ) {
-    return this.preadmissionService.checkActiveDocument(cedula, pasaporte);
+    return this.preadmissionService.checkActiveDocument(
+      cedula,
+      pasaporte,
+      departamento,
+      fechaprobableatencion,
+    );
   }
 
   @Get('search')

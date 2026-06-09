@@ -53,8 +53,8 @@ let PreadmissionController = class PreadmissionController {
     constructor(preadmissionService) {
         this.preadmissionService = preadmissionService;
     }
-    async checkActiveDocument(cedula, pasaporte) {
-        return this.preadmissionService.checkActiveDocument(cedula, pasaporte);
+    async checkActiveDocument(cedula, pasaporte, departamento, fechaprobableatencion) {
+        return this.preadmissionService.checkActiveDocument(cedula, pasaporte, departamento, fechaprobableatencion);
     }
     async searchByCedula(cedula, tipoIdentificacion) {
         if (!cedula || !tipoIdentificacion) {
@@ -112,8 +112,10 @@ __decorate([
     (0, common_1.Get)('check-active'),
     __param(0, (0, common_1.Query)('cedula')),
     __param(1, (0, common_1.Query)('pasaporte')),
+    __param(2, (0, common_1.Query)('departamento')),
+    __param(3, (0, common_1.Query)('fechaprobableatencion')),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [String, String]),
+    __metadata("design:paramtypes", [String, String, String, String]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "checkActiveDocument", null);
 __decorate([

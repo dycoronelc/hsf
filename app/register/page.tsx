@@ -77,7 +77,7 @@ export default function RegisterPage() {
             style={{ backgroundColor: '#00816D' }}
           >
             <Image
-              src="/logo-hospital-santa-fe.svg"
+              src="/logo-blanco.png"
               alt="Hospital Santa Fe"
               width={200}
               height={56}
