@@ -117,8 +117,39 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 
 ## Troubleshooting
 
+### Hice push a GitHub pero Railway no se actualizó
+
+1. **Confirma que el push llegó a GitHub**  
+   Repositorio actual: `https://github.com/dycoronelc/hsf` rama `main`.
+
+2. **Revisa el historial de despliegues en Railway** (cada servicio → pestaña **Deployments**)  
+   - Activa **Show Skipped**: a veces el deploy se creó pero quedó en estado **SKIPPED** por *Watch Paths* antiguos.  
+   - Si ves **FAILED**, abre los logs del build (ahí está el error real).
+
+3. **Verifica la conexión GitHub en cada servicio** (Settings → Source)  
+   - Repo: `dycoronelc/hsf`  
+   - Branch: `main`  
+   - **Autodeploy**: activado  
+   - **Wait for CI**: desactivado (salvo que tengas GitHub Actions obligatorias y pasando).
+
+4. **Config file path (muy importante)**  
+   Cada servicio debe tener su archivo de config, no el mismo para ambos:
+   - Backend: `/railway.backend.toml`
+   - Frontend: `/railway.frontend.toml`  
+   Si este campo está vacío o mal, Railway ignora build/start del monorepo.
+
+5. **Forzar despliegue del último commit**  
+   En el proyecto Railway: `Ctrl+K` → **Deploy Latest Commit** (en backend y en frontend).  
+   **No uses solo “Redeploy”** del deployment viejo: eso reutiliza el mismo código anterior.
+
+6. **Reconectar GitHub si no aparece ningún deployment nuevo**  
+   Project → servicio → Settings → desconectar y volver a conectar el repo, o **Add → GitHub Repo → Refresh**.
+
+7. **Tras cambiar `railway.*.toml`**  
+   Haz commit, push y luego **Deploy Latest Commit** en ambos servicios.
+
 - **Solo se desplegó el backend**: En el proyecto Railway debe haber **dos servicios** (backend y frontend). Si solo existe uno, crea el servicio frontend (Paso 3), asigna `API_URL` y haz **Deploy** manual.
-- **El frontend no se reconstruye al hacer push**: Revisa **Watch Paths** del servicio frontend o usa `/railway.frontend.toml`. Un push que solo toque `backend/**` no debe redeployar el frontend.
+- **El frontend no se reconstruye al hacer push**: Los archivos `railway.*.toml` ya no usan *watch paths* restrictivos; cualquier push a `main` debe disparar build en el servicio conectado. Si quieres optimizar costos, puedes volver a añadir `watchPatterns` más adelante.
 - **"No start command found"**: Revisa que Build y Start estén configurados en Settings.
 - **CORS errors**: Verifica que `FRONTEND_URL` en el backend coincida con la URL real del frontend.
 - **API no responde**: Confirma que `NEXT_PUBLIC_API_URL` en el frontend apunte a la URL del backend (sin `/api` al final).

@@ -1,16 +1,6 @@
+# Servicio FRONTEND en Railway → Settings → Config file path: /railway.frontend.toml
 [build]
 buildCommand = "npm install && npm run build"
-watchPatterns = [
-  "app/**",
-  "lib/**",
-  "public/**",
-  "next.config.js",
-  "tailwind.config.js",
-  "postcss.config.js",
-  "tsconfig.json",
-  "package.json",
-  "package-lock.json",
-]
 
 [deploy]
 startCommand = "npm run start"
