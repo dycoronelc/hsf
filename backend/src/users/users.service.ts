@@ -29,7 +29,7 @@ export class UsersService {
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
     const user = this.usersRepository.create({
-      email: createUserDto.email,
+      email: createUserDto.email.trim().toLowerCase(),
       fullName: createUserDto.fullName,
       phone: createUserDto.phone,
       nationalId: createUserDto.nationalId ?? null,
@@ -48,7 +48,12 @@ export class UsersService {
   }
 
   async findByEmail(email: string): Promise<User | null> {
-    return this.usersRepository.findOne({ where: { email } });
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .where('LOWER(user.email) = :email', { email: normalized })
+      .getOne();
   }
 
   async updateAgentState(userId: number, agentState: AgentState | null): Promise<void> {

@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -6,12 +6,17 @@ import { UsersService } from '../users/users.service';
 import { LoginDto, TokenResponseDto } from './dto/auth.dto';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { AuditService } from '../audit/audit.service';
-import { NotificationsService } from '../notifications/notifications.service';
+import {
+  NotificationsService,
+  isSmtpDeliveryEnabled,
+} from '../notifications/notifications.service';
 import * as bcrypt from 'bcrypt';
 import * as crypto from 'crypto';
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private usersService: UsersService,
     private jwtService: JwtService,
@@ -44,10 +49,21 @@ export class AuthService {
   }
 
   async requestPasswordReset(email: string) {
-    const user = await this.usersService.findByEmail(email);
+    const normalized = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalized);
+    const genericMessage =
+      'Si el correo está registrado como usuario de la plataforma, recibirá instrucciones para restablecer la contraseña. Revise también la carpeta de spam.';
+
     if (!user) {
-      return { message: 'Si el correo existe, recibirá instrucciones para restablecer la contraseña' };
+      return {
+        message: genericMessage,
+        debugHint:
+          process.env.NODE_ENV !== 'production'
+            ? 'No hay una cuenta de usuario registrada con ese correo. Debe crear cuenta en Registrarse o usar un correo de prueba del sistema.'
+            : undefined,
+      };
     }
+
     const token = crypto.randomBytes(24).toString('hex');
     const expiresAt = new Date(Date.now() + 60 * 60 * 1000);
     await this.resetRepository.save(
@@ -60,15 +76,24 @@ export class AuthService {
     );
     const resetUrl = `${process.env.APP_BASE_URL || process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${token}`;
 
-    this.notificationsService
-      .sendPasswordResetEmail(user.email, resetUrl)
-      .catch((err) => {
-        console.error('Error sending password reset email:', err);
-      });
+    try {
+      await this.notificationsService.sendPasswordResetEmail(user.email, resetUrl);
+    } catch (err) {
+      this.logger.error(`No se pudo enviar correo de recuperación a ${user.email}`, err);
+      if (isSmtpDeliveryEnabled()) {
+        throw new BadRequestException(
+          'No se pudo enviar el correo de recuperación. Intente más tarde o contacte al hospital.',
+        );
+      }
+    }
 
+    const isDev = process.env.NODE_ENV !== 'production';
     return {
-      message: 'Si el correo existe, recibirá instrucciones para restablecer la contraseña',
-      resetUrl: process.env.NODE_ENV === 'production' ? undefined : resetUrl,
+      message: isSmtpDeliveryEnabled()
+        ? genericMessage
+        : `${genericMessage} En desarrollo el correo no se envía por SMTP; use el enlace de prueba que aparece abajo.`,
+      resetUrl: isDev ? resetUrl : undefined,
+      emailSent: isSmtpDeliveryEnabled(),
     };
   }
 

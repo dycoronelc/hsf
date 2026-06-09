@@ -56,10 +56,14 @@ export default function PreadmissionPage() {
   const [emailCode, setEmailCode] = useState('')
   const [emailVerified, setEmailVerified] = useState(false)
   const [verificationHint, setVerificationHint] = useState('')
+  const [verificationError, setVerificationError] = useState('')
+  const [verificationSending, setVerificationSending] = useState(false)
+  const [verificationConfirming, setVerificationConfirming] = useState(false)
   const [attachmentFiles, setAttachmentFiles] = useState<
     Partial<Record<PreadmissionAttachmentField, File>>
   >({})
   const attachmentFilesRef = useRef<Partial<Record<PreadmissionAttachmentField, File>>>({})
+  const emailInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
     registradoComo: 'paciente',
@@ -104,6 +108,41 @@ export default function PreadmissionPage() {
     const n = new Date()
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
   }, [])
+
+  const isValidEmailAddress = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+
+  const syncEmailFromInput = (value: string) => {
+    setEmailVerified(false)
+    setVerificationError('')
+    setError('')
+    setFormData((prev) => ({ ...prev, email: value }))
+  }
+
+  const getEmailDestination = () =>
+    (emailInputRef.current?.value ?? formData.email).trim().toLowerCase()
+
+  const canSendEmailCode = useMemo(
+    () => isValidEmailAddress(formData.email) && !emailVerified && !verificationSending,
+    [formData.email, emailVerified, verificationSending],
+  )
+
+  useEffect(() => {
+    if (step !== 4) return
+    const timer = window.setTimeout(() => {
+      const autofilled = emailInputRef.current?.value?.trim()
+      if (autofilled && autofilled !== formData.email) {
+        syncEmailFromInput(autofilled)
+      }
+    }, 300)
+    return () => window.clearTimeout(timer)
+  }, [step, formData.email])
+
+  useEffect(() => {
+    if (emailVerified) {
+      setError('')
+      setVerificationError('')
+    }
+  }, [emailVerified])
 
   useEffect(() => {
     loadCatalogs()
@@ -323,12 +362,19 @@ export default function PreadmissionPage() {
   }
 
   const requestVerification = async () => {
+    setVerificationError('')
+    setError('')
     setVerificationHint('')
-    const destination = formData.email.trim().toLowerCase()
-    if (!destination) {
-      setError('Ingrese un correo válido')
+    const destination = getEmailDestination()
+    if (!isValidEmailAddress(destination)) {
+      setVerificationError('Ingrese un correo electrónico válido antes de solicitar el código')
       return
     }
+    if (destination !== formData.email.trim().toLowerCase()) {
+      syncEmailFromInput(destination)
+    }
+
+    setVerificationSending(true)
     try {
       const response = await fetch('/api/preadmission/verify-contact/request', {
         method: 'POST',
@@ -337,34 +383,54 @@ export default function PreadmissionPage() {
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.message || 'No se pudo enviar el código')
+        throw new Error(apiErrorMessage(data, 'No se pudo enviar el código'))
       }
+      setVerificationError('')
+      setError('')
       setVerificationHint(
         data.previewCode
           ? `Código de prueba (desarrollo): ${data.previewCode}`
-          : 'Código enviado. Revise su bandeja de correo.',
+          : 'Código enviado. Revise su bandeja de correo (y carpeta de spam).',
       )
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setVerificationError(fetchNetworkErrorMessage(err, 'No se pudo enviar el código'))
+    } finally {
+      setVerificationSending(false)
     }
   }
 
   const confirmVerification = async () => {
-    const destination = formData.email.trim().toLowerCase()
+    setVerificationError('')
+    setError('')
+    const destination = getEmailDestination()
+    if (!isValidEmailAddress(destination)) {
+      setVerificationError('Ingrese un correo electrónico válido')
+      return
+    }
+    if (!emailCode.trim()) {
+      setVerificationError('Ingrese el código recibido por correo')
+      return
+    }
+
+    setVerificationConfirming(true)
     try {
       const response = await fetch('/api/preadmission/verify-contact/confirm', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ destination, code: emailCode }),
+        body: JSON.stringify({ destination, code: emailCode.trim() }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {
-        throw new Error(data.message || 'Código inválido')
+        throw new Error(apiErrorMessage(data, 'Código inválido o expirado'))
       }
       setEmailVerified(true)
-      setVerificationHint('Correo verificado')
-    } catch (err: any) {
-      setError(err.message)
+      setVerificationError('')
+      setError('')
+      setVerificationHint('Correo verificado correctamente')
+    } catch (err: unknown) {
+      setVerificationError(fetchNetworkErrorMessage(err, 'No se pudo confirmar el correo'))
+    } finally {
+      setVerificationConfirming(false)
     }
   }
 
@@ -820,20 +886,76 @@ export default function PreadmissionPage() {
             <div className="space-y-6">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 4: Contacto y Dirección</h2>
               <div className="grid md:grid-cols-2 gap-4">
-                <div>
+                <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Email *
                   </label>
                   <input
+                    ref={emailInputRef}
                     type="email"
                     value={formData.email}
-                    onChange={(e) => {
-                      setEmailVerified(false)
-                      setFormData({ ...formData, email: e.target.value })
-                    }}
+                    autoComplete="email"
+                    onChange={(e) => syncEmailFromInput(e.target.value)}
+                    onInput={(e) => syncEmailFromInput((e.target as HTMLInputElement).value)}
+                    onBlur={(e) => syncEmailFromInput(e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
+                </div>
+                <div className="md:col-span-2 border border-dashed border-gray-300 rounded-lg p-4 bg-blue-50/60 space-y-3">
+                  <p className="text-sm text-gray-700 font-medium">Verificación de correo electrónico *</p>
+                  <p className="text-xs text-gray-600">
+                    Ingrese su correo arriba y solicite el código. Debe verificar el correo para continuar al siguiente paso.
+                  </p>
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <button
+                      type="button"
+                      onClick={() => void requestVerification()}
+                      disabled={!canSendEmailCode}
+                      className="px-4 py-2 bg-hospital-blue text-white rounded-lg text-sm font-medium hover:bg-hospital-blue-dark disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {verificationSending ? 'Enviando código...' : 'Enviar código al correo'}
+                    </button>
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={emailCode}
+                      onChange={(e) => {
+                        setVerificationError('')
+                        setError('')
+                        setEmailCode(e.target.value.replace(/\D/g, '').slice(0, 6))
+                      }}
+                      placeholder="Código de 6 dígitos"
+                      disabled={emailVerified}
+                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white disabled:bg-gray-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void confirmVerification()}
+                      disabled={emailVerified || verificationConfirming || !emailCode.trim()}
+                      className="px-4 py-2 border border-hospital-blue text-hospital-blue rounded-lg text-sm font-medium hover:bg-blue-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {verificationConfirming ? 'Confirmando...' : 'Confirmar correo'}
+                    </button>
+                    {emailVerified && <span className="text-green-700 text-sm font-medium">✓ Correo verificado</span>}
+                  </div>
+                  {!canSendEmailCode && !emailVerified && !verificationSending && (
+                    <p className="text-xs text-amber-700">
+                      {formData.email.trim()
+                        ? 'El correo ingresado no tiene un formato válido.'
+                        : 'Escriba su correo en el campo de arriba para habilitar el envío del código.'}
+                    </p>
+                  )}
+                  {verificationError && (
+                    <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded px-3 py-2">
+                      {verificationError}
+                    </p>
+                  )}
+                  {verificationHint && !verificationError && (
+                    <p className={`text-xs font-medium ${emailVerified ? 'text-green-700' : 'text-gray-700'}`}>
+                      {verificationHint}
+                    </p>
+                  )}
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -861,26 +983,6 @@ export default function PreadmissionPage() {
                       required
                     />
                   </div>
-                </div>
-                <div className="md:col-span-2 border border-dashed border-gray-300 rounded-lg p-4 bg-gray-50 space-y-3">
-                  <p className="text-sm text-gray-700 font-medium">Verificación de correo electrónico</p>
-                  <div className="flex flex-wrap gap-2 items-center">
-                    <button type="button" onClick={() => requestVerification()} className="px-3 py-2 bg-gray-200 rounded-lg text-sm">
-                      Enviar código al correo
-                    </button>
-                    <input
-                      type="text"
-                      value={emailCode}
-                      onChange={(e) => setEmailCode(e.target.value)}
-                      placeholder="Código recibido"
-                      className="px-3 py-2 border border-gray-300 rounded-lg text-sm text-gray-900 bg-white"
-                    />
-                    <button type="button" onClick={() => confirmVerification()} className="px-3 py-2 bg-hospital-blue text-white rounded-lg text-sm">
-                      Confirmar correo
-                    </button>
-                    {emailVerified && <span className="text-green-700 text-sm">Correo verificado</span>}
-                  </div>
-                  {verificationHint && <p className="text-xs text-gray-600">{verificationHint}</p>}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">

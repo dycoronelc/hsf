@@ -20,10 +20,7 @@ import { TicketsService } from '../tickets/tickets.service';
 import { parseCedulaQr } from './utils/parse-cedula-qr';
 import { AuditService } from '../audit/audit.service';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
-import {
-  NotificationsService,
-  isSmtpDeliveryEnabled,
-} from '../notifications/notifications.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import { PreadmissionStorageService } from './preadmission-storage.service';
 import {
   PreadmissionAttachmentField,
@@ -413,7 +410,7 @@ export class PreadmissionService {
       message: 'Código enviado al correo',
       destination: normalized,
       expiresAt,
-      previewCode: isSmtpDeliveryEnabled() ? undefined : code,
+      previewCode: process.env.NODE_ENV !== 'production' ? code : undefined,
     };
   }
 
