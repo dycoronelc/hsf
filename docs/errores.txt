@@ -1,0 +1,31 @@
+build
+RUN npm run build
+9s
+> hospital-santa-fe-platform@1.0.0 build
+> next build
+  ▲ Next.js 14.2.35
+   Creating an optimized production build ...
+Failed to compile.
+app/layout.tsx
+An error occurred in `next/font`.
+Error: Cannot find module 'tailwindcss'
+
+Require stack:
+- /app/node_modules/next/dist/build/webpack/config/blocks/css/plugins.js
+- /app/node_modules/next/dist/build/webpack/config/blocks/css/index.js
+- /app/node_modules/next/dist/build/webpack/config/index.js
+- /app/node_modules/next/dist/build/webpack-config.js
+- /app/node_modules/next/dist/build/webpack-build/impl.js
+- /app/node_modules/next/dist/compiled/jest-worker/processChild.js
+    at Module._resolveFilename (node:internal/modules/cjs/loader:1207:15)
+    at /app/node_modules/next/dist/server/require-hook.js:55:36
+    at Function.resolve (node:internal/modules/helpers:193:19)
+    at loadPlugin (/app/node_modules/next/dist/build/webpack/config/blocks/css/plugins.js:49:32)
+    at /app/node_modules/next/dist/build/webpack/config/blocks/css/plugins.js:157:56
+    at Array.map (<anonymous>)
+    at getPostCssPlugins (/app/node_modules/next/dist/build/webpack/config/blocks/css/plugins.js:157:47)
+    at async /app/node_modules/next/dist/build/webpack/config/blocks/css/index.js:124:36
+    at async /app/node_modules/next/dist/build/webpack/loaders/next-font-loader/index.js:86:33
+    at async Span.traceAsyncFn (/app/node_modules/next/dist/trace/trace.js:154:20)
+> Build failed because of webpack errors
+Build Failed: build daemon returned an error < failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1 >

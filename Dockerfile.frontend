@@ -4,12 +4,12 @@ FROM node:20-bookworm-slim AS build
 WORKDIR /app
 
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_ENV=production
 ENV NODE_OPTIONS=--max-old-space-size=4096
 
 COPY package.json package-lock.json ./
 COPY scripts ./scripts
-RUN npm ci
+# No usar NODE_ENV=production aquí: npm ci omitiría devDependencies (tailwindcss, postcss, typescript).
+RUN npm ci --include=dev
 
 COPY app ./app
 COPY lib ./lib
