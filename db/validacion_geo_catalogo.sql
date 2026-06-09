@@ -5,6 +5,7 @@
 --   psql -U <usuario> -d <base> -f db/datosgeograficos_postgres.sql
 --   psql -U <usuario> -d <base> -f db/migrations/20260526_sync_geo_from_referencia.sql
 --   psql -U <usuario> -d <base> -f db/validacion_geo_catalogo.sql
+--   psql -U <usuario> -d <base> -f db/validacion_geo_duplicados.sql
 --
 -- IMPORTANTE: datosgeograficos_postgres.sql solo carga tablas ref_* (referencia).
 -- Para poblar provincias/distritos/corregimientos de la aplicación, ejecute también el script de sync.

@@ -149,7 +149,7 @@ export default function StaffConsolePage() {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`,
           },
-          body: JSON.stringify({ window_number: windowNumber }),
+          body: JSON.stringify({ windowNumber }),
         }
       )
       if (response.ok) {

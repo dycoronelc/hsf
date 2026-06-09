@@ -4,6 +4,7 @@ import { Suspense, useState, useEffect } from 'react'
 import Link from 'next/link'
 import { HospitalLogo } from '../components/HospitalLogo'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
 interface Service {
   id: number
@@ -63,13 +64,12 @@ function KioskContent() {
         body: JSON.stringify({
           serviceId: selectedService,
           priority: 'normal',
-          source: 'kiosk',
         }),
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Error al crear turno')
+        const data = await response.json().catch(() => ({}))
+        throw new Error(apiErrorMessage(data, 'Error al crear turno'))
       }
 
       const ticket = await response.json()
@@ -113,7 +113,8 @@ function KioskContent() {
           </div>
           <div className="space-y-3">
             <p className="text-sm text-gray-600">
-              Presenta este código en recepción cuando sea tu turno
+              Presenta este código en recepción cuando sea tu turno. El turno quedará visible en la
+              Consola Staff y el Monitor del hospital (no requiere cuenta de paciente).
             </p>
             <button
               onClick={handlePrintTicket}

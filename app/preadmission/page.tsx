@@ -10,6 +10,7 @@ import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
 import { validatePhoneNumber } from '@/lib/phoneValidation'
+import { apiErrorMessage, fetchNetworkErrorMessage } from '@/lib/apiErrorMessage'
 import { HospitalLogo } from '../components/HospitalLogo'
 
 const PREADMISSION_ATTACHMENT_FIELDS = [
@@ -410,10 +411,21 @@ export default function PreadmissionPage() {
     setError('')
 
     try {
-      const isPublic = !isAuthenticated
-      const url = isPublic ? '/api/preadmission/public' : '/api/preadmission/'
-      const headers: HeadersInit = {}
-      if (!isPublic && token) headers['Authorization'] = `Bearer ${token}`
+      let totalBytes = 0
+      for (const field of PREADMISSION_ATTACHMENT_FIELDS) {
+        const file = attachmentFilesRef.current[field] || attachmentFiles[field]
+        if (file) {
+          if (file.size > MAX_ATTACHMENT_BYTES) {
+            setError(`El archivo "${file.name}" supera el límite de 15 MB`)
+            return
+          }
+          totalBytes += file.size
+        }
+      }
+      if (totalBytes > MAX_ATTACHMENT_BYTES * 4) {
+        setError('El tamaño total de los adjuntos es muy grande. Reduzca imágenes o envíe menos archivos.')
+        return
+      }
 
       const body = new FormData()
       body.append(
@@ -428,32 +440,26 @@ export default function PreadmissionPage() {
         if (file) body.append(field, file, file.name)
       }
 
-      const response = await fetch(url, {
+      const controller = new AbortController()
+      const timeoutId = window.setTimeout(() => controller.abort(), 180_000)
+
+      const response = await fetch('/api/preadmission/public', {
         method: 'POST',
-        headers,
         body,
-      })
+        signal: controller.signal,
+      }).finally(() => window.clearTimeout(timeoutId))
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
-        let detail: string =
-          typeof data.detail === 'string' ? data.detail : data.message || 'Error al enviar preadmisión'
-        if (Array.isArray(data.message)) {
-          detail = data.message
-            .map((x: { constraints?: Record<string, string>; property?: string }) =>
-              x.constraints ? Object.values(x.constraints).join(', ') : JSON.stringify(x),
-            )
-            .join('; ')
-        }
-        throw new Error(detail)
+        throw new Error(apiErrorMessage(data, 'Error al enviar preadmisión'))
       }
 
       const data = await response.json()
       setCreatedPreadmissionId(data.id)
       setCreatedQrCode(data.qrCode ?? null)
       setSuccess(true)
-    } catch (err: any) {
-      setError(err.message)
+    } catch (err: unknown) {
+      setError(fetchNetworkErrorMessage(err, 'No se pudo enviar la preadmisión'))
     } finally {
       setLoading(false)
     }

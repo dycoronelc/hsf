@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '../../providers'
 import Link from 'next/link'
+import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
 interface Service {
   id: number
@@ -70,8 +71,8 @@ export default function NewTicketPage() {
       })
 
       if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.detail || 'Error al crear turno')
+        const data = await response.json().catch(() => ({}))
+        throw new Error(apiErrorMessage(data, 'Error al crear turno'))
       }
 
       const ticket = await response.json()
