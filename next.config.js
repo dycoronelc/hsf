@@ -4,17 +4,8 @@ const nextConfig = {
   env: {
     NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8000',
   },
-  async rewrites() {
-    // API_URL se lee en runtime al iniciar el servidor (Railway)
-    // NEXT_PUBLIC_API_URL puede estar vacío si se estableció después del build
-    const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${apiUrl.replace(/\/$/, '')}/api/:path*`,
-      },
-    ]
-  },
+  // /api/* se reenvía al backend en runtime vía app/api/[...path]/route.ts (lee API_URL al ejecutar).
+  // Los rewrites de next.config se evalúan solo en build y en Railway quedaban en localhost:8000.
 }
 
 module.exports = nextConfig
