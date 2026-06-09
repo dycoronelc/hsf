@@ -16,7 +16,7 @@ export function HospitalLogo({
 }: HospitalLogoProps) {
   const img = (
     <Image
-      src="/logo-hospital-santa-fe.svg"
+      src="/logo-blanco.png"
       alt="Hospital Santa Fe Panamá"
       width={width}
       height={height}
