@@ -11,22 +11,56 @@ function resolveApiBase(): string {
   ).replace(/\/$/, '')
 }
 
+/** Evita ERR_CONTENT_DECODING_FAILED: fetch descomprime el body pero no debe reenviarse Content-Encoding. */
+const HOP_BY_HOP_RESPONSE_HEADERS = new Set([
+  'connection',
+  'keep-alive',
+  'proxy-authenticate',
+  'proxy-authorization',
+  'te',
+  'trailers',
+  'transfer-encoding',
+  'upgrade',
+  'content-encoding',
+  'content-length',
+])
+
+function sanitizeProxyResponseHeaders(upstream: Headers): Headers {
+  const headers = new Headers()
+  upstream.forEach((value, key) => {
+    if (!HOP_BY_HOP_RESPONSE_HEADERS.has(key.toLowerCase())) {
+      headers.set(key, value)
+    }
+  })
+  return headers
+}
+
+function buildProxyRequestHeaders(req: NextRequest): Headers {
+  const headers = new Headers()
+  req.headers.forEach((value, key) => {
+    const lower = key.toLowerCase()
+    if (
+      lower === 'host' ||
+      lower === 'connection' ||
+      lower === 'content-length' ||
+      lower === 'accept-encoding'
+    ) {
+      return
+    }
+    headers.set(key, value)
+  })
+  return headers
+}
+
 type RouteContext = { params: { path: string[] } }
 
 async function proxy(req: NextRequest, context: RouteContext) {
   const subPath = context.params.path.join('/')
   const targetUrl = `${resolveApiBase()}/api/${subPath}${req.nextUrl.search}`
 
-  const headers = new Headers()
-  req.headers.forEach((value, key) => {
-    const lower = key.toLowerCase()
-    if (lower === 'host' || lower === 'connection' || lower === 'content-length') return
-    headers.set(key, value)
-  })
-
   const init: RequestInit & { duplex?: 'half' } = {
     method: req.method,
-    headers,
+    headers: buildProxyRequestHeaders(req),
     redirect: 'manual',
   }
 
@@ -40,7 +74,7 @@ async function proxy(req: NextRequest, context: RouteContext) {
     return new NextResponse(upstream.body, {
       status: upstream.status,
       statusText: upstream.statusText,
-      headers: upstream.headers,
+      headers: sanitizeProxyResponseHeaders(upstream.headers),
     })
   } catch (err) {
     console.error(`API proxy failed (${targetUrl}):`, err)

@@ -16,9 +16,24 @@ export function fetchNetworkErrorMessage(err: unknown, context: string): string 
   if (err instanceof DOMException && err.name === 'AbortError') {
     return `${context}: la solicitud tardó demasiado. Intente con archivos más livianos o una red más estable.`
   }
+  if (err instanceof SyntaxError) {
+    return `${context}: respuesta inválida del servidor. Intente de nuevo en unos segundos.`
+  }
   if (err instanceof TypeError) {
     return `${context}: no se pudo conectar con el servidor. Verifique la red, que el sistema esté en línea y que los adjuntos no superen 15 MB cada uno.`
   }
-  if (err instanceof Error && err.message.trim()) return err.message
+  if (err instanceof Error && err.message.trim()) {
+    if (/json|unexpected end/i.test(err.message)) {
+      return `${context}: respuesta inválida del servidor. Intente de nuevo en unos segundos.`
+    }
+    return err.message
+  }
   return `${context}: error inesperado al comunicarse con el servidor.`
+}
+
+/** Parsea JSON de forma segura; devuelve null si el cuerpo está vacío. */
+export async function parseJsonResponse<T = unknown>(response: Response): Promise<T | null> {
+  const text = await response.text()
+  if (!text.trim()) return null
+  return JSON.parse(text) as T
 }

@@ -10,7 +10,7 @@ import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
 import { validatePhoneNumber } from '@/lib/phoneValidation'
-import { apiErrorMessage, fetchNetworkErrorMessage } from '@/lib/apiErrorMessage'
+import { apiErrorMessage, fetchNetworkErrorMessage, parseJsonResponse } from '@/lib/apiErrorMessage'
 import { HospitalLogo } from '../components/HospitalLogo'
 
 const PREADMISSION_ATTACHMENT_FIELDS = [
@@ -261,12 +261,18 @@ export default function PreadmissionPage() {
         `/api/preadmission/search?cedula=${encodeURIComponent(cedula)}&tipoIdentificacion=${encodeURIComponent(tipoIdentificacion)}`,
       )
 
+      let data: unknown = null
+      try {
+        data = await parseJsonResponse(response)
+      } catch {
+        throw new Error('No se pudo buscar el paciente: respuesta inválida del servidor')
+      }
+
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
         throw new Error(apiErrorMessage(data, 'No se pudo buscar el paciente'))
       }
 
-      const patient = await response.json()
+      const patient = data as Record<string, unknown> | null
       if (patient) {
         const updatedFormData = {
           ...formData,
