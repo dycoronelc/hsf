@@ -31,6 +31,55 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
 ])
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
 
+/** Campos permitidos en el JSON `data` del multipart (CreatePreadmissionDto). */
+const PREADMISSION_JSON_FIELDS = [
+  'departamento',
+  'registradoComo',
+  'name1',
+  'name2',
+  'apellido1',
+  'apellido2',
+  'pasaporte',
+  'cedula',
+  'sexo',
+  'fechanac',
+  'nacionalidad',
+  'estadocivil',
+  'tiposangre',
+  'email',
+  'celular',
+  'celularPrefix',
+  'provincia1',
+  'distrito1',
+  'corregimiento1',
+  'direccion1',
+  'encasourgencia',
+  'relacion',
+  'email3',
+  'celular3',
+  'provincia3',
+  'distrito3',
+  'corregimiento3',
+  'direccion3',
+  'fechaprobableatencion',
+  'medico',
+  'doblecobertura',
+  'compania1',
+  'poliza1',
+  'diagnostico',
+  'procedimientoEstudio',
+  'numerocotizacion',
+] as const
+
+function buildPreadmissionSubmitPayload(formData: Record<string, string>) {
+  const payload: Record<string, string> = {}
+  for (const key of PREADMISSION_JSON_FIELDS) {
+    payload[key] = formData[key] ?? ''
+  }
+  payload.celularPrefix = formData.celularPrefix || '507'
+  return payload
+}
+
 function patientField(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
 }
@@ -126,10 +175,15 @@ export default function PreadmissionPage() {
   const isValidEmailAddress = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
 
   const syncEmailFromInput = (value: string) => {
-    setEmailVerified(false)
-    setVerificationError('')
+    const normalized = value.trim()
     setError('')
-    setFormData((prev) => ({ ...prev, email: value }))
+    setFormData((prev) => {
+      if (prev.email.trim() === normalized) return prev
+      setEmailVerified(false)
+      setVerificationError('')
+      setVerificationHint('')
+      return { ...prev, email: normalized }
+    })
   }
 
   const getEmailDestination = () =>
@@ -321,10 +375,12 @@ export default function PreadmissionPage() {
           doblecobertura: patientField(patient.doblecobertura, 'NO'),
           compania1: patientField(patient.compania1),
           poliza1: patientField(patient.poliza1),
-          carnetseguro: patientField(patient.carnetseguro),
-          certificadoSeguro: patientField(patient.certificadoSeguro),
         }
         setFormData(updatedFormData)
+        setEmailVerified(false)
+        setEmailCode('')
+        setVerificationHint('')
+        setVerificationError('')
 
         if (updatedFormData.provincia1) {
           await loadDistritos(updatedFormData.provincia1, false)
@@ -403,6 +459,10 @@ export default function PreadmissionPage() {
 
   const goToNextStep = async () => {
     if (step === 4) {
+      const emailFromInput = getEmailDestination()
+      if (emailFromInput && emailFromInput !== formData.email.trim()) {
+        syncEmailFromInput(emailFromInput)
+      }
       const phoneOk = validatePhoneNumber(formData.celularPrefix, formData.celular)
       if (!phoneOk.valid) {
         setError(phoneOk.message || 'Número de celular inválido')
@@ -416,8 +476,9 @@ export default function PreadmissionPage() {
         return
       }
     }
-    if (!validateStep(step)) {
-      setError('Por favor completa todos los campos obligatorios')
+    const stepError = getStepValidationError(step)
+    if (stepError) {
+      setError(stepError)
       return
     }
     if (step === 2) {
@@ -501,38 +562,70 @@ export default function PreadmissionPage() {
     }
   }
 
-  const validateStep = (stepNum: number): boolean => {
+  const getStepValidationError = (stepNum: number): string | null => {
     switch (stepNum) {
       case 1:
-        return !!(formData.departamento && formData.fechaprobableatencion && isValidDdMmYyyy(formData.fechaprobableatencion))
-      case 2:
-        return !!(formData.registradoComo && formData.pasaporte && formData.cedula)
-      case 3:
-        return !!(formData.name1 && formData.apellido1 && 
-                  formData.fechanac && isValidDdMmYyyy(formData.fechanac) && formData.sexo && formData.nacionalidad && 
-                  formData.estadocivil && formData.tiposangre)
-      case 4:
-        return !!(formData.email && formData.celular && formData.provincia1 &&
-                  formData.distrito1 && formData.corregimiento1 && formData.direccion1 &&
-                  emailVerified)
-      case 5:
-        return !!(formData.encasourgencia && formData.relacion &&
-                  formData.email3 && formData.celular3)
-      case 6:
-        if (formData.doblecobertura === 'SI') {
-          return !!(formData.compania1 && formData.poliza1)
+        if (!formData.departamento || !formData.fechaprobableatencion) {
+          return 'Seleccione departamento y fecha probable de atención'
         }
-        return true
+        if (!isValidDdMmYyyy(formData.fechaprobableatencion)) {
+          return 'La fecha probable de atención debe tener formato DD/MM/YYYY válido'
+        }
+        return null
+      case 2:
+        if (!formData.registradoComo || !formData.pasaporte || !formData.cedula) {
+          return 'Complete la identificación del paciente'
+        }
+        return null
+      case 3:
+        if (!formData.name1 || !formData.apellido1 || !formData.fechanac || !formData.sexo) {
+          return 'Complete los datos personales obligatorios'
+        }
+        if (!isValidDdMmYyyy(formData.fechanac)) {
+          return 'La fecha de nacimiento debe tener formato DD/MM/YYYY válido'
+        }
+        if (!formData.nacionalidad || !formData.estadocivil || !formData.tiposangre) {
+          return 'Complete nacionalidad, estado civil y tipo de sangre'
+        }
+        return null
+      case 4: {
+        const email = getEmailDestination() || formData.email.trim()
+        if (!email) return 'Ingrese su correo electrónico'
+        if (!isValidEmailAddress(email)) return 'Ingrese un correo electrónico válido'
+        if (!emailVerified) return 'Debe verificar su correo electrónico antes de continuar'
+        if (!formData.celular.trim()) return 'Ingrese su número de celular'
+        if (!formData.provincia1 || !formData.distrito1 || !formData.corregimiento1) {
+          return 'Seleccione provincia, distrito y corregimiento'
+        }
+        if (!formData.direccion1.trim()) return 'Ingrese su dirección'
+        return null
+      }
+      case 5:
+        if (!formData.encasourgencia || !formData.relacion || !formData.email3 || !formData.celular3) {
+          return 'Complete los datos del contacto de emergencia'
+        }
+        return null
+      case 6:
+        if (formData.doblecobertura === 'SI' && (!formData.compania1 || !formData.poliza1)) {
+          return 'Ingrese compañía y póliza del seguro'
+        }
+        return null
       case 7:
-        return !!(attachmentFilesRef.current.cedulaimagen || attachmentFiles.cedulaimagen)
+        if (!attachmentFilesRef.current.cedulaimagen && !attachmentFiles.cedulaimagen) {
+          return 'Adjunte la imagen de la cédula'
+        }
+        return null
       default:
-        return true
+        return null
     }
   }
 
+  const validateStep = (stepNum: number): boolean => getStepValidationError(stepNum) === null
+
   const handleSubmit = async () => {
-    if (!validateStep(7)) {
-      setError('Por favor completa todos los campos obligatorios')
+    const stepError = getStepValidationError(7)
+    if (stepError) {
+      setError(stepError)
       return
     }
     if (!isValidDdMmYyyy(formData.fechaprobableatencion) || !isValidDdMmYyyy(formData.fechanac)) {
@@ -564,13 +657,7 @@ export default function PreadmissionPage() {
       }
 
       const body = new FormData()
-      body.append(
-        'data',
-        JSON.stringify({
-          ...formData,
-          celularPrefix: formData.celularPrefix || '507',
-        }),
-      )
+      body.append('data', JSON.stringify(buildPreadmissionSubmitPayload(formData)))
       for (const field of PREADMISSION_ATTACHMENT_FIELDS) {
         const file = attachmentFilesRef.current[field] || attachmentFiles[field]
         if (file) body.append(field, file, file.name)
@@ -1227,10 +1314,15 @@ export default function PreadmissionPage() {
                     setFormData({
                       ...formData,
                       doblecobertura: v,
-                      ...(v === 'NO'
-                        ? { compania1: '', poliza1: '', carnetseguro: '', certificadoSeguro: '' }
-                        : {}),
+                      ...(v === 'NO' ? { compania1: '', poliza1: '' } : {}),
                     })
+                    if (v === 'NO') {
+                      const next = { ...attachmentFilesRef.current }
+                      delete next.carnetseguro
+                      delete next.certificadoSeguro
+                      attachmentFilesRef.current = next
+                      setAttachmentFiles(next)
+                    }
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   required
