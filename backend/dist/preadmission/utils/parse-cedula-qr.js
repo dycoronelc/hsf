@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.formatPanamaCedulaFromDocumentNumber = formatPanamaCedulaFromDocumentNumber;
 exports.looksLikePanamaCedula = looksLikePanamaCedula;
 exports.parseCedulaQr = parseCedulaQr;
 const CEDULA_COMPLETA_RE = /^(?:PE|AE|E|N|[23456789](?:AV|PI)?|1[0123]?(?:AV|PI)?)-\d{1,4}-\d{1,6}$/i;

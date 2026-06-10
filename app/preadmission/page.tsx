@@ -11,6 +11,7 @@ import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
 import { validatePhoneNumber } from '@/lib/phoneValidation'
 import { apiErrorMessage, fetchNetworkErrorMessage, parseJsonResponse } from '@/lib/apiErrorMessage'
+import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
 import { HospitalLogo } from '../components/HospitalLogo'
 
 const PREADMISSION_ATTACHMENT_FIELDS = [
@@ -138,10 +139,15 @@ export default function PreadmissionPage() {
     setSearchNotice('')
     setPatientFound(false)
     setError('')
-    setFormData((prev) => (prev.cedula === value ? prev : { ...prev, cedula: value }))
+    const normalized =
+      formData.pasaporte === 'C' ? normalizeDocumentId(value, 'C') : value.replace(/\s+/g, '').trim()
+    setFormData((prev) => (prev.cedula === normalized ? prev : { ...prev, cedula: normalized }))
   }
 
-  const getCedulaValue = () => (cedulaInputRef.current?.value ?? formData.cedula).trim()
+  const getCedulaValue = () => {
+    const raw = (cedulaInputRef.current?.value ?? formData.cedula).trim()
+    return formData.pasaporte === 'C' ? normalizeDocumentId(raw, 'C') : raw.replace(/\s+/g, '')
+  }
 
   const canSendEmailCode = useMemo(
     () => isValidEmailAddress(formData.email) && !emailVerified && !verificationSending,

@@ -30,6 +30,7 @@ const preadmission_storage_service_1 = require("./preadmission-storage.service")
 const preadmission_attachments_constants_1 = require("./preadmission-attachments.constants");
 const phone_util_1 = require("../common/phone.util");
 const preadmission_response_util_1 = require("./preadmission-response.util");
+const normalize_document_id_1 = require("./utils/normalize-document-id");
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
     constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService, notificationsService, storageService) {
@@ -70,10 +71,12 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         }
     }
     async findDuplicateForServiceDay(cedula, pasaporte, departamento, fechaprobableatencion) {
+        const tipo = pasaporte.trim().toUpperCase();
+        const cedulaNorm = (0, normalize_document_id_1.normalizeDocumentId)(cedula, tipo);
         return this.preadmissionRepository.findOne({
             where: {
-                cedula: cedula.trim(),
-                pasaporte: pasaporte.trim(),
+                cedula: cedulaNorm,
+                pasaporte: tipo,
                 departamento: departamento.trim().toUpperCase(),
                 fechaprobableatencion: fechaprobableatencion.trim(),
                 status: (0, typeorm_2.Not)(enums_1.PreadmissionStatus.RECHAZADO),
@@ -132,8 +135,8 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             name2: dto.name2 ?? null,
             apellido1: dto.apellido1,
             apellido2: dto.apellido2 ?? null,
-            pasaporte: dto.pasaporte,
-            cedula: dto.cedula,
+            pasaporte: dto.pasaporte.trim().toUpperCase(),
+            cedula: (0, normalize_document_id_1.normalizeDocumentId)(dto.cedula, dto.pasaporte),
             sexo: dto.sexo,
             fechanac: dto.fechanac,
             nacionalidad: dto.nacionalidad,
@@ -314,10 +317,32 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         return (0, preadmission_response_util_1.toPreadmissionResponse)(preadmission);
     }
     async findByCedula(cedula, tipoIdentificacion) {
-        const row = await this.preadmissionRepository.findOne({
-            where: { cedula, pasaporte: tipoIdentificacion },
-            order: { fechapreadmision: 'DESC' },
-        });
+        const tipo = tipoIdentificacion.trim().toUpperCase();
+        const normalized = (0, normalize_document_id_1.normalizeDocumentId)(cedula, tipo);
+        const lookupCompacts = (0, normalize_document_id_1.documentIdLookupCompacts)(cedula, tipo);
+        let row = normalized
+            ? await this.preadmissionRepository.findOne({
+                where: { cedula: normalized, pasaporte: tipo },
+                order: { fechapreadmision: 'DESC' },
+            })
+            : null;
+        if (!row && lookupCompacts.length > 0) {
+            row = await this.preadmissionRepository
+                .createQueryBuilder('p')
+                .where('p.pasaporte = :tipo', { tipo })
+                .andWhere("REPLACE(REPLACE(UPPER(TRIM(p.cedula)), '-', ''), ' ', '') IN (:...lookupCompacts)", { lookupCompacts })
+                .orderBy('p.fechapreadmision', 'DESC')
+                .getOne();
+        }
+        if (!row) {
+            const raw = cedula.replace(/\s+/g, '').trim();
+            if (raw && raw !== normalized) {
+                row = await this.preadmissionRepository.findOne({
+                    where: { cedula: raw, pasaporte: tipo },
+                    order: { fechapreadmision: 'DESC' },
+                });
+            }
+        }
         return row ? (0, preadmission_response_util_1.toPreadmissionSummary)(row) : null;
     }
     async review(id, reviewDto, reviewerId) {

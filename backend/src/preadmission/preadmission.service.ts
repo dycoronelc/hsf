@@ -33,6 +33,10 @@ import {
   PreadmissionResponse,
 } from './preadmission-response.util';
 import { PreadmissionUploadedFilesMap } from './preadmission-upload.types';
+import {
+  documentIdLookupCompacts,
+  normalizeDocumentId,
+} from './utils/normalize-document-id';
 
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 
@@ -92,10 +96,12 @@ export class PreadmissionService {
     departamento: string,
     fechaprobableatencion: string,
   ): Promise<Preadmission | null> {
+    const tipo = pasaporte.trim().toUpperCase();
+    const cedulaNorm = normalizeDocumentId(cedula, tipo);
     return this.preadmissionRepository.findOne({
       where: {
-        cedula: cedula.trim(),
-        pasaporte: pasaporte.trim(),
+        cedula: cedulaNorm,
+        pasaporte: tipo,
         departamento: departamento.trim().toUpperCase(),
         fechaprobableatencion: fechaprobableatencion.trim(),
         status: Not(PreadmissionStatus.RECHAZADO),
@@ -175,8 +181,8 @@ export class PreadmissionService {
       name2: dto.name2 ?? null,
       apellido1: dto.apellido1,
       apellido2: dto.apellido2 ?? null,
-      pasaporte: dto.pasaporte,
-      cedula: dto.cedula,
+      pasaporte: dto.pasaporte.trim().toUpperCase(),
+      cedula: normalizeDocumentId(dto.cedula, dto.pasaporte),
       sexo: dto.sexo,
       fechanac: dto.fechanac,
       nacionalidad: dto.nacionalidad,
@@ -413,10 +419,39 @@ export class PreadmissionService {
   }
 
   async findByCedula(cedula: string, tipoIdentificacion: string) {
-    const row = await this.preadmissionRepository.findOne({
-      where: { cedula, pasaporte: tipoIdentificacion },
-      order: { fechapreadmision: 'DESC' },
-    });
+    const tipo = tipoIdentificacion.trim().toUpperCase();
+    const normalized = normalizeDocumentId(cedula, tipo);
+    const lookupCompacts = documentIdLookupCompacts(cedula, tipo);
+
+    let row = normalized
+      ? await this.preadmissionRepository.findOne({
+          where: { cedula: normalized, pasaporte: tipo },
+          order: { fechapreadmision: 'DESC' },
+        })
+      : null;
+
+    if (!row && lookupCompacts.length > 0) {
+      row = await this.preadmissionRepository
+        .createQueryBuilder('p')
+        .where('p.pasaporte = :tipo', { tipo })
+        .andWhere(
+          "REPLACE(REPLACE(UPPER(TRIM(p.cedula)), '-', ''), ' ', '') IN (:...lookupCompacts)",
+          { lookupCompacts },
+        )
+        .orderBy('p.fechapreadmision', 'DESC')
+        .getOne();
+    }
+
+    if (!row) {
+      const raw = cedula.replace(/\s+/g, '').trim();
+      if (raw && raw !== normalized) {
+        row = await this.preadmissionRepository.findOne({
+          where: { cedula: raw, pasaporte: tipo },
+          order: { fechapreadmision: 'DESC' },
+        });
+      }
+    }
+
     return row ? toPreadmissionSummary(row) : null;
   }
 

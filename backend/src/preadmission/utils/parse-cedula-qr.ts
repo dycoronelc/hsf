@@ -39,7 +39,7 @@ function normalizeCedulaToken(s: string): string {
   return s.replace(/\s+/g, '').trim();
 }
 
-function formatPanamaCedulaFromDocumentNumber(doc: string): string {
+export function formatPanamaCedulaFromDocumentNumber(doc: string): string {
   const t = normalizeCedulaToken(doc).replace(/</g, '').toUpperCase();
   if (!t) return t;
   if (CEDULA_COMPLETA_RE.test(t)) return t;
