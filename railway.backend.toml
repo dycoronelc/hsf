@@ -1,12 +1,7 @@
 # Servicio BACKEND en Railway → Settings → Config file path: /railway.backend.toml
 [build]
 buildCommand = "npm install && npm run backend:build"
-watchPatterns = [
-  "backend/**",
-  "package.json",
-  "package-lock.json",
-  "railway.backend.toml",
-]
+# Sin watchPatterns: cada push a main despliega el backend (evita SKIPPED por patrones mal aplicados).
 
 [deploy]
 startCommand = "npm run backend:start:prod"

@@ -142,8 +142,9 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
    Si este campo está vacío o mal, Railway ignora build/start/watch del monorepo y usa solo la UI (a menudo con watch paths viejos).
 
 5. **Watch Paths en la UI (Settings → Build)**  
-   - Opción A (recomendada): **borra** todos los watch paths del dashboard y deja que mande `railway.*.toml`.  
-   - Opción B: incluye explícitamente `app/**`, `lib/**`, `public/**`, etc. en frontend.
+   - **Déjalos vacíos.** Si hay texto (p. ej. `app/**, lib/**, ...`), bórralo y guarda.  
+   - Los `watchPatterns` en `railway.*.toml` también están desactivados: cada push a `main` reconstruye backend y frontend.  
+   - Si vuelves a usar watch paths y ves **SKIPPED / No changes to watched files**, el commit no tocó esas rutas o el patrón está mal (evita listas separadas por comas en un solo campo).
 
 6. **Permisos del bot de Railway en GitHub**  
    GitHub → Settings → Applications → **Railway App** → Configure → acceso al repo `hsf`.
