@@ -2,6 +2,22 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile.frontend"
+# Sobrescribe Watch Paths del dashboard: despliega solo cuando cambia código del frontend.
+watchPatterns = [
+  "app/**",
+  "lib/**",
+  "public/**",
+  "next.config.js",
+  "tsconfig.json",
+  "tailwind.config.js",
+  "postcss.config.js",
+  "package.json",
+  "package-lock.json",
+  "Dockerfile.frontend",
+  "railway.frontend.toml",
+  ".dockerignore",
+  "scripts/fix-next-dep0060.cjs",
+]
 
 [deploy]
 startCommand = "npm run start"

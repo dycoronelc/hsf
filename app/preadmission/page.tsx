@@ -30,6 +30,17 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
 ])
 const MAX_ATTACHMENT_BYTES = 15 * 1024 * 1024
 
+function patientField(value: unknown, fallback = ''): string {
+  return typeof value === 'string' ? value : fallback
+}
+
+function parsePatientCelular(value: unknown): string {
+  const cel = patientField(value)
+  const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
+  if (m) return m[2].replace(/\D/g, '')
+  return cel.replace(/^\+/, '').replace(/\D/g, '') || ''
+}
+
 interface LocationData {
   provincia: string
   distrito: string
@@ -277,40 +288,35 @@ export default function PreadmissionPage() {
         const updatedFormData = {
           ...formData,
           cedula,
-          name1: patient.name1 || '',
-          name2: patient.name2 || '',
-          apellido1: patient.apellido1 || '',
-          apellido2: patient.apellido2 || '',
-          sexo: patient.sexo || 'M',
-          fechanac: patient.fechanac || '',
-          nacionalidad: patient.nacionalidad || '',
-          estadocivil: patient.estadocivil || '',
-          tiposangre: patient.tiposangre || '',
-          email: patient.email || '',
-          celularPrefix: patient.celularPrefix || '507',
-          celular: (() => {
-            const cel = patient.celular || ''
-            const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
-            if (m) return m[2].replace(/\D/g, '')
-            return cel.replace(/^\+/, '').replace(/\D/g, '') || ''
-          })(),
-          provincia1: patient.provincia1 || '',
-          distrito1: patient.distrito1 || '',
-          corregimiento1: patient.corregimiento1 || '',
-          direccion1: patient.direccion1 || '',
-          encasourgencia: patient.encasourgencia || '',
-          relacion: patient.relacion || '',
-          email3: patient.email3 || '',
-          celular3: patient.celular3 || '',
-          provincia3: patient.provincia3 || '',
-          distrito3: patient.distrito3 || '',
-          corregimiento3: patient.corregimiento3 || '',
-          direccion3: patient.direccion3 || '',
-          doblecobertura: patient.doblecobertura || 'NO',
-          compania1: patient.compania1 || '',
-          poliza1: patient.poliza1 || '',
-          carnetseguro: patient.carnetseguro || '',
-          certificadoSeguro: patient.certificadoSeguro || '',
+          name1: patientField(patient.name1),
+          name2: patientField(patient.name2),
+          apellido1: patientField(patient.apellido1),
+          apellido2: patientField(patient.apellido2),
+          sexo: patientField(patient.sexo, 'M'),
+          fechanac: patientField(patient.fechanac),
+          nacionalidad: patientField(patient.nacionalidad),
+          estadocivil: patientField(patient.estadocivil),
+          tiposangre: patientField(patient.tiposangre),
+          email: patientField(patient.email),
+          celularPrefix: patientField(patient.celularPrefix, '507'),
+          celular: parsePatientCelular(patient.celular),
+          provincia1: patientField(patient.provincia1),
+          distrito1: patientField(patient.distrito1),
+          corregimiento1: patientField(patient.corregimiento1),
+          direccion1: patientField(patient.direccion1),
+          encasourgencia: patientField(patient.encasourgencia),
+          relacion: patientField(patient.relacion),
+          email3: patientField(patient.email3),
+          celular3: patientField(patient.celular3),
+          provincia3: patientField(patient.provincia3),
+          distrito3: patientField(patient.distrito3),
+          corregimiento3: patientField(patient.corregimiento3),
+          direccion3: patientField(patient.direccion3),
+          doblecobertura: patientField(patient.doblecobertura, 'NO'),
+          compania1: patientField(patient.compania1),
+          poliza1: patientField(patient.poliza1),
+          carnetseguro: patientField(patient.carnetseguro),
+          certificadoSeguro: patientField(patient.certificadoSeguro),
         }
         setFormData(updatedFormData)
 

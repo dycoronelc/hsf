@@ -119,34 +119,44 @@ Al iniciar el backend, se cargan automáticamente los usuarios iniciales si no e
 
 ### Hice push a GitHub pero Railway no se actualizó
 
+**Causa más frecuente:** el deploy **sí se creó pero quedó en SKIPPED** porque los *Watch Paths* del servicio no incluyen los archivos que cambiaste (por ejemplo solo `public/**` y no `app/**`). Railway no falla: simplemente no construye.
+
 1. **Confirma que el push llegó a GitHub**  
    Repositorio actual: `https://github.com/dycoronelc/hsf` rama `main`.
 
 2. **Revisa el historial de despliegues en Railway** (cada servicio → pestaña **Deployments**)  
-   - Activa **Show Skipped**: a veces el deploy se creó pero quedó en estado **SKIPPED** por *Watch Paths* antiguos.  
+   - Activa **Show Skipped**: si ves **SKIPPED**, el autodeploy funcionó pero el servicio ignoró el commit por *watch paths*.  
+   - Si **no aparece ningún deployment nuevo** al hacer push, el problema es webhook o autodeploy desactivado (pasos 3–6).  
    - Si ves **FAILED**, abre los logs del build (ahí está el error real).
 
 3. **Verifica la conexión GitHub en cada servicio** (Settings → Source)  
    - Repo: `dycoronelc/hsf`  
    - Branch: `main`  
-   - **Autodeploy**: activado  
-   - **Wait for CI**: desactivado (salvo que tengas GitHub Actions obligatorias y pasando).
+   - **Autodeploy**: activado (botón *Enable* si está apagado)  
+   - **Wait for CI**: desactivado salvo que tengas GitHub Actions obligatorias y pasando.
 
 4. **Config file path (muy importante)**  
-   Cada servicio debe tener su archivo de config, no el mismo para ambos:
+   Cada servicio debe tener su archivo de config; el `watchPatterns` del repo **sobrescribe** el del dashboard en cada deploy:
    - Backend: `/railway.backend.toml`
    - Frontend: `/railway.frontend.toml`  
-   Si este campo está vacío o mal, Railway ignora build/start del monorepo.
+   Si este campo está vacío o mal, Railway ignora build/start/watch del monorepo y usa solo la UI (a menudo con watch paths viejos).
 
-5. **Forzar despliegue del último commit**  
+5. **Watch Paths en la UI (Settings → Build)**  
+   - Opción A (recomendada): **borra** todos los watch paths del dashboard y deja que mande `railway.*.toml`.  
+   - Opción B: incluye explícitamente `app/**`, `lib/**`, `public/**`, etc. en frontend.
+
+6. **Permisos del bot de Railway en GitHub**  
+   GitHub → Settings → Applications → **Railway App** → Configure → acceso al repo `hsf`.
+
+7. **Forzar despliegue del último commit**  
    En el proyecto Railway: `Ctrl+K` → **Deploy Latest Commit** (en backend y en frontend).  
    **No uses solo “Redeploy”** del deployment viejo: eso reutiliza el mismo código anterior.
 
-6. **Reconectar GitHub si no aparece ningún deployment nuevo**  
-   Project → servicio → Settings → desconectar y volver a conectar el repo, o **Add → GitHub Repo → Refresh**.
+8. **Reconectar GitHub si no aparece ningún deployment nuevo**  
+   Project → servicio → Settings → desconectar y volver a conectar el repo.
 
-7. **Tras cambiar `railway.*.toml`**  
-   Haz commit, push y luego **Deploy Latest Commit** en ambos servicios.
+9. **Tras cambiar `railway.*.toml`**  
+   Haz commit, push y luego **Deploy Latest Commit** una vez en ambos servicios para que Railway tome la config nueva.
 
 - **Solo se desplegó el backend**: En el proyecto Railway debe haber **dos servicios** (backend y frontend). Si solo existe uno, crea el servicio frontend (Paso 3), asigna `API_URL` y haz **Deploy** manual.
 - **El frontend no se reconstruye al hacer push**: Los archivos `railway.*.toml` ya no usan *watch paths* restrictivos; cualquier push a `main` debe disparar build en el servicio conectado. Si quieres optimizar costos, puedes volver a añadir `watchPatterns` más adelante.
