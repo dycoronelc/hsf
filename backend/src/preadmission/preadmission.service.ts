@@ -30,6 +30,8 @@ import { assertValidPhoneNumber } from '../common/phone.util';
 import {
   toPreadmissionResponse,
   toPreadmissionSummary,
+  toHostWorkListItem,
+  HostWorkListItem,
   PreadmissionResponse,
 } from './preadmission-response.util';
 import { PreadmissionUploadedFilesMap } from './preadmission-upload.types';
@@ -358,27 +360,43 @@ export class PreadmissionService {
   async findWorkList(
     user: User,
     opts: { arrivalState?: PreadmissionArrivalState; q?: string; skip?: number; limit?: number },
-  ): Promise<ReturnType<typeof toPreadmissionSummary>[]> {
-    const qb = this.preadmissionRepository
-      .createQueryBuilder('p')
-      .orderBy('p.fechapreadmision', 'DESC')
-      .skip(opts.skip ?? 0)
-      .take(Math.min(opts.limit ?? 100, 200));
+  ): Promise<HostWorkListItem[]> {
+    void user;
+    try {
+      const qb = this.preadmissionRepository
+        .createQueryBuilder('p')
+        .select([
+          'p.id',
+          'p.name1',
+          'p.apellido1',
+          'p.cedula',
+          'p.departamento',
+          'p.arrivalState',
+          'p.fechapreadmision',
+          'p.ticketId',
+        ])
+        .orderBy('p.fechapreadmision', 'DESC')
+        .skip(opts.skip ?? 0)
+        .take(Math.min(opts.limit ?? 100, 200));
 
-    if (opts.arrivalState) {
-      qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
+      if (opts.arrivalState) {
+        qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
+      }
+
+      if (opts.q?.trim()) {
+        const term = `%${opts.q.trim()}%`;
+        qb.andWhere(
+          '(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)',
+          { term },
+        );
+      }
+
+      const rows = await qb.getMany();
+      return rows.map(toHostWorkListItem);
+    } catch (err) {
+      this.logger.error('findWorkList failed', err instanceof Error ? err.stack : err);
+      throw err;
     }
-
-    if (opts.q?.trim()) {
-      const term = `%${opts.q.trim()}%`;
-      qb.andWhere(
-        '(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)',
-        { term },
-      );
-    }
-
-    const rows = await qb.getMany();
-    return rows.map(toPreadmissionSummary);
   }
 
   async confirmArrival(id: number, user: User): Promise<PreadmissionResponse> {

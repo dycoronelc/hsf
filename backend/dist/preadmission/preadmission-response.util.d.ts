@@ -5,10 +5,20 @@ export type PreadmissionResponse = Omit<Preadmission, never> & {
     attachmentUrls: PreadmissionAttachmentUrls;
 };
 export declare function toPreadmissionResponse(entity: Preadmission): PreadmissionResponse;
+export type HostWorkListItem = {
+    id: number;
+    name1: string;
+    apellido1: string;
+    cedula: string;
+    departamento: string;
+    arrivalState: string;
+    fechapreadmision: Date;
+    ticketId: number | null;
+};
+export declare function toHostWorkListItem(entity: Preadmission): HostWorkListItem;
 export declare function toPreadmissionSummary(entity: Preadmission): {
     id: number;
     patientId: number | null;
-    patient: import("../users/entities/user.entity").User | null;
     departamento: string;
     registradoComo: string;
     name1: string;
@@ -54,7 +64,6 @@ export declare function toPreadmissionSummary(entity: Preadmission): {
     checkInAt: Date;
     arrivalState: import("../common/enums").PreadmissionArrivalState;
     confirmedArrivalAt: Date | null;
-    confirmedArrivalBy: import("../users/entities/user.entity").User | null;
     ticketId: number | null;
     cellbyteSentAt: Date | null;
 };

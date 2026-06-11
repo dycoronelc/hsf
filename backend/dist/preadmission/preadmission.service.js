@@ -274,20 +274,37 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         return rows.map(preadmission_response_util_1.toPreadmissionResponse);
     }
     async findWorkList(user, opts) {
-        const qb = this.preadmissionRepository
-            .createQueryBuilder('p')
-            .orderBy('p.fechapreadmision', 'DESC')
-            .skip(opts.skip ?? 0)
-            .take(Math.min(opts.limit ?? 100, 200));
-        if (opts.arrivalState) {
-            qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
+        void user;
+        try {
+            const qb = this.preadmissionRepository
+                .createQueryBuilder('p')
+                .select([
+                'p.id',
+                'p.name1',
+                'p.apellido1',
+                'p.cedula',
+                'p.departamento',
+                'p.arrivalState',
+                'p.fechapreadmision',
+                'p.ticketId',
+            ])
+                .orderBy('p.fechapreadmision', 'DESC')
+                .skip(opts.skip ?? 0)
+                .take(Math.min(opts.limit ?? 100, 200));
+            if (opts.arrivalState) {
+                qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
+            }
+            if (opts.q?.trim()) {
+                const term = `%${opts.q.trim()}%`;
+                qb.andWhere('(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)', { term });
+            }
+            const rows = await qb.getMany();
+            return rows.map(preadmission_response_util_1.toHostWorkListItem);
         }
-        if (opts.q?.trim()) {
-            const term = `%${opts.q.trim()}%`;
-            qb.andWhere('(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)', { term });
+        catch (err) {
+            this.logger.error('findWorkList failed', err instanceof Error ? err.stack : err);
+            throw err;
         }
-        const rows = await qb.getMany();
-        return rows.map(preadmission_response_util_1.toPreadmissionSummary);
     }
     async confirmArrival(id, user) {
         const pre = await this.preadmissionRepository.findOne({ where: { id } });

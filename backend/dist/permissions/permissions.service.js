@@ -58,21 +58,26 @@ let PermissionsService = class PermissionsService {
         if (roleNorm === 'patient') {
             return false;
         }
-        await this.ensureMatrixSeeded();
-        const matrixRow = await this.matrixRowRepository.findOne({ where: { role: roleNorm } });
-        if (!matrixRow) {
-            return false;
+        try {
+            await this.ensureMatrixSeeded();
+            const matrixRow = await this.matrixRowRepository.findOne({ where: { role: roleNorm } });
+            if (!matrixRow) {
+                return false;
+            }
+            if (!matrixRow.isActive) {
+                return false;
+            }
+            const stored = await this.rolePermissionRepository.findOne({
+                where: { role: roleNorm, permissionKey },
+            });
+            if (stored) {
+                return stored.allowed;
+            }
+            return this.isAllowedByDefault(roleNorm, permissionKey);
         }
-        if (!matrixRow.isActive) {
-            return false;
+        catch {
+            return this.isAllowedByDefault(roleNorm, permissionKey);
         }
-        const stored = await this.rolePermissionRepository.findOne({
-            where: { role: roleNorm, permissionKey },
-        });
-        if (stored) {
-            return stored.allowed;
-        }
-        return this.isAllowedByDefault(roleNorm, permissionKey);
     }
 };
 exports.PermissionsService = PermissionsService;

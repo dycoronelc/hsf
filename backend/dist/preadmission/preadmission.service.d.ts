@@ -9,7 +9,7 @@ import { AuditService } from '../audit/audit.service';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
 import { NotificationsService } from '../notifications/notifications.service';
 import { PreadmissionStorageService } from './preadmission-storage.service';
-import { toPreadmissionSummary, PreadmissionResponse } from './preadmission-response.util';
+import { HostWorkListItem, PreadmissionResponse } from './preadmission-response.util';
 import { PreadmissionUploadedFilesMap } from './preadmission-upload.types';
 export type PreadmissionUploadedFiles = PreadmissionUploadedFilesMap;
 export declare class PreadmissionService {
@@ -59,7 +59,7 @@ export declare class PreadmissionService {
         q?: string;
         skip?: number;
         limit?: number;
-    }): Promise<ReturnType<typeof toPreadmissionSummary>[]>;
+    }): Promise<HostWorkListItem[]>;
     confirmArrival(id: number, user: User): Promise<PreadmissionResponse>;
     activateTicket(id: number, user: User): Promise<unknown>;
     findOne(id: number, user: User): Promise<PreadmissionResponse>;
@@ -67,7 +67,6 @@ export declare class PreadmissionService {
     findByCedula(cedula: string, tipoIdentificacion: string): Promise<{
         id: number;
         patientId: number | null;
-        patient: User | null;
         departamento: string;
         registradoComo: string;
         name1: string;
@@ -113,7 +112,6 @@ export declare class PreadmissionService {
         checkInAt: Date;
         arrivalState: PreadmissionArrivalState;
         confirmedArrivalAt: Date | null;
-        confirmedArrivalBy: User | null;
         ticketId: number | null;
         cellbyteSentAt: Date | null;
     }>;

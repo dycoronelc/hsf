@@ -70,22 +70,26 @@ export class PermissionsService {
       return false;
     }
 
-    await this.ensureMatrixSeeded();
+    try {
+      await this.ensureMatrixSeeded();
 
-    const matrixRow = await this.matrixRowRepository.findOne({ where: { role: roleNorm } });
-    if (!matrixRow) {
-      return false;
-    }
-    if (!matrixRow.isActive) {
-      return false;
-    }
+      const matrixRow = await this.matrixRowRepository.findOne({ where: { role: roleNorm } });
+      if (!matrixRow) {
+        return false;
+      }
+      if (!matrixRow.isActive) {
+        return false;
+      }
 
-    const stored = await this.rolePermissionRepository.findOne({
-      where: { role: roleNorm, permissionKey },
-    });
-    if (stored) {
-      return stored.allowed;
+      const stored = await this.rolePermissionRepository.findOne({
+        where: { role: roleNorm, permissionKey },
+      });
+      if (stored) {
+        return stored.allowed;
+      }
+      return this.isAllowedByDefault(roleNorm as UserRole, permissionKey);
+    } catch {
+      return this.isAllowedByDefault(roleNorm as UserRole, permissionKey);
     }
-    return this.isAllowedByDefault(roleNorm as UserRole, permissionKey);
   }
 }
