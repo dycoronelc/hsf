@@ -11,12 +11,15 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const integration_log_entity_1 = require("./entities/integration-log.entity");
 const cellbyte_service_1 = require("./cellbyte.service");
+const cellbyte_controller_1 = require("./cellbyte.controller");
+const permissions_module_1 = require("../permissions/permissions.module");
 let IntegrationsModule = class IntegrationsModule {
 };
 exports.IntegrationsModule = IntegrationsModule;
 exports.IntegrationsModule = IntegrationsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([integration_log_entity_1.IntegrationLog])],
+        imports: [typeorm_1.TypeOrmModule.forFeature([integration_log_entity_1.IntegrationLog]), permissions_module_1.PermissionsModule],
+        controllers: [cellbyte_controller_1.CellbyteController],
         providers: [cellbyte_service_1.CellbyteService],
         exports: [cellbyte_service_1.CellbyteService],
     })

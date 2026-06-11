@@ -12,15 +12,20 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.AppController = void 0;
 const common_1 = require("@nestjs/common");
 const app_service_1 = require("./app.service");
+const cellbyte_service_1 = require("./integrations/cellbyte.service");
 let AppController = class AppController {
-    constructor(appService) {
+    constructor(appService, cellbyteService) {
         this.appService = appService;
+        this.cellbyteService = cellbyteService;
     }
     getHello() {
         return this.appService.getHello();
     }
     getHealth() {
         return { status: 'healthy' };
+    }
+    getCellbyteConnectivity() {
+        return this.cellbyteService.checkConnectivity();
     }
 };
 exports.AppController = AppController;
@@ -36,8 +41,15 @@ __decorate([
     __metadata("design:paramtypes", []),
     __metadata("design:returntype", void 0)
 ], AppController.prototype, "getHealth", null);
+__decorate([
+    (0, common_1.Get)('health/cellbyte'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", void 0)
+], AppController.prototype, "getCellbyteConnectivity", null);
 exports.AppController = AppController = __decorate([
     (0, common_1.Controller)(),
-    __metadata("design:paramtypes", [app_service_1.AppService])
+    __metadata("design:paramtypes", [app_service_1.AppService,
+        cellbyte_service_1.CellbyteService])
 ], AppController);
 //# sourceMappingURL=app.controller.js.map

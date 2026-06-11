@@ -35,6 +35,7 @@ const distrito_entity_1 = require("./catalogs/entities/distrito.entity");
 const corregimiento_entity_1 = require("./catalogs/entities/corregimiento.entity");
 const notification_entity_1 = require("./notifications/entities/notification.entity");
 const integration_log_entity_1 = require("./integrations/entities/integration-log.entity");
+const integrations_module_1 = require("./integrations/integrations.module");
 const audit_module_1 = require("./audit/audit.module");
 const audit_log_entity_1 = require("./audit/entities/audit-log.entity");
 const password_reset_token_entity_1 = require("./auth/entities/password-reset-token.entity");
@@ -90,6 +91,7 @@ exports.AppModule = AppModule = __decorate([
             catalogs_module_1.CatalogsModule,
             notifications_module_1.NotificationsModule,
             reports_module_1.ReportsModule,
+            integrations_module_1.IntegrationsModule,
         ],
         controllers: [app_controller_1.AppController],
         providers: [app_service_1.AppService],

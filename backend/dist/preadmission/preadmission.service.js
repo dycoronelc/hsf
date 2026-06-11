@@ -216,10 +216,14 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             userId: patientId ?? undefined,
             details: `departamento=${saved.departamento}`,
         });
-        this.cellbyteService.sendPreadmission(saved).then(async () => {
-            saved.cellbyteSentAt = new Date();
-            await this.preadmissionRepository.save(saved);
-        }).catch(() => undefined);
+        this.cellbyteService.sendPreadmission(saved).then(async (result) => {
+            if (result.success && !result.skipped) {
+                saved.cellbyteSentAt = new Date();
+                await this.preadmissionRepository.save(saved);
+            }
+        }).catch((err) => {
+            this.logger.error(`Error enviando preadmisión #${saved.id} a Cellbyte`, err);
+        });
         this.notificationsService
             .sendPreadmissionConfirmation({
             id: saved.id,

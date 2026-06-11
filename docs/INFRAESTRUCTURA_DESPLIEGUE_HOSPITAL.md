@@ -218,7 +218,12 @@ Guía detallada: [GUIA_SMTP_GOOGLE_WORKSPACE.md](./GUIA_SMTP_GOOGLE_WORKSPACE.md
 
 | Variable | Obligatoria | Ejemplo | Descripción |
 |----------|-------------|---------|-------------|
-| `CELLBYTE_URL` | No | `https://cellbyte.hospital/.../preadmission` | Si vacío: solo bitácora local, sin POST externo |
+| `CELLBYTE_BASE_URL` | No | `http://192.168.30.41:8080/cbUat` | URL base UAT/prod (sin `/api/v1/...`) |
+| `CELLBYTE_USERNAME` | Con URL | `preadm@hospitalsantafepanama.com` | Usuario para `POST /api/v1/auth` |
+| `CELLBYTE_PASSWORD` | Con URL | *(secreto)* | Contraseña Cellbyte |
+| `CELLBYTE_URL` | No | *(legado)* | URL completa antigua; se deriva la base si no hay `CELLBYTE_BASE_URL` |
+
+Tras guardar una preadmisión, el backend autentica contra Cellbyte y envía `POST /api/v1/pre-admission` con `{ "json": "<payload JSON>" }`. Si la URL apunta a red local (`192.168.x.x`) y el backend está en la nube, el envío fallará hasta desplegar en la red del hospital; use `GET /integrations/cellbyte/connectivity` (staff autenticado) para verificar alcance y credenciales.
 
 ---
 

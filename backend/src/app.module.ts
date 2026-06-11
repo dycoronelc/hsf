@@ -26,6 +26,7 @@ import { Distrito } from './catalogs/entities/distrito.entity';
 import { Corregimiento } from './catalogs/entities/corregimiento.entity';
 import { Notification } from './notifications/entities/notification.entity';
 import { IntegrationLog } from './integrations/entities/integration-log.entity';
+import { IntegrationsModule } from './integrations/integrations.module';
 import { AuditModule } from './audit/audit.module';
 import { AuditLog } from './audit/entities/audit-log.entity';
 import { PasswordResetToken } from './auth/entities/password-reset-token.entity';
@@ -78,6 +79,7 @@ import { AdminRoleMatrixRow } from './admin/entities/admin-role-matrix-row.entit
     CatalogsModule,
     NotificationsModule,
     ReportsModule,
+    IntegrationsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
