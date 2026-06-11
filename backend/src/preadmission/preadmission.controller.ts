@@ -173,6 +173,13 @@ export class PreadmissionController {
     return stream;
   }
 
+  @Get(':id/cellbyte-payload')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('review_preadmissions')
+  async getCellbytePayload(@Param('id') id: string, @Request() req) {
+    return this.preadmissionService.getCellbytePayload(+id, req.user);
+  }
+
   @Patch(':id/confirm-arrival')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('confirm_arrival')

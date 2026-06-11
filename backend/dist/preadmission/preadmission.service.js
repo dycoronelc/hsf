@@ -320,6 +320,18 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         }
         return (0, preadmission_response_util_1.toPreadmissionResponse)(preadmission);
     }
+    async getCellbytePayload(id, user) {
+        const preadmission = await this.preadmissionRepository.findOne({ where: { id } });
+        if (!preadmission) {
+            throw new common_1.NotFoundException('Preadmisión no encontrada');
+        }
+        if (user.role === 'patient' &&
+            preadmission.patientId != null &&
+            preadmission.patientId !== user.id) {
+            throw new common_1.ForbiddenException('No autorizado');
+        }
+        return this.cellbyteService.getPostmanExport(preadmission);
+    }
     async findByCedula(cedula, tipoIdentificacion) {
         const tipo = tipoIdentificacion.trim().toUpperCase();
         const normalized = (0, normalize_document_id_1.normalizeDocumentId)(cedula, tipo);

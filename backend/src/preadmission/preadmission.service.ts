@@ -422,6 +422,21 @@ export class PreadmissionService {
     return toPreadmissionResponse(preadmission);
   }
 
+  async getCellbytePayload(id: number, user: User) {
+    const preadmission = await this.preadmissionRepository.findOne({ where: { id } });
+    if (!preadmission) {
+      throw new NotFoundException('Preadmisión no encontrada');
+    }
+    if (
+      user.role === 'patient' &&
+      preadmission.patientId != null &&
+      preadmission.patientId !== user.id
+    ) {
+      throw new ForbiddenException('No autorizado');
+    }
+    return this.cellbyteService.getPostmanExport(preadmission);
+  }
+
   async findByCedula(cedula: string, tipoIdentificacion: string) {
     const tipo = tipoIdentificacion.trim().toUpperCase();
     const normalized = normalizeDocumentId(cedula, tipo);

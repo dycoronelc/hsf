@@ -94,6 +94,9 @@ let PreadmissionController = class PreadmissionController {
         const { stream } = await this.preadmissionService.getAttachment(+id, field, req.user);
         return stream;
     }
+    async getCellbytePayload(id, req) {
+        return this.preadmissionService.getCellbytePayload(+id, req.user);
+    }
     async confirmArrival(id, req) {
         return this.preadmissionService.confirmArrival(+id, req.user);
     }
@@ -201,6 +204,16 @@ __decorate([
     __metadata("design:paramtypes", [String, String, Object]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "getAttachment", null);
+__decorate([
+    (0, common_1.Get)(':id/cellbyte-payload'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('review_preadmissions'),
+    __param(0, (0, common_1.Param)('id')),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, Object]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "getCellbytePayload", null);
 __decorate([
     (0, common_1.Patch)(':id/confirm-arrival'),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),

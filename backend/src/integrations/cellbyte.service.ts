@@ -23,6 +23,29 @@ export type CellbyteConnectivityResult = {
   httpStatus?: number;
 };
 
+export type CellbytePostmanExport = {
+  preadmissionId: number;
+  generatedAt: string;
+  cellbyte: {
+    baseUrl: string | null;
+    authUrl: string | null;
+    preAdmissionUrl: string | null;
+  };
+  /** JSON interno (objeto) tal como lo espera Cellbyte dentro del campo `json`. */
+  payload: Record<string, string>;
+  /** Body listo para Postman: pegar en POST /api/v1/pre-admission (con Bearer token). */
+  postmanBody: { json: string };
+  attachmentSizes: {
+    cedulaimagen: number;
+    ordenimagen: number;
+    ssimagen: number;
+  };
+  usage: {
+    step1: string;
+    step2: string;
+  };
+};
+
 type CellbyteAuthResponse = {
   token?: string;
 };
@@ -42,6 +65,33 @@ export class CellbyteService {
 
   buildPayload(p: Preadmission): Record<string, string> {
     return buildCellbytePayload(p);
+  }
+
+  getPostmanExport(preadmission: Preadmission): CellbytePostmanExport {
+    const payload = this.buildPayload(preadmission);
+    const innerJson = JSON.stringify(payload);
+    const config = getCellbyteConfig();
+
+    return {
+      preadmissionId: preadmission.id,
+      generatedAt: new Date().toISOString(),
+      cellbyte: {
+        baseUrl: config?.baseUrl ?? null,
+        authUrl: config?.authUrl ?? null,
+        preAdmissionUrl: config?.preAdmissionUrl ?? null,
+      },
+      payload,
+      postmanBody: { json: innerJson },
+      attachmentSizes: {
+        cedulaimagen: payload.cedulaimagen.length,
+        ordenimagen: payload.ordenimagen.length,
+        ssimagen: payload.ssimagen.length,
+      },
+      usage: {
+        step1: `POST ${config?.authUrl ?? '{CELLBYTE_BASE_URL}/api/v1/auth'} con username/password → copiar token`,
+        step2: `POST ${config?.preAdmissionUrl ?? '{CELLBYTE_BASE_URL}/api/v1/pre-admission'} con Authorization Bearer y body = postmanBody`,
+      },
+    };
   }
 
   async checkConnectivity(): Promise<CellbyteConnectivityResult> {

@@ -31,6 +31,31 @@ let CellbyteService = CellbyteService_1 = class CellbyteService {
     buildPayload(p) {
         return (0, cellbyte_payload_util_1.buildCellbytePayload)(p);
     }
+    getPostmanExport(preadmission) {
+        const payload = this.buildPayload(preadmission);
+        const innerJson = JSON.stringify(payload);
+        const config = (0, cellbyte_config_1.getCellbyteConfig)();
+        return {
+            preadmissionId: preadmission.id,
+            generatedAt: new Date().toISOString(),
+            cellbyte: {
+                baseUrl: config?.baseUrl ?? null,
+                authUrl: config?.authUrl ?? null,
+                preAdmissionUrl: config?.preAdmissionUrl ?? null,
+            },
+            payload,
+            postmanBody: { json: innerJson },
+            attachmentSizes: {
+                cedulaimagen: payload.cedulaimagen.length,
+                ordenimagen: payload.ordenimagen.length,
+                ssimagen: payload.ssimagen.length,
+            },
+            usage: {
+                step1: `POST ${config?.authUrl ?? '{CELLBYTE_BASE_URL}/api/v1/auth'} con username/password → copiar token`,
+                step2: `POST ${config?.preAdmissionUrl ?? '{CELLBYTE_BASE_URL}/api/v1/pre-admission'} con Authorization Bearer y body = postmanBody`,
+            },
+        };
+    }
     async checkConnectivity() {
         const checkedAt = new Date().toISOString();
         const config = (0, cellbyte_config_1.getCellbyteConfig)();

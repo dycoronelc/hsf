@@ -142,6 +142,7 @@ export declare class PreadmissionController {
     }[]>;
     findAll(req: any, skip?: number, limit?: number): Promise<import("./preadmission-response.util").PreadmissionResponse[]>;
     getAttachment(id: string, field: string, req: any): Promise<StreamableFile>;
+    getCellbytePayload(id: string, req: any): Promise<import("../integrations/cellbyte.service").CellbytePostmanExport>;
     confirmArrival(id: number, req: any): Promise<import("./preadmission-response.util").PreadmissionResponse>;
     activateTicket(id: number, req: any): Promise<unknown>;
     findOne(id: number, req: any): Promise<import("./preadmission-response.util").PreadmissionResponse>;

@@ -16,11 +16,34 @@ export type CellbyteConnectivityResult = {
     checkedAt: string;
     httpStatus?: number;
 };
+export type CellbytePostmanExport = {
+    preadmissionId: number;
+    generatedAt: string;
+    cellbyte: {
+        baseUrl: string | null;
+        authUrl: string | null;
+        preAdmissionUrl: string | null;
+    };
+    payload: Record<string, string>;
+    postmanBody: {
+        json: string;
+    };
+    attachmentSizes: {
+        cedulaimagen: number;
+        ordenimagen: number;
+        ssimagen: number;
+    };
+    usage: {
+        step1: string;
+        step2: string;
+    };
+};
 export declare class CellbyteService {
     private logRepository;
     private readonly logger;
     constructor(logRepository: Repository<IntegrationLog>);
     buildPayload(p: Preadmission): Record<string, string>;
+    getPostmanExport(preadmission: Preadmission): CellbytePostmanExport;
     checkConnectivity(): Promise<CellbyteConnectivityResult>;
     sendPreadmission(preadmission: Preadmission, attempt?: number): Promise<CellbyteSendResult>;
     isConfigured(): boolean;

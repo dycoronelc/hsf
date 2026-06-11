@@ -63,6 +63,7 @@ export declare class PreadmissionService {
     confirmArrival(id: number, user: User): Promise<PreadmissionResponse>;
     activateTicket(id: number, user: User): Promise<unknown>;
     findOne(id: number, user: User): Promise<PreadmissionResponse>;
+    getCellbytePayload(id: number, user: User): Promise<import("../integrations/cellbyte.service").CellbytePostmanExport>;
     findByCedula(cedula: string, tipoIdentificacion: string): Promise<{
         id: number;
         patientId: number | null;
