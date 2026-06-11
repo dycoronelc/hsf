@@ -32,6 +32,7 @@ const preadmission_attachments_constants_1 = require("./preadmission-attachments
 const phone_util_1 = require("../common/phone.util");
 const preadmission_response_util_1 = require("./preadmission-response.util");
 const normalize_document_id_1 = require("./utils/normalize-document-id");
+const pagination_util_1 = require("../common/pagination.util");
 const NAME_RE = /^[\p{L}\s'-]+$/u;
 let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
     constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService, notificationsService, storageService) {
@@ -261,51 +262,50 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         return this.storageService.openForDownload(stored, field);
     }
     async findAll(user, skip = 0, limit = 100) {
+        const { skip: safeSkip, take } = (0, pagination_util_1.parsePagination)(skip, limit);
         const rows = user.role === 'patient'
             ? await this.preadmissionRepository.find({
                 where: { patientId: user.id },
-                skip,
-                take: limit,
+                skip: safeSkip,
+                take,
             })
             : await this.preadmissionRepository.find({
-                skip,
-                take: limit,
+                skip: safeSkip,
+                take,
                 order: { fechapreadmision: 'DESC' },
             });
         return rows.map(preadmission_response_util_1.toPreadmissionResponse);
     }
     async findWorkList(user, opts) {
         void user;
+        const { skip, take } = (0, pagination_util_1.parsePagination)(opts.skip, opts.limit);
         try {
-            const qb = this.preadmissionRepository
-                .createQueryBuilder('p')
-                .select([
-                'p.id',
-                'p.name1',
-                'p.apellido1',
-                'p.cedula',
-                'p.departamento',
-                'p.arrivalState',
-                'p.fechapreadmision',
-                'p.ticketId',
-            ])
-                .orderBy('p.fechapreadmision', 'DESC')
-                .skip(opts.skip ?? 0)
-                .take(Math.min(opts.limit ?? 100, 200));
-            if (opts.arrivalState) {
-                qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
-            }
             if (opts.q?.trim()) {
                 const term = `%${opts.q.trim()}%`;
-                qb.andWhere('(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term OR CONCAT(p.name1, \' \', p.apellido1) ILIKE :term)', { term });
+                const qb = this.preadmissionRepository
+                    .createQueryBuilder('p')
+                    .where('(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.apellido1 ILIKE :term)', { term })
+                    .orderBy('p.fechapreadmision', 'DESC')
+                    .skip(skip)
+                    .take(take);
+                if (opts.arrivalState) {
+                    qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState });
+                }
+                const rows = await qb.getMany();
+                return rows.map(preadmission_response_util_1.toHostWorkListItem);
             }
-            const rows = await qb.getMany();
+            const rows = await this.preadmissionRepository.find({
+                ...(opts.arrivalState ? { where: { arrivalState: opts.arrivalState } } : {}),
+                order: { fechapreadmision: 'DESC' },
+                skip,
+                take,
+            });
             return rows.map(preadmission_response_util_1.toHostWorkListItem);
         }
         catch (err) {
             this.logger.error('findWorkList failed', err instanceof Error ? err.stack : err);
             if (err instanceof typeorm_3.QueryFailedError) {
-                throw new common_1.InternalServerErrorException('Error al consultar preadmisiones. Reinicie el backend para aplicar actualizaciones de base de datos.');
+                throw new common_1.InternalServerErrorException('Error al consultar preadmisiones. Verifique columnas arrivalState/ticketId en la base de datos.');
             }
             throw err;
         }

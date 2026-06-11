@@ -1,21 +1,136 @@
-RUN npm run build
-15s
-> hospital-santa-fe-platform@1.0.0 build
-> next build
-  ▲ Next.js 14.2.35
-   Creating an optimized production build ...
- ✓ Compiled successfully
-   Linting and checking validity of types ...
-Failed to compile.
-./app/preadmission/page.tsx:293:27
-Type error: Property 'match' does not exist on type '{}'.
-
-  291 |           celular: (() => {
-  292 |             const cel = patient.celular || ''
-> 293 |             const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
-      |                           ^
-  294 |             if (m) return m[2].replace(/\D/g, '')
-  295 |             return cel.replace(/^\+/, '').replace(/\D/g, '') || ''
-  296 |           })(),
-Next.js build worker exited with code: 1 and signal: null
-Build Failed: build daemon returned an error < failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1 
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:07 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:15 PM   ERROR [PreadmissionService] findWorkList failed
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:15 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:17 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+[Nest] 74  - 06/11/2026, 7:11:17 PM   ERROR [PreadmissionService] findWorkList failed
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:32 PM   ERROR [PreadmissionService] findWorkList failed
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:32 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:47 PM   ERROR [PreadmissionService] findWorkList failed
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:11:47 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:12:02 PM   ERROR [PreadmissionService] findWorkList failed
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:12:02 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:12:13 PM   ERROR [PreadmissionService] findWorkList failed
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:12:13 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:12:17 PM   ERROR [PreadmissionService] findWorkList failed
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17
+[Nest] 74  - 06/11/2026, 7:12:17 PM   ERROR [ExceptionsHandler] Provided "skip" value is not a number. Please provide a numeric value.
+TypeORMError: Provided "skip" value is not a number. Please provide a numeric value.
+    at SelectQueryBuilder.skip (/app/node_modules/typeorm/query-builder/SelectQueryBuilder.js:589:19)
+    at PreadmissionService.findWorkList (/app/backend/dist/preadmission/preadmission.service.js:293:18)
+    at PreadmissionController.workList (/app/backend/dist/preadmission/preadmission.controller.js:83:41)
+    at /app/node_modules/@nestjs/core/router/router-execution-context.js:38:29
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async /app/node_modules/@nestjs/core/router/router-execution-context.js:46:28
+    at async /app/node_modules/@nestjs/core/router/router-proxy.js:9:17

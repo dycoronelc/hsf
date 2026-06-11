@@ -13,6 +13,8 @@ import {
   BadRequestException,
   StreamableFile,
   Header,
+  DefaultValuePipe,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { FileFieldsInterceptor } from '@nestjs/platform-express';
 import { plainToInstance } from 'class-transformer';
@@ -140,14 +142,14 @@ export class PreadmissionController {
     @Request() req,
     @Query('arrivalState') arrivalState?: PreadmissionArrivalState,
     @Query('q') q?: string,
-    @Query('skip') skip?: number,
-    @Query('limit') limit?: number,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit = 100,
   ) {
     return this.preadmissionService.findWorkList(req.user, {
       arrivalState,
       q,
-      skip: skip ?? 0,
-      limit: limit ?? 100,
+      skip,
+      limit,
     });
   }
 
@@ -155,10 +157,10 @@ export class PreadmissionController {
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Request() req,
-    @Query('skip') skip?: number,
-    @Query('limit') limit?: number,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('limit', new DefaultValuePipe(100), ParseIntPipe) limit = 100,
   ) {
-    return this.preadmissionService.findAll(req.user, skip || 0, limit || 100);
+    return this.preadmissionService.findAll(req.user, skip, limit);
   }
 
   @Get(':id/attachments/:field')

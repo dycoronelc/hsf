@@ -38,11 +38,11 @@ export type HostWorkListItem = {
 export function toHostWorkListItem(entity: Preadmission): HostWorkListItem {
   return {
     id: entity.id,
-    name1: entity.name1,
-    apellido1: entity.apellido1,
-    cedula: entity.cedula,
-    departamento: entity.departamento,
-    arrivalState: entity.arrivalState,
+    name1: entity.name1 ?? '',
+    apellido1: entity.apellido1 ?? '',
+    cedula: entity.cedula ?? '',
+    departamento: entity.departamento ?? '',
+    arrivalState: entity.arrivalState ?? 'espera_llegada',
     fechapreadmision: entity.fechapreadmision,
     ticketId: entity.ticketId ?? null,
   };

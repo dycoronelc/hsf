@@ -79,16 +79,16 @@ let PreadmissionController = class PreadmissionController {
         const createDto = await parseCreateBody(data);
         return this.preadmissionService.create(createDto, req.user.id, files);
     }
-    async workList(req, arrivalState, q, skip, limit) {
+    async workList(req, arrivalState, q, skip = 0, limit = 100) {
         return this.preadmissionService.findWorkList(req.user, {
             arrivalState,
             q,
-            skip: skip ?? 0,
-            limit: limit ?? 100,
+            skip,
+            limit,
         });
     }
-    async findAll(req, skip, limit) {
-        return this.preadmissionService.findAll(req.user, skip || 0, limit || 100);
+    async findAll(req, skip = 0, limit = 100) {
+        return this.preadmissionService.findAll(req.user, skip, limit);
     }
     async getAttachment(id, field, req) {
         const { stream } = await this.preadmissionService.getAttachment(+id, field, req.user);
@@ -177,20 +177,20 @@ __decorate([
     __param(0, (0, common_1.Request)()),
     __param(1, (0, common_1.Query)('arrivalState')),
     __param(2, (0, common_1.Query)('q')),
-    __param(3, (0, common_1.Query)('skip')),
-    __param(4, (0, common_1.Query)('limit')),
+    __param(3, (0, common_1.Query)('skip', new common_1.DefaultValuePipe(0), common_1.ParseIntPipe)),
+    __param(4, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(100), common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, String, String, Number, Number]),
+    __metadata("design:paramtypes", [Object, String, String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "workList", null);
 __decorate([
     (0, common_1.Get)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),
     __param(0, (0, common_1.Request)()),
-    __param(1, (0, common_1.Query)('skip')),
-    __param(2, (0, common_1.Query)('limit')),
+    __param(1, (0, common_1.Query)('skip', new common_1.DefaultValuePipe(0), common_1.ParseIntPipe)),
+    __param(2, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(100), common_1.ParseIntPipe)),
     __metadata("design:type", Function),
-    __metadata("design:paramtypes", [Object, Number, Number]),
+    __metadata("design:paramtypes", [Object, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "findAll", null);
 __decorate([
