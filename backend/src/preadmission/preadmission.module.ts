@@ -9,6 +9,7 @@ import { TicketsModule } from '../tickets/tickets.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { PreadmissionStorageService } from './preadmission-storage.service';
+import { PreadmissionSchemaBootstrap } from './preadmission-schema.bootstrap';
 
 @Module({
   imports: [
@@ -19,6 +20,6 @@ import { PreadmissionStorageService } from './preadmission-storage.service';
     NotificationsModule,
   ],
   controllers: [PreadmissionController],
-  providers: [PreadmissionService, PreadmissionStorageService],
+  providers: [PreadmissionService, PreadmissionStorageService, PreadmissionSchemaBootstrap],
 })
 export class PreadmissionModule {}

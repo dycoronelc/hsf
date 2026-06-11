@@ -1,12 +1,14 @@
 import {
   Injectable,
+  InternalServerErrorException,
+  Logger,
   NotFoundException,
   BadRequestException,
   ForbiddenException,
-  Logger,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, Not } from 'typeorm';
+import { QueryFailedError } from 'typeorm';
 import { Preadmission } from './entities/preadmission.entity';
 import {
   CreatePreadmissionBodyDto,
@@ -395,6 +397,11 @@ export class PreadmissionService {
       return rows.map(toHostWorkListItem);
     } catch (err) {
       this.logger.error('findWorkList failed', err instanceof Error ? err.stack : err);
+      if (err instanceof QueryFailedError) {
+        throw new InternalServerErrorException(
+          'Error al consultar preadmisiones. Reinicie el backend para aplicar actualizaciones de base de datos.',
+        );
+      }
       throw err;
     }
   }

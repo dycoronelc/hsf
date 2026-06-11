@@ -17,6 +17,7 @@ exports.PreadmissionService = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
+const typeorm_3 = require("typeorm");
 const preadmission_entity_1 = require("./entities/preadmission.entity");
 const enums_1 = require("../common/enums");
 const crypto = require("crypto");
@@ -303,6 +304,9 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         }
         catch (err) {
             this.logger.error('findWorkList failed', err instanceof Error ? err.stack : err);
+            if (err instanceof typeorm_3.QueryFailedError) {
+                throw new common_1.InternalServerErrorException('Error al consultar preadmisiones. Reinicie el backend para aplicar actualizaciones de base de datos.');
+            }
             throw err;
         }
     }
