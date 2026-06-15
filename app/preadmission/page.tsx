@@ -1037,7 +1037,6 @@ export default function PreadmissionPage() {
                   onChange={(v) => setFormData({ ...formData, fechanac: v })}
                   minIso={birthDateBounds.minIso}
                   maxIso={birthDateBounds.maxIso}
-                  maxIso={todayIso}
                   required
                 />
                 <div>
