@@ -66,6 +66,12 @@ export function isValidDdMmYyyy(s: string): boolean {
   return parseDdMmYyyy(s) !== null
 }
 
+export {
+  getBirthDateValidationMessage,
+  isValidBirthDateDdMmYyyy,
+  validateBirthDateDdMmYyyy,
+} from '@/lib/validation/person-fields'
+
 /**
  * Formatea el valor mientras el usuario escribe: solo dígitos y barras,
  * auto-inserta barras después de dd y mm. Máx 10 caracteres.

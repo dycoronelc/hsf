@@ -3,7 +3,16 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { formatDateInput, isValidDdMmYyyy } from '@/lib/dateUtils'
+import { formatDateInput, getBirthDateValidationMessage } from '@/lib/dateUtils'
+import {
+  filterDocumentIdInput,
+  filterPersonNameInput,
+  isValidDocumentIdInput,
+  isValidPersonName,
+  PERSON_NAME_MESSAGE,
+  DOCUMENT_ID_MESSAGE,
+} from '@/lib/validation/person-fields'
+import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { mapParsedToRegisterFields } from '@/lib/cedulaQr'
 import { HospitalLogo } from '../components/HospitalLogo'
@@ -30,8 +39,17 @@ export default function RegisterPage() {
       setError('La contraseña debe tener al menos 8 caracteres, ser alfanumérica e incluir una mayúscula')
       return
     }
-    if (formData.birth_date && !isValidDdMmYyyy(formData.birth_date)) {
-      setError('La fecha de nacimiento debe tener formato DD/MM/YYYY válido')
+    if (!isValidPersonName(formData.full_name)) {
+      setError(`Nombre completo: ${PERSON_NAME_MESSAGE}`)
+      return
+    }
+    if (!isValidDocumentIdInput(formData.national_id)) {
+      setError(DOCUMENT_ID_MESSAGE)
+      return
+    }
+    const birthDateError = getBirthDateValidationMessage(formData.birth_date)
+    if (birthDateError) {
+      setError(birthDateError)
       return
     }
     setLoading(true)
@@ -40,7 +58,7 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         fullName: formData.full_name || undefined,
-        nationalId: formData.national_id || undefined,
+        nationalId: normalizeDocumentId(formData.national_id, 'C') || undefined,
         birthDate: formData.birth_date || undefined,
         phone: formData.phone || undefined,
       }
@@ -112,7 +130,9 @@ export default function RegisterPage() {
                   id="full_name"
                   type="text"
                   value={formData.full_name}
-                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, full_name: filterPersonNameInput(e.target.value) })
+                  }
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-blue focus:border-transparent"
                   placeholder="Juan Pérez"
@@ -127,7 +147,12 @@ export default function RegisterPage() {
                   id="national_id"
                   type="text"
                   value={formData.national_id}
-                  onChange={(e) => setFormData({ ...formData, national_id: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      national_id: filterDocumentIdInput(e.target.value),
+                    })
+                  }
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-blue focus:border-transparent"
                 />

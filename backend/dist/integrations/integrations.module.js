@@ -14,12 +14,17 @@ const cellbyte_service_1 = require("./cellbyte.service");
 const cellbyte_controller_1 = require("./cellbyte.controller");
 const permissions_module_1 = require("../permissions/permissions.module");
 const integrations_schema_bootstrap_1 = require("./integrations-schema.bootstrap");
+const preadmission_storage_module_1 = require("../preadmission/preadmission-storage.module");
 let IntegrationsModule = class IntegrationsModule {
 };
 exports.IntegrationsModule = IntegrationsModule;
 exports.IntegrationsModule = IntegrationsModule = __decorate([
     (0, common_1.Module)({
-        imports: [typeorm_1.TypeOrmModule.forFeature([integration_log_entity_1.IntegrationLog]), permissions_module_1.PermissionsModule],
+        imports: [
+            typeorm_1.TypeOrmModule.forFeature([integration_log_entity_1.IntegrationLog]),
+            permissions_module_1.PermissionsModule,
+            preadmission_storage_module_1.PreadmissionStorageModule,
+        ],
         controllers: [cellbyte_controller_1.CellbyteController],
         providers: [cellbyte_service_1.CellbyteService, integrations_schema_bootstrap_1.IntegrationsSchemaBootstrap],
         exports: [cellbyte_service_1.CellbyteService],

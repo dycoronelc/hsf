@@ -18,6 +18,7 @@ const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const user_entity_1 = require("./entities/user.entity");
 const enums_1 = require("../common/enums");
+const normalize_document_id_1 = require("../preadmission/utils/normalize-document-id");
 const bcrypt = require("bcrypt");
 let UsersService = class UsersService {
     constructor(usersRepository) {
@@ -40,12 +41,14 @@ let UsersService = class UsersService {
             throw new common_1.ConflictException('Ya existe una cuenta con este correo electrónico');
         }
         if (createUserDto.nationalId) {
+            const normalizedNationalId = (0, normalize_document_id_1.normalizeDocumentId)(createUserDto.nationalId, 'C');
             const existingId = await this.usersRepository.findOne({
-                where: { nationalId: createUserDto.nationalId },
+                where: { nationalId: normalizedNationalId },
             });
             if (existingId) {
                 throw new common_1.ConflictException('Ya existe una cuenta con este número de identificación');
             }
+            createUserDto.nationalId = normalizedNationalId;
         }
         const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
         const user = this.usersRepository.create({

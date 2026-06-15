@@ -5,10 +5,15 @@ import {
   IsEnum,
   ValidateIf,
   IsNotEmpty,
-  Matches,
   MaxLength,
 } from 'class-validator';
 import { PreadmissionStatus } from '../../common/enums';
+import {
+  IsBirthDateDdMmYyyy,
+  IsDdMmYyyy,
+  IsDocumentIdInput,
+  IsPersonName,
+} from '../../common/validators/person-field.validators';
 
 export class CreatePreadmissionDto {
   @IsEnum(['RAD', 'LAB'])
@@ -17,33 +22,35 @@ export class CreatePreadmissionDto {
   @IsEnum(['paciente', 'acompanante'])
   registradoComo: string;
 
-  @Matches(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en nombres' })
+  @IsPersonName()
   @IsString()
   name1: string;
 
   @IsOptional()
-  @Matches(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en nombres' })
+  @IsPersonName(true)
   @IsString()
   name2?: string;
 
-  @Matches(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en apellidos' })
+  @IsPersonName()
   @IsString()
   apellido1: string;
 
   @IsOptional()
-  @Matches(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en apellidos' })
+  @IsPersonName(true)
   @IsString()
   apellido2?: string;
 
   @IsEnum(['C', 'P'])
   pasaporte: string;
 
+  @IsDocumentIdInput()
   @IsString()
   cedula: string;
 
   @IsEnum(['M', 'F'])
   sexo: string;
 
+  @IsBirthDateDdMmYyyy()
   @IsString()
   fechanac: string; // DD/MM/YYYY
 
@@ -79,6 +86,7 @@ export class CreatePreadmissionDto {
   @IsString()
   direccion1: string;
 
+  @IsPersonName()
   @IsString()
   encasourgencia: string;
 
@@ -108,6 +116,7 @@ export class CreatePreadmissionDto {
   direccion3?: string;
 
   @IsOptional()
+  @IsDdMmYyyy(true)
   @IsString()
   fechaprobableatencion?: string;
 

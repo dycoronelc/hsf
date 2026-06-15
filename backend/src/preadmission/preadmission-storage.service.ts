@@ -1,10 +1,11 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
   StreamableFile,
 } from '@nestjs/common';
-import { createReadStream, existsSync, mkdirSync, writeFileSync } from 'fs';
+import { createReadStream, existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 import {
   ALLOWED_ATTACHMENT_MIME,
@@ -20,14 +21,13 @@ export type SavedAttachmentPaths = Partial<Record<PreadmissionAttachmentField, s
 
 @Injectable()
 export class PreadmissionStorageService {
+  private readonly logger = new Logger(PreadmissionStorageService.name);
   private readonly uploadRoot: string;
 
   constructor() {
-    const configured = process.env.PREADMISSION_UPLOAD_DIR?.trim();
-    this.uploadRoot = configured
-      ? path.resolve(configured)
-      : path.resolve(process.cwd(), 'uploads', 'preadmissions');
+    this.uploadRoot = resolvePreadmissionUploadRoot();
     mkdirSync(this.uploadRoot, { recursive: true });
+    this.logger.log(`Adjuntos de preadmisión: ${this.uploadRoot}`);
   }
 
   isAttachmentField(field: string): field is PreadmissionAttachmentField {
@@ -124,6 +124,28 @@ export class PreadmissionStorageService {
     };
   }
 
+  /** Base64 sin prefijo data: para integración Cellbyte. */
+  readAsBase64(stored: string | null | undefined): string {
+    if (!stored) return '';
+
+    if (this.isLegacyBase64Stored(stored)) {
+      const match = stored.match(/^data:[^;]+;base64,(.+)$/);
+      if (match) return match[1];
+      return stored;
+    }
+
+    const absolute = this.getAbsolutePath(stored);
+    if (!existsSync(absolute)) {
+      return '';
+    }
+
+    return readFileSync(absolute).toString('base64');
+  }
+
+  getUploadRoot(): string {
+    return this.uploadRoot;
+  }
+
   private legacyBase64Stream(
     stored: string,
     field: PreadmissionAttachmentField,
@@ -184,4 +206,14 @@ export class PreadmissionStorageService {
         return 'application/octet-stream';
     }
   }
+}
+
+/** Raíz de adjuntos: env explícita, volumen Railway, o carpeta por defecto bajo cwd. */
+export function resolvePreadmissionUploadRoot(): string {
+  const configured =
+    process.env.PREADMISSION_UPLOAD_DIR?.trim() ||
+    process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim();
+  return configured
+    ? path.resolve(configured)
+    : path.resolve(process.cwd(), 'uploads', 'preadmissions');
 }

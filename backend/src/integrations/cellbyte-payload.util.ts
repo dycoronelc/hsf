@@ -1,41 +1,10 @@
-import { readFileSync, existsSync } from 'fs';
-import * as path from 'path';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 
-export function getPreadmissionUploadRoot(): string {
-  const configured = process.env.PREADMISSION_UPLOAD_DIR?.trim();
-  return configured
-    ? path.resolve(configured)
-    : path.resolve(process.cwd(), 'uploads', 'preadmissions');
-}
-
-function isLegacyBase64Stored(value: string): boolean {
-  if (value.includes('/') || value.includes('\\')) return false;
-  return value.startsWith('data:') || value.length > 512;
-}
-
-export function readStoredAttachmentBase64(stored: string | null | undefined): string {
-  if (!stored) return '';
-
-  if (isLegacyBase64Stored(stored)) {
-    const match = stored.match(/^data:[^;]+;base64,(.+)$/);
-    if (match) return match[1];
-    return stored;
-  }
-
-  const root = getPreadmissionUploadRoot();
-  const normalized = stored.replace(/\\/g, '/');
-  if (normalized.includes('..')) return '';
-
-  const absolute = path.join(root, normalized);
-  const rootResolved = path.resolve(root);
-  const fileResolved = path.resolve(absolute);
-  if (!fileResolved.startsWith(rootResolved) || !existsSync(fileResolved)) {
-    return '';
-  }
-
-  return readFileSync(fileResolved).toString('base64');
-}
+export type CellbyteAttachmentBase64 = {
+  cedulaimagen: string;
+  ordenimagen: string;
+  ssimagen: string;
+};
 
 function formatDdMmYyyy(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
@@ -57,7 +26,10 @@ export function formatCellbytePhone(celular: string, prefix?: string | null): st
 }
 
 /** Payload interno según docs/Archivos/ejemplo_json.json */
-export function buildCellbytePayload(p: Preadmission): Record<string, string> {
+export function buildCellbytePayload(
+  p: Preadmission,
+  attachments: CellbyteAttachmentBase64,
+): Record<string, string> {
   return {
     departamento: p.departamento,
     name1: p.name1,
@@ -65,7 +37,7 @@ export function buildCellbytePayload(p: Preadmission): Record<string, string> {
     apellido1: p.apellido1,
     apellido2: p.apellido2 ?? '',
     pasaporte: p.pasaporte,
-    cedula: p.cedula,
+    cedula: (p.cedula ?? '').trim(),
     sexo: p.sexo,
     fechanac: p.fechanac,
     nacionalidad: p.nacionalidad,
@@ -89,9 +61,36 @@ export function buildCellbytePayload(p: Preadmission): Record<string, string> {
     doblecobertura: p.doblecobertura,
     compania1: p.doblecobertura === 'SI' ? (p.compania1 ?? '') : '',
     poliza1: p.doblecobertura === 'SI' ? (p.poliza1 ?? '') : '',
-    cedulaimagen: readStoredAttachmentBase64(p.cedulaimagen),
-    ordenimagen: readStoredAttachmentBase64(p.ordenimagen),
-    ssimagen: readStoredAttachmentBase64(p.ssimagen),
+    cedulaimagen: attachments.cedulaimagen,
+    ordenimagen: attachments.ordenimagen,
+    ssimagen: attachments.ssimagen,
     fechapreadmision: formatDdMmYyyy(p.fechapreadmision),
   };
+}
+
+export function buildCellbyteAttachmentWarnings(
+  preadmission: Preadmission,
+  attachments: CellbyteAttachmentBase64,
+): string[] {
+  const warnings: string[] = [];
+  const checks: Array<{ field: keyof CellbyteAttachmentBase64; label: string }> = [
+    { field: 'cedulaimagen', label: 'Imagen de cédula (cedulaimagen)' },
+    { field: 'ordenimagen', label: 'Orden médica (ordenimagen)' },
+    { field: 'ssimagen', label: 'Imagen SS (ssimagen)' },
+  ];
+
+  for (const { field, label } of checks) {
+    const stored = preadmission[field];
+    if (stored && !attachments[field]) {
+      warnings.push(
+        `${label}: hay ruta en BD (${stored}) pero el archivo no está en disco. En Railway configure un volumen persistente en PREADMISSION_UPLOAD_DIR o vuelva a registrar la preadmisión con adjuntos.`,
+      );
+    }
+  }
+
+  if (!(preadmission.cedula ?? '').trim()) {
+    warnings.push('Número de cédula vacío en la preadmisión.');
+  }
+
+  return warnings;
 }

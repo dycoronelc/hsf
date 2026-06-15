@@ -3,8 +3,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IntegrationLog } from './entities/integration-log.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
+import { PreadmissionStorageService } from '../preadmission/preadmission-storage.service';
 import { getCellbyteConfig, isCellbyteConfigured } from './cellbyte.config';
-import { buildCellbytePayload } from './cellbyte-payload.util';
+import {
+  buildCellbyteAttachmentWarnings,
+  buildCellbytePayload,
+} from './cellbyte-payload.util';
 
 export type CellbyteSendResult = {
   success: boolean;
@@ -35,6 +39,10 @@ export type CellbytePostmanExport = {
   payload: Record<string, string>;
   /** Body listo para Postman: pegar en POST /api/v1/pre-admission (con Bearer token). */
   postmanBody: { json: string };
+  /** Número de documento (campo Cellbyte `cedula`, distinto de `cedulaimagen`). */
+  cedula: string;
+  pasaporte: string;
+  warnings: string[];
   attachmentSizes: {
     cedulaimagen: number;
     ordenimagen: number;
@@ -61,20 +69,33 @@ export class CellbyteService {
   constructor(
     @InjectRepository(IntegrationLog)
     private logRepository: Repository<IntegrationLog>,
+    private readonly storageService: PreadmissionStorageService,
   ) {}
 
+  private readAttachments(p: Preadmission) {
+    return {
+      cedulaimagen: this.storageService.readAsBase64(p.cedulaimagen),
+      ordenimagen: this.storageService.readAsBase64(p.ordenimagen),
+      ssimagen: this.storageService.readAsBase64(p.ssimagen),
+    };
+  }
+
   buildPayload(p: Preadmission): Record<string, string> {
-    return buildCellbytePayload(p);
+    return buildCellbytePayload(p, this.readAttachments(p));
   }
 
   getPostmanExport(preadmission: Preadmission): CellbytePostmanExport {
-    const payload = this.buildPayload(preadmission);
+    const attachments = this.readAttachments(preadmission);
+    const payload = buildCellbytePayload(preadmission, attachments);
     const innerJson = JSON.stringify(payload);
     const config = getCellbyteConfig();
+    const warnings = buildCellbyteAttachmentWarnings(preadmission, attachments);
 
     return {
       preadmissionId: preadmission.id,
       generatedAt: new Date().toISOString(),
+      cedula: payload.cedula,
+      pasaporte: payload.pasaporte,
       cellbyte: {
         baseUrl: config?.baseUrl ?? null,
         authUrl: config?.authUrl ?? null,
@@ -82,6 +103,7 @@ export class CellbyteService {
       },
       payload,
       postmanBody: { json: innerJson },
+      warnings,
       attachmentSizes: {
         cedulaimagen: payload.cedulaimagen.length,
         ordenimagen: payload.ordenimagen.length,

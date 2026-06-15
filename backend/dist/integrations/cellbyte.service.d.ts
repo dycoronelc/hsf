@@ -1,6 +1,7 @@
 import { Repository } from 'typeorm';
 import { IntegrationLog } from './entities/integration-log.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
+import { PreadmissionStorageService } from '../preadmission/preadmission-storage.service';
 export type CellbyteSendResult = {
     success: boolean;
     skipped: boolean;
@@ -28,6 +29,9 @@ export type CellbytePostmanExport = {
     postmanBody: {
         json: string;
     };
+    cedula: string;
+    pasaporte: string;
+    warnings: string[];
     attachmentSizes: {
         cedulaimagen: number;
         ordenimagen: number;
@@ -40,8 +44,10 @@ export type CellbytePostmanExport = {
 };
 export declare class CellbyteService {
     private logRepository;
+    private readonly storageService;
     private readonly logger;
-    constructor(logRepository: Repository<IntegrationLog>);
+    constructor(logRepository: Repository<IntegrationLog>, storageService: PreadmissionStorageService);
+    private readAttachments;
     buildPayload(p: Preadmission): Record<string, string>;
     getPostmanExport(preadmission: Preadmission): CellbytePostmanExport;
     checkConnectivity(): Promise<CellbyteConnectivityResult>;

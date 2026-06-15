@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.TokenResponseDto = exports.UserResponseDto = exports.ResetPasswordDto = exports.ForgotPasswordDto = exports.LoginDto = exports.RegisterPublicUserDto = exports.CreateUserDto = void 0;
 const class_validator_1 = require("class-validator");
 const enums_1 = require("../../common/enums");
+const person_field_validators_1 = require("../../common/validators/person-field.validators");
 const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/;
 class CreateUserDto {
 }
@@ -30,6 +31,7 @@ __decorate([
 ], CreateUserDto.prototype, "password", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsPersonName)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "fullName", void 0);
@@ -40,11 +42,13 @@ __decorate([
 ], CreateUserDto.prototype, "phone", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsDocumentIdInput)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "nationalId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsBirthDateDdMmYyyy)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateUserDto.prototype, "birthDate", void 0);
@@ -70,6 +74,7 @@ __decorate([
 ], RegisterPublicUserDto.prototype, "password", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsPersonName)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterPublicUserDto.prototype, "fullName", void 0);
@@ -80,11 +85,13 @@ __decorate([
 ], RegisterPublicUserDto.prototype, "phone", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsDocumentIdInput)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterPublicUserDto.prototype, "nationalId", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsBirthDateDdMmYyyy)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], RegisterPublicUserDto.prototype, "birthDate", void 0);

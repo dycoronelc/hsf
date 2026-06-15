@@ -42,8 +42,12 @@ import {
   normalizeDocumentId,
 } from './utils/normalize-document-id';
 import { parsePagination } from '../common/pagination.util';
-
-const NAME_RE = /^[\p{L}\s'-]+$/u;
+import {
+  getBirthDateValidationMessage,
+  isValidDocumentIdInput,
+  isValidPersonName,
+  PERSON_NAME_MESSAGE,
+} from '../common/validation/person-fields';
 
 export type PreadmissionUploadedFiles = PreadmissionUploadedFilesMap;
 
@@ -86,6 +90,9 @@ export class PreadmissionService {
   ) {
     if (!cedula?.trim() || !pasaporte?.trim()) {
       throw new BadRequestException('Documento inválido');
+    }
+    if (!isValidDocumentIdInput(cedula)) {
+      throw new BadRequestException('Documento: solo letras, números y guiones');
     }
     if (!departamento?.trim() || !['RAD', 'LAB'].includes(departamento.trim().toUpperCase())) {
       throw new BadRequestException('Departamento inválido');
@@ -156,11 +163,25 @@ export class PreadmissionService {
   }
 
   private assertNamesAndAddress(dto: CreatePreadmissionBodyDto) {
-    const names = [dto.name1, dto.name2, dto.apellido1, dto.apellido2].filter(Boolean) as string[];
-    for (const n of names) {
-      if (!NAME_RE.test(n)) {
-        throw new BadRequestException('Nombres y apellidos: solo letras');
+    const names: Array<[string, string | undefined | null]> = [
+      ['Primer nombre', dto.name1],
+      ['Segundo nombre', dto.name2],
+      ['Primer apellido', dto.apellido1],
+      ['Segundo apellido', dto.apellido2],
+      ['Contacto de emergencia', dto.encasourgencia],
+    ];
+    for (const [label, value] of names) {
+      if (!value?.trim()) continue;
+      if (!isValidPersonName(value)) {
+        throw new BadRequestException(`${label}: ${PERSON_NAME_MESSAGE}`);
       }
+    }
+    if (!isValidDocumentIdInput(dto.cedula)) {
+      throw new BadRequestException('Documento: solo letras, números y guiones');
+    }
+    const birthDateError = getBirthDateValidationMessage(dto.fechanac);
+    if (birthDateError) {
+      throw new BadRequestException(birthDateError);
     }
     if (dto.direccion1.length > 200) {
       throw new BadRequestException('Dirección máximo 200 caracteres');

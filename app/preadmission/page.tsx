@@ -5,7 +5,16 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
-import { isValidDdMmYyyy } from '@/lib/dateUtils'
+import { isValidDdMmYyyy, getBirthDateValidationMessage, isValidBirthDateDdMmYyyy } from '@/lib/dateUtils'
+import {
+  filterDocumentIdInput,
+  filterPersonNameInput,
+  isValidDocumentIdInput,
+  isValidPersonName,
+  MAX_PERSON_AGE_YEARS,
+  PERSON_NAME_MESSAGE,
+  DOCUMENT_ID_MESSAGE,
+} from '@/lib/validation/person-fields'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
@@ -193,14 +202,33 @@ export default function PreadmissionPage() {
     setSearchNotice('')
     setPatientFound(false)
     setError('')
+    const filtered = filterDocumentIdInput(value)
     const normalized =
-      formData.pasaporte === 'C' ? normalizeDocumentId(value, 'C') : value.replace(/\s+/g, '').trim()
+      formData.pasaporte === 'C'
+        ? normalizeDocumentId(filtered, 'C')
+        : filtered.replace(/\s+/g, '').trim()
     setFormData((prev) => (prev.cedula === normalized ? prev : { ...prev, cedula: normalized }))
   }
 
   const getCedulaValue = () => {
     const raw = (cedulaInputRef.current?.value ?? formData.cedula).trim()
     return formData.pasaporte === 'C' ? normalizeDocumentId(raw, 'C') : raw.replace(/\s+/g, '')
+  }
+
+  const birthDateBounds = useMemo(() => {
+    const today = new Date()
+    const maxIso = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+    const oldest = new Date(today)
+    oldest.setFullYear(oldest.getFullYear() - MAX_PERSON_AGE_YEARS)
+    const minIso = `${oldest.getFullYear()}-${String(oldest.getMonth() + 1).padStart(2, '0')}-${String(oldest.getDate()).padStart(2, '0')}`
+    return { minIso, maxIso }
+  }, [])
+
+  const setPersonNameField = (
+    field: 'name1' | 'name2' | 'apellido1' | 'apellido2' | 'encasourgencia',
+    value: string,
+  ) => {
+    setFormData((prev) => ({ ...prev, [field]: filterPersonNameInput(value) }))
   }
 
   const canSendEmailCode = useMemo(
@@ -576,14 +604,25 @@ export default function PreadmissionPage() {
         if (!formData.registradoComo || !formData.pasaporte || !formData.cedula) {
           return 'Complete la identificación del paciente'
         }
+        if (!isValidDocumentIdInput(formData.cedula)) {
+          return DOCUMENT_ID_MESSAGE
+        }
         return null
       case 3:
         if (!formData.name1 || !formData.apellido1 || !formData.fechanac || !formData.sexo) {
           return 'Complete los datos personales obligatorios'
         }
-        if (!isValidDdMmYyyy(formData.fechanac)) {
-          return 'La fecha de nacimiento debe tener formato DD/MM/YYYY válido'
+        if (!isValidPersonName(formData.name1) || !isValidPersonName(formData.apellido1)) {
+          return PERSON_NAME_MESSAGE
         }
+        if (formData.name2 && !isValidPersonName(formData.name2)) {
+          return PERSON_NAME_MESSAGE
+        }
+        if (formData.apellido2 && !isValidPersonName(formData.apellido2)) {
+          return PERSON_NAME_MESSAGE
+        }
+        const birthDateError = getBirthDateValidationMessage(formData.fechanac)
+        if (birthDateError) return birthDateError
         if (!formData.nacionalidad || !formData.estadocivil || !formData.tiposangre) {
           return 'Complete nacionalidad, estado civil y tipo de sangre'
         }
@@ -603,6 +642,9 @@ export default function PreadmissionPage() {
       case 5:
         if (!formData.encasourgencia || !formData.relacion || !formData.email3 || !formData.celular3) {
           return 'Complete los datos del contacto de emergencia'
+        }
+        if (!isValidPersonName(formData.encasourgencia)) {
+          return `Contacto de emergencia: ${PERSON_NAME_MESSAGE}`
         }
         return null
       case 6:
@@ -628,8 +670,11 @@ export default function PreadmissionPage() {
       setError(stepError)
       return
     }
-    if (!isValidDdMmYyyy(formData.fechaprobableatencion) || !isValidDdMmYyyy(formData.fechanac)) {
-      setError('Las fechas deben estar en formato DD/MM/YYYY y ser válidas')
+    if (!isValidDdMmYyyy(formData.fechaprobableatencion) || !isValidBirthDateDdMmYyyy(formData.fechanac)) {
+      setError(
+        getBirthDateValidationMessage(formData.fechanac) ||
+          'Las fechas deben estar en formato DD/MM/YYYY y ser válidas',
+      )
       return
     }
 
@@ -934,7 +979,7 @@ export default function PreadmissionPage() {
                   <input
                     type="text"
                     value={formData.name1}
-                    onChange={(e) => setFormData({ ...formData, name1: e.target.value })}
+                    onChange={(e) => setPersonNameField('name1', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
@@ -946,7 +991,7 @@ export default function PreadmissionPage() {
                   <input
                     type="text"
                     value={formData.name2}
-                    onChange={(e) => setFormData({ ...formData, name2: e.target.value })}
+                    onChange={(e) => setPersonNameField('name2', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                 </div>
@@ -957,7 +1002,7 @@ export default function PreadmissionPage() {
                   <input
                     type="text"
                     value={formData.apellido1}
-                    onChange={(e) => setFormData({ ...formData, apellido1: e.target.value })}
+                    onChange={(e) => setPersonNameField('apellido1', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />
@@ -969,7 +1014,7 @@ export default function PreadmissionPage() {
                   <input
                     type="text"
                     value={formData.apellido2}
-                    onChange={(e) => setFormData({ ...formData, apellido2: e.target.value })}
+                    onChange={(e) => setPersonNameField('apellido2', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   />
                 </div>
@@ -990,6 +1035,8 @@ export default function PreadmissionPage() {
                   label="Fecha de Nacimiento *"
                   value={formData.fechanac}
                   onChange={(v) => setFormData({ ...formData, fechanac: v })}
+                  minIso={birthDateBounds.minIso}
+                  maxIso={birthDateBounds.maxIso}
                   maxIso={todayIso}
                   required
                 />
@@ -1253,7 +1300,7 @@ export default function PreadmissionPage() {
                   <input
                     type="text"
                     value={formData.encasourgencia}
-                    onChange={(e) => setFormData({ ...formData, encasourgencia: e.target.value })}
+                    onChange={(e) => setPersonNameField('encasourgencia', e.target.value)}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     required
                   />

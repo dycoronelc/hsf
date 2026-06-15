@@ -8,7 +8,7 @@ import { IntegrationsModule } from '../integrations/integrations.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { NotificationsModule } from '../notifications/notifications.module';
-import { PreadmissionStorageService } from './preadmission-storage.service';
+import { PreadmissionStorageModule } from './preadmission-storage.module';
 import { PreadmissionSchemaBootstrap } from './preadmission-schema.bootstrap';
 
 @Module({
@@ -18,8 +18,9 @@ import { PreadmissionSchemaBootstrap } from './preadmission-schema.bootstrap';
     IntegrationsModule,
     TicketsModule,
     NotificationsModule,
+    PreadmissionStorageModule,
   ],
   controllers: [PreadmissionController],
-  providers: [PreadmissionService, PreadmissionStorageService, PreadmissionSchemaBootstrap],
+  providers: [PreadmissionService, PreadmissionSchemaBootstrap],
 })
 export class PreadmissionModule {}

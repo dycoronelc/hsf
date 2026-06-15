@@ -1,7 +1,11 @@
 /** Normalización básica de cédula/pasaporte en el cliente (alineada con el backend). */
+import { filterDocumentIdInput, isValidDocumentIdInput } from '@/lib/validation/person-fields'
+
 export function normalizeDocumentId(raw: string, tipoIdentificacion: string): string {
-  const trimmed = raw.replace(/\s+/g, '').trim()
+  const filtered = filterDocumentIdInput(raw.replace(/\s+/g, ''))
+  const trimmed = filtered.trim()
   if (!trimmed) return ''
+  if (!isValidDocumentIdInput(trimmed)) return trimmed
   const tipo = tipoIdentificacion.trim().toUpperCase()
   if (tipo === 'P') return trimmed.toUpperCase()
 

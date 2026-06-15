@@ -33,7 +33,7 @@ const phone_util_1 = require("../common/phone.util");
 const preadmission_response_util_1 = require("./preadmission-response.util");
 const normalize_document_id_1 = require("./utils/normalize-document-id");
 const pagination_util_1 = require("../common/pagination.util");
-const NAME_RE = /^[\p{L}\s'-]+$/u;
+const person_fields_1 = require("../common/validation/person-fields");
 let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
     constructor(preadmissionRepository, verificationRepository, cellbyteService, ticketsService, auditService, notificationsService, storageService) {
         this.preadmissionRepository = preadmissionRepository;
@@ -64,6 +64,9 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
     assertDuplicateCheckParams(cedula, pasaporte, departamento, fechaprobableatencion) {
         if (!cedula?.trim() || !pasaporte?.trim()) {
             throw new common_1.BadRequestException('Documento inválido');
+        }
+        if (!(0, person_fields_1.isValidDocumentIdInput)(cedula)) {
+            throw new common_1.BadRequestException('Documento: solo letras, números y guiones');
         }
         if (!departamento?.trim() || !['RAD', 'LAB'].includes(departamento.trim().toUpperCase())) {
             throw new common_1.BadRequestException('Departamento inválido');
@@ -112,11 +115,26 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         return (0, parse_cedula_qr_1.parseCedulaQr)(raw);
     }
     assertNamesAndAddress(dto) {
-        const names = [dto.name1, dto.name2, dto.apellido1, dto.apellido2].filter(Boolean);
-        for (const n of names) {
-            if (!NAME_RE.test(n)) {
-                throw new common_1.BadRequestException('Nombres y apellidos: solo letras');
+        const names = [
+            ['Primer nombre', dto.name1],
+            ['Segundo nombre', dto.name2],
+            ['Primer apellido', dto.apellido1],
+            ['Segundo apellido', dto.apellido2],
+            ['Contacto de emergencia', dto.encasourgencia],
+        ];
+        for (const [label, value] of names) {
+            if (!value?.trim())
+                continue;
+            if (!(0, person_fields_1.isValidPersonName)(value)) {
+                throw new common_1.BadRequestException(`${label}: ${person_fields_1.PERSON_NAME_MESSAGE}`);
             }
+        }
+        if (!(0, person_fields_1.isValidDocumentIdInput)(dto.cedula)) {
+            throw new common_1.BadRequestException('Documento: solo letras, números y guiones');
+        }
+        const birthDateError = (0, person_fields_1.getBirthDateValidationMessage)(dto.fechanac);
+        if (birthDateError) {
+            throw new common_1.BadRequestException(birthDateError);
         }
         if (dto.direccion1.length > 200) {
             throw new common_1.BadRequestException('Dirección máximo 200 caracteres');

@@ -18,26 +18,39 @@ const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
 const integration_log_entity_1 = require("./entities/integration-log.entity");
+const preadmission_storage_service_1 = require("../preadmission/preadmission-storage.service");
 const cellbyte_config_1 = require("./cellbyte.config");
 const cellbyte_payload_util_1 = require("./cellbyte-payload.util");
 const CONNECTIVITY_TIMEOUT_MS = 8_000;
 const SEND_TIMEOUT_MS = 60_000;
 const MAX_ATTEMPTS = 3;
 let CellbyteService = CellbyteService_1 = class CellbyteService {
-    constructor(logRepository) {
+    constructor(logRepository, storageService) {
         this.logRepository = logRepository;
+        this.storageService = storageService;
         this.logger = new common_1.Logger(CellbyteService_1.name);
     }
+    readAttachments(p) {
+        return {
+            cedulaimagen: this.storageService.readAsBase64(p.cedulaimagen),
+            ordenimagen: this.storageService.readAsBase64(p.ordenimagen),
+            ssimagen: this.storageService.readAsBase64(p.ssimagen),
+        };
+    }
     buildPayload(p) {
-        return (0, cellbyte_payload_util_1.buildCellbytePayload)(p);
+        return (0, cellbyte_payload_util_1.buildCellbytePayload)(p, this.readAttachments(p));
     }
     getPostmanExport(preadmission) {
-        const payload = this.buildPayload(preadmission);
+        const attachments = this.readAttachments(preadmission);
+        const payload = (0, cellbyte_payload_util_1.buildCellbytePayload)(preadmission, attachments);
         const innerJson = JSON.stringify(payload);
         const config = (0, cellbyte_config_1.getCellbyteConfig)();
+        const warnings = (0, cellbyte_payload_util_1.buildCellbyteAttachmentWarnings)(preadmission, attachments);
         return {
             preadmissionId: preadmission.id,
             generatedAt: new Date().toISOString(),
+            cedula: payload.cedula,
+            pasaporte: payload.pasaporte,
             cellbyte: {
                 baseUrl: config?.baseUrl ?? null,
                 authUrl: config?.authUrl ?? null,
@@ -45,6 +58,7 @@ let CellbyteService = CellbyteService_1 = class CellbyteService {
             },
             payload,
             postmanBody: { json: innerJson },
+            warnings,
             attachmentSizes: {
                 cedulaimagen: payload.cedulaimagen.length,
                 ordenimagen: payload.ordenimagen.length,
@@ -303,6 +317,7 @@ exports.CellbyteService = CellbyteService;
 exports.CellbyteService = CellbyteService = CellbyteService_1 = __decorate([
     (0, common_1.Injectable)(),
     __param(0, (0, typeorm_1.InjectRepository)(integration_log_entity_1.IntegrationLog)),
-    __metadata("design:paramtypes", [typeorm_2.Repository])
+    __metadata("design:paramtypes", [typeorm_2.Repository,
+        preadmission_storage_service_1.PreadmissionStorageService])
 ], CellbyteService);
 //# sourceMappingURL=cellbyte.service.js.map

@@ -8,20 +8,21 @@ var __decorate = (this && this.__decorate) || function (decorators, target, key,
 var __metadata = (this && this.__metadata) || function (k, v) {
     if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
 };
+var PreadmissionStorageService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.PreadmissionStorageService = void 0;
+exports.resolvePreadmissionUploadRoot = resolvePreadmissionUploadRoot;
 const common_1 = require("@nestjs/common");
 const fs_1 = require("fs");
 const path = require("path");
 const preadmission_attachments_constants_1 = require("./preadmission-attachments.constants");
 const file_signature_util_1 = require("../common/file-signature.util");
-let PreadmissionStorageService = class PreadmissionStorageService {
+let PreadmissionStorageService = PreadmissionStorageService_1 = class PreadmissionStorageService {
     constructor() {
-        const configured = process.env.PREADMISSION_UPLOAD_DIR?.trim();
-        this.uploadRoot = configured
-            ? path.resolve(configured)
-            : path.resolve(process.cwd(), 'uploads', 'preadmissions');
+        this.logger = new common_1.Logger(PreadmissionStorageService_1.name);
+        this.uploadRoot = resolvePreadmissionUploadRoot();
         (0, fs_1.mkdirSync)(this.uploadRoot, { recursive: true });
+        this.logger.log(`Adjuntos de preadmisión: ${this.uploadRoot}`);
     }
     isAttachmentField(field) {
         return preadmission_attachments_constants_1.PREADMISSION_ATTACHMENT_FIELDS.includes(field);
@@ -95,6 +96,24 @@ let PreadmissionStorageService = class PreadmissionStorageService {
             filename,
         };
     }
+    readAsBase64(stored) {
+        if (!stored)
+            return '';
+        if (this.isLegacyBase64Stored(stored)) {
+            const match = stored.match(/^data:[^;]+;base64,(.+)$/);
+            if (match)
+                return match[1];
+            return stored;
+        }
+        const absolute = this.getAbsolutePath(stored);
+        if (!(0, fs_1.existsSync)(absolute)) {
+            return '';
+        }
+        return (0, fs_1.readFileSync)(absolute).toString('base64');
+    }
+    getUploadRoot() {
+        return this.uploadRoot;
+    }
     legacyBase64Stream(stored, field) {
         let mime = 'application/octet-stream';
         let base64 = stored;
@@ -154,8 +173,15 @@ let PreadmissionStorageService = class PreadmissionStorageService {
     }
 };
 exports.PreadmissionStorageService = PreadmissionStorageService;
-exports.PreadmissionStorageService = PreadmissionStorageService = __decorate([
+exports.PreadmissionStorageService = PreadmissionStorageService = PreadmissionStorageService_1 = __decorate([
     (0, common_1.Injectable)(),
     __metadata("design:paramtypes", [])
 ], PreadmissionStorageService);
+function resolvePreadmissionUploadRoot() {
+    const configured = process.env.PREADMISSION_UPLOAD_DIR?.trim() ||
+        process.env.RAILWAY_VOLUME_MOUNT_PATH?.trim();
+    return configured
+        ? path.resolve(configured)
+        : path.resolve(process.cwd(), 'uploads', 'preadmissions');
+}
 //# sourceMappingURL=preadmission-storage.service.js.map

@@ -12,6 +12,7 @@ import {
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../../common/enums';
+import { IsPersonName } from '../../common/validators/person-field.validators';
 
 const PASSWORD_RULE =
   /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/;
@@ -97,6 +98,7 @@ export class UpdateStaffUserDto {
   isActive?: boolean;
 
   @IsOptional()
+  @IsPersonName(true)
   @IsString()
   fullName?: string;
 }
@@ -113,6 +115,7 @@ export class CreateStaffUserDto {
   password: string;
 
   @IsOptional()
+  @IsPersonName(true)
   @IsString()
   fullName?: string;
 

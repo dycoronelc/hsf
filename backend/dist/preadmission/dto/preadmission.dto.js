@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ReviewPreadmissionDto = exports.ConfirmVerificationDto = exports.RequestVerificationDto = exports.ParseCedulaQrDto = exports.CreatePreadmissionDto = void 0;
 const class_validator_1 = require("class-validator");
 const enums_1 = require("../../common/enums");
+const person_field_validators_1 = require("../../common/validators/person-field.validators");
 class CreatePreadmissionDto {
 }
 exports.CreatePreadmissionDto = CreatePreadmissionDto;
@@ -24,24 +25,24 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "registradoComo", void 0);
 __decorate([
-    (0, class_validator_1.Matches)(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en nombres' }),
+    (0, person_field_validators_1.IsPersonName)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "name1", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.Matches)(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en nombres' }),
+    (0, person_field_validators_1.IsPersonName)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "name2", void 0);
 __decorate([
-    (0, class_validator_1.Matches)(/^[\p{L}\s'-]+$/u, { message: 'Solo letras en apellidos' }),
+    (0, person_field_validators_1.IsPersonName)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "apellido1", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, class_validator_1.Matches)(/^[\p{L}\s'-]*$/u, { message: 'Solo letras en apellidos' }),
+    (0, person_field_validators_1.IsPersonName)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "apellido2", void 0);
@@ -50,6 +51,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "pasaporte", void 0);
 __decorate([
+    (0, person_field_validators_1.IsDocumentIdInput)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "cedula", void 0);
@@ -58,6 +60,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "sexo", void 0);
 __decorate([
+    (0, person_field_validators_1.IsBirthDateDdMmYyyy)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "fechanac", void 0);
@@ -104,6 +107,7 @@ __decorate([
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "direccion1", void 0);
 __decorate([
+    (0, person_field_validators_1.IsPersonName)(),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "encasourgencia", void 0);
@@ -141,6 +145,7 @@ __decorate([
 ], CreatePreadmissionDto.prototype, "direccion3", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsDdMmYyyy)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "fechaprobableatencion", void 0);

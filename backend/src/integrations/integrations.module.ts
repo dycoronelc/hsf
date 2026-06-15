@@ -5,9 +5,14 @@ import { CellbyteService } from './cellbyte.service';
 import { CellbyteController } from './cellbyte.controller';
 import { PermissionsModule } from '../permissions/permissions.module';
 import { IntegrationsSchemaBootstrap } from './integrations-schema.bootstrap';
+import { PreadmissionStorageModule } from '../preadmission/preadmission-storage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([IntegrationLog]), PermissionsModule],
+  imports: [
+    TypeOrmModule.forFeature([IntegrationLog]),
+    PermissionsModule,
+    PreadmissionStorageModule,
+  ],
   controllers: [CellbyteController],
   providers: [CellbyteService, IntegrationsSchemaBootstrap],
   exports: [CellbyteService],

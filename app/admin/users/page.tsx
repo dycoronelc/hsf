@@ -7,6 +7,7 @@ import { SiteLayout } from '../../components/SiteLayout'
 import { RowActionsMenu } from '../../components/RowActionsMenu'
 import { useAuth } from '../../providers'
 import { roleLabel } from '@/lib/roleLabels'
+import { filterPersonNameInput, isValidPersonName, PERSON_NAME_MESSAGE } from '@/lib/validation/person-fields'
 
 interface StaffUser {
   id: number
@@ -97,6 +98,11 @@ export default function AdminUsersPage() {
   const createUser = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!token) return
+    const trimmedName = createForm.fullName.trim()
+    if (trimmedName && !isValidPersonName(trimmedName)) {
+      setError(PERSON_NAME_MESSAGE)
+      return
+    }
     setSaving(true)
     setMessage('')
     setError('')
@@ -159,6 +165,11 @@ export default function AdminUsersPage() {
   const saveEditModal = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!editUser) return
+    const trimmedName = editForm.fullName.trim()
+    if (trimmedName && !isValidPersonName(trimmedName)) {
+      setError(PERSON_NAME_MESSAGE)
+      return
+    }
     await updateUser(editUser.id, {
       fullName: editForm.fullName.trim(),
       role: editForm.role,
@@ -245,7 +256,9 @@ export default function AdminUsersPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
               <input
                 value={createForm.fullName}
-                onChange={(e) => setCreateForm({ ...createForm, fullName: e.target.value })}
+                onChange={(e) =>
+                  setCreateForm({ ...createForm, fullName: filterPersonNameInput(e.target.value) })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               />
             </div>
@@ -345,7 +358,9 @@ export default function AdminUsersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
                 <input
                   value={editForm.fullName}
-                  onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
+                  onChange={(e) =>
+                    setEditForm({ ...editForm, fullName: filterPersonNameInput(e.target.value) })
+                  }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 />
               </div>

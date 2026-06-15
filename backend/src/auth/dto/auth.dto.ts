@@ -7,6 +7,11 @@ import {
   MinLength,
 } from 'class-validator';
 import { UserRole } from '../../common/enums';
+import {
+  IsBirthDateDdMmYyyy,
+  IsDocumentIdInput,
+  IsPersonName,
+} from '../../common/validators/person-field.validators';
 
 const PASSWORD_RULE =
   /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/;
@@ -23,6 +28,7 @@ export class CreateUserDto {
   password: string;
 
   @IsOptional()
+  @IsPersonName(true)
   @IsString()
   fullName?: string;
 
@@ -31,10 +37,12 @@ export class CreateUserDto {
   phone?: string;
 
   @IsOptional()
+  @IsDocumentIdInput()
   @IsString()
   nationalId?: string;
 
   @IsOptional()
+  @IsBirthDateDdMmYyyy(true)
   @IsString()
   birthDate?: string;
 
@@ -56,6 +64,7 @@ export class RegisterPublicUserDto {
   password: string;
 
   @IsOptional()
+  @IsPersonName(true)
   @IsString()
   fullName?: string;
 
@@ -64,10 +73,12 @@ export class RegisterPublicUserDto {
   phone?: string;
 
   @IsOptional()
+  @IsDocumentIdInput()
   @IsString()
   nationalId?: string;
 
   @IsOptional()
+  @IsBirthDateDdMmYyyy(true)
   @IsString()
   birthDate?: string;
 }

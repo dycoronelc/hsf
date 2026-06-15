@@ -1,43 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getPreadmissionUploadRoot = getPreadmissionUploadRoot;
-exports.readStoredAttachmentBase64 = readStoredAttachmentBase64;
 exports.formatCellbytePhone = formatCellbytePhone;
 exports.buildCellbytePayload = buildCellbytePayload;
-const fs_1 = require("fs");
-const path = require("path");
-function getPreadmissionUploadRoot() {
-    const configured = process.env.PREADMISSION_UPLOAD_DIR?.trim();
-    return configured
-        ? path.resolve(configured)
-        : path.resolve(process.cwd(), 'uploads', 'preadmissions');
-}
-function isLegacyBase64Stored(value) {
-    if (value.includes('/') || value.includes('\\'))
-        return false;
-    return value.startsWith('data:') || value.length > 512;
-}
-function readStoredAttachmentBase64(stored) {
-    if (!stored)
-        return '';
-    if (isLegacyBase64Stored(stored)) {
-        const match = stored.match(/^data:[^;]+;base64,(.+)$/);
-        if (match)
-            return match[1];
-        return stored;
-    }
-    const root = getPreadmissionUploadRoot();
-    const normalized = stored.replace(/\\/g, '/');
-    if (normalized.includes('..'))
-        return '';
-    const absolute = path.join(root, normalized);
-    const rootResolved = path.resolve(root);
-    const fileResolved = path.resolve(absolute);
-    if (!fileResolved.startsWith(rootResolved) || !(0, fs_1.existsSync)(fileResolved)) {
-        return '';
-    }
-    return (0, fs_1.readFileSync)(fileResolved).toString('base64');
-}
+exports.buildCellbyteAttachmentWarnings = buildCellbyteAttachmentWarnings;
 function formatDdMmYyyy(date) {
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -54,7 +19,7 @@ function formatCellbytePhone(celular, prefix) {
     }
     return normalized.replace(/^\+/, '');
 }
-function buildCellbytePayload(p) {
+function buildCellbytePayload(p, attachments) {
     return {
         departamento: p.departamento,
         name1: p.name1,
@@ -62,7 +27,7 @@ function buildCellbytePayload(p) {
         apellido1: p.apellido1,
         apellido2: p.apellido2 ?? '',
         pasaporte: p.pasaporte,
-        cedula: p.cedula,
+        cedula: (p.cedula ?? '').trim(),
         sexo: p.sexo,
         fechanac: p.fechanac,
         nacionalidad: p.nacionalidad,
@@ -86,10 +51,28 @@ function buildCellbytePayload(p) {
         doblecobertura: p.doblecobertura,
         compania1: p.doblecobertura === 'SI' ? (p.compania1 ?? '') : '',
         poliza1: p.doblecobertura === 'SI' ? (p.poliza1 ?? '') : '',
-        cedulaimagen: readStoredAttachmentBase64(p.cedulaimagen),
-        ordenimagen: readStoredAttachmentBase64(p.ordenimagen),
-        ssimagen: readStoredAttachmentBase64(p.ssimagen),
+        cedulaimagen: attachments.cedulaimagen,
+        ordenimagen: attachments.ordenimagen,
+        ssimagen: attachments.ssimagen,
         fechapreadmision: formatDdMmYyyy(p.fechapreadmision),
     };
+}
+function buildCellbyteAttachmentWarnings(preadmission, attachments) {
+    const warnings = [];
+    const checks = [
+        { field: 'cedulaimagen', label: 'Imagen de cédula (cedulaimagen)' },
+        { field: 'ordenimagen', label: 'Orden médica (ordenimagen)' },
+        { field: 'ssimagen', label: 'Imagen SS (ssimagen)' },
+    ];
+    for (const { field, label } of checks) {
+        const stored = preadmission[field];
+        if (stored && !attachments[field]) {
+            warnings.push(`${label}: hay ruta en BD (${stored}) pero el archivo no está en disco. En Railway configure un volumen persistente en PREADMISSION_UPLOAD_DIR o vuelva a registrar la preadmisión con adjuntos.`);
+        }
+    }
+    if (!(preadmission.cedula ?? '').trim()) {
+        warnings.push('Número de cédula vacío en la preadmisión.');
+    }
+    return warnings;
 }
 //# sourceMappingURL=cellbyte-payload.util.js.map

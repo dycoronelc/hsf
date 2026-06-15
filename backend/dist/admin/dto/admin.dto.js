@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.PatchMatrixRoleDto = exports.CreateMatrixRoleDto = exports.CreateStaffUserDto = exports.UpdateStaffUserDto = exports.UpdateTicketTypeDto = exports.CreateTicketTypeDto = exports.UpdateRolePermissionsDto = void 0;
 const class_validator_1 = require("class-validator");
 const enums_1 = require("../../common/enums");
+const person_field_validators_1 = require("../../common/validators/person-field.validators");
 const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/;
 class UpdateRolePermissionsDto {
 }
@@ -118,6 +119,7 @@ __decorate([
 ], UpdateStaffUserDto.prototype, "isActive", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsPersonName)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], UpdateStaffUserDto.prototype, "fullName", void 0);
@@ -138,6 +140,7 @@ __decorate([
 ], CreateStaffUserDto.prototype, "password", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
+    (0, person_field_validators_1.IsPersonName)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreateStaffUserDto.prototype, "fullName", void 0);

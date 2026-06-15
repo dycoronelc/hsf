@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { User } from './entities/user.entity';
 import { CreateUserDto, RegisterPublicUserDto, UserResponseDto } from '../auth/dto/auth.dto';
 import { AgentState, UserRole } from '../common/enums';
+import { normalizeDocumentId } from '../preadmission/utils/normalize-document-id';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
@@ -31,12 +32,14 @@ export class UsersService {
       throw new ConflictException('Ya existe una cuenta con este correo electrónico');
     }
     if (createUserDto.nationalId) {
+      const normalizedNationalId = normalizeDocumentId(createUserDto.nationalId, 'C');
       const existingId = await this.usersRepository.findOne({
-        where: { nationalId: createUserDto.nationalId },
+        where: { nationalId: normalizedNationalId },
       });
       if (existingId) {
         throw new ConflictException('Ya existe una cuenta con este número de identificación');
       }
+      createUserDto.nationalId = normalizedNationalId;
     }
 
     const hashedPassword = await bcrypt.hash(createUserDto.password, 10);
