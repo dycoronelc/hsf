@@ -273,6 +273,14 @@ psql "$DATABASE_URL" -f db/validacion_geo_catalogo.sql
 
 ## Comandos útiles
 
+Actualización rápida (git pull + build + restart):
+
+```bash
+sudo bash /opt/hospitalsantafe/scripts/deploy-onprem.sh
+```
+
+Variables opcionales: `SKIP_GIT_PULL=1`, `SKIP_NPM_CI=1`, `GIT_BRANCH=main`.
+
 ```bash
 sudo systemctl restart hospitalsantafe-api hospitalsantafe-web
 sudo journalctl -u hospitalsantafe-api -n 50 --no-pager
