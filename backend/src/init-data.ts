@@ -5,14 +5,12 @@ import { User } from './users/entities/user.entity';
 import { Service } from './services/entities/service.entity';
 import { Sede } from './services/entities/sede.entity';
 import { Nacionalidad } from './catalogs/entities/nacionalidad.entity';
-import { Provincia } from './catalogs/entities/provincia.entity';
-import { Distrito } from './catalogs/entities/distrito.entity';
-import { Corregimiento } from './catalogs/entities/corregimiento.entity';
-import { Repository } from 'typeorm';
+import { Repository, DataSource } from 'typeorm';
 import * as bcrypt from 'bcrypt';
 import { UserRole } from './common/enums';
 import * as fs from 'fs';
 import * as path from 'path';
+import { syncGeoCatalog } from './init/sync-geo-catalog';
 
 async function bootstrap() {
   const app = await NestFactory.createApplicationContext(AppModule);
@@ -25,15 +23,7 @@ async function bootstrap() {
   const nacionalidadRepository = app.get<Repository<Nacionalidad>>(
     getRepositoryToken(Nacionalidad),
   );
-  const provinciaRepository = app.get<Repository<Provincia>>(
-    getRepositoryToken(Provincia),
-  );
-  const distritoRepository = app.get<Repository<Distrito>>(
-    getRepositoryToken(Distrito),
-  );
-  const corregimientoRepository = app.get<Repository<Corregimiento>>(
-    getRepositoryToken(Corregimiento),
-  );
+  const dataSource = app.get(DataSource);
 
   try {
     // Crear usuario admin
@@ -193,77 +183,14 @@ async function bootstrap() {
       console.log('⚠ Archivo nacionalidades.csv no encontrado');
     }
 
-    // Cargar ubicaciones geográficas desde CSV en 3 tablas relacionadas
-    // El script se ejecuta desde backend/, así que buscamos en el directorio padre
-    const ubicacionesPath = path.join(process.cwd(), '..', 'ubicacion_geo.csv');
-    if (fs.existsSync(ubicacionesPath)) {
-      const ubicacionesContent = fs.readFileSync(ubicacionesPath, 'utf-8');
-      const ubicacionesLines = ubicacionesContent.split('\n').slice(1);
-      
-      const provinciasMap = new Map<string, Provincia>();
-      const distritosMap = new Map<string, Distrito>();
-      
-      for (const line of ubicacionesLines) {
-        if (!line.trim()) continue;
-        const [pais, paisName, provinciaCodigo, provinciaName, distritoCodigo, distritoName, corregCode, corregimiento] = 
-          line.split(',').map(s => s.trim());
-        if (!corregCode || !corregimiento || !provinciaCodigo || !distritoCodigo) continue;
-        
-        // Crear o obtener Provincia
-        if (!provinciasMap.has(provinciaCodigo)) {
-          let provincia = await provinciaRepository.findOne({
-            where: { codigo: provinciaCodigo },
-          });
-          if (!provincia) {
-            provincia = provinciaRepository.create({
-              codigo: provinciaCodigo,
-              nombre: provinciaName,
-            });
-            provincia = await provinciaRepository.save(provincia);
-          }
-          provinciasMap.set(provinciaCodigo, provincia);
-        }
-        const provincia = provinciasMap.get(provinciaCodigo)!;
-        
-        // Crear o obtener Distrito
-        const distritoKey = `${provinciaCodigo}-${distritoCodigo}`;
-        if (!distritosMap.has(distritoKey)) {
-          let distrito = await distritoRepository.findOne({
-            where: { codigo: distritoCodigo, provinciaCodigo },
-          });
-          if (!distrito) {
-            distrito = distritoRepository.create({
-              codigo: distritoCodigo,
-              nombre: distritoName,
-              provinciaCodigo: provinciaCodigo,
-            });
-            distrito = await distritoRepository.save(distrito);
-          }
-          distritosMap.set(distritoKey, distrito);
-        }
-        const distrito = distritosMap.get(distritoKey)!;
-        
-        // Crear Corregimiento
-        const existingCorregimiento = await corregimientoRepository.findOne({
-          where: { codigo: corregCode },
-        });
-        if (!existingCorregimiento) {
-          const corregimientoEntity = corregimientoRepository.create({
-            codigo: corregCode,
-            nombre: corregimiento,
-            distritoCodigo: distritoCodigo,
-          });
-          await corregimientoRepository.save(corregimientoEntity);
-        }
-      }
-      console.log('✓ Ubicaciones geográficas cargadas desde CSV (Provincias, Distritos, Corregimientos)');
-    } else {
-      console.log('⚠ Archivo ubicacion_geo.csv no encontrado');
-    }
+    // Catálogo geo completo desde referencia TE (db/datosgeograficos_postgres.sql + migraciones).
+    // Idempotente: puede re-ejecutarse con npm run backend:sync-geo en QA/prod existentes.
+    await syncGeoCatalog(dataSource);
 
     console.log('\n✓ Datos inicializados correctamente');
   } catch (error) {
     console.error('✗ Error:', error);
+    process.exitCode = 1;
   } finally {
     await app.close();
   }

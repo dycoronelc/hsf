@@ -16,6 +16,7 @@
     "backend:start:debug": "cd backend && nest start --debug --watch",
     "backend:start:prod": "cd backend && node dist/sync-db.js && (node dist/init-data.js || true) && node dist/main",
     "backend:init": "cd backend && ts-node --project tsconfig.json src/init-data.ts",
+    "backend:sync-geo": "cd backend && ts-node --project tsconfig.json src/sync-geo-cli.ts",
     "backend:sync": "cd backend && node dist/sync-db.js"
   },
   "dependencies": {

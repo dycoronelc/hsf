@@ -7,22 +7,19 @@ const user_entity_1 = require("./users/entities/user.entity");
 const service_entity_1 = require("./services/entities/service.entity");
 const sede_entity_1 = require("./services/entities/sede.entity");
 const nacionalidad_entity_1 = require("./catalogs/entities/nacionalidad.entity");
-const provincia_entity_1 = require("./catalogs/entities/provincia.entity");
-const distrito_entity_1 = require("./catalogs/entities/distrito.entity");
-const corregimiento_entity_1 = require("./catalogs/entities/corregimiento.entity");
+const typeorm_2 = require("typeorm");
 const bcrypt = require("bcrypt");
 const enums_1 = require("./common/enums");
 const fs = require("fs");
 const path = require("path");
+const sync_geo_catalog_1 = require("./init/sync-geo-catalog");
 async function bootstrap() {
     const app = await core_1.NestFactory.createApplicationContext(app_module_1.AppModule);
     const userRepository = app.get((0, typeorm_1.getRepositoryToken)(user_entity_1.User));
     const serviceRepository = app.get((0, typeorm_1.getRepositoryToken)(service_entity_1.Service));
     const sedeRepository = app.get((0, typeorm_1.getRepositoryToken)(sede_entity_1.Sede));
     const nacionalidadRepository = app.get((0, typeorm_1.getRepositoryToken)(nacionalidad_entity_1.Nacionalidad));
-    const provinciaRepository = app.get((0, typeorm_1.getRepositoryToken)(provincia_entity_1.Provincia));
-    const distritoRepository = app.get((0, typeorm_1.getRepositoryToken)(distrito_entity_1.Distrito));
-    const corregimientoRepository = app.get((0, typeorm_1.getRepositoryToken)(corregimiento_entity_1.Corregimiento));
+    const dataSource = app.get(typeorm_2.DataSource);
     try {
         let admin = await userRepository.findOne({
             where: { email: 'admin@hospitalsantafe.com' },
@@ -162,69 +159,12 @@ async function bootstrap() {
         else {
             console.log('⚠ Archivo nacionalidades.csv no encontrado');
         }
-        const ubicacionesPath = path.join(process.cwd(), '..', 'ubicacion_geo.csv');
-        if (fs.existsSync(ubicacionesPath)) {
-            const ubicacionesContent = fs.readFileSync(ubicacionesPath, 'utf-8');
-            const ubicacionesLines = ubicacionesContent.split('\n').slice(1);
-            const provinciasMap = new Map();
-            const distritosMap = new Map();
-            for (const line of ubicacionesLines) {
-                if (!line.trim())
-                    continue;
-                const [pais, paisName, provinciaCodigo, provinciaName, distritoCodigo, distritoName, corregCode, corregimiento] = line.split(',').map(s => s.trim());
-                if (!corregCode || !corregimiento || !provinciaCodigo || !distritoCodigo)
-                    continue;
-                if (!provinciasMap.has(provinciaCodigo)) {
-                    let provincia = await provinciaRepository.findOne({
-                        where: { codigo: provinciaCodigo },
-                    });
-                    if (!provincia) {
-                        provincia = provinciaRepository.create({
-                            codigo: provinciaCodigo,
-                            nombre: provinciaName,
-                        });
-                        provincia = await provinciaRepository.save(provincia);
-                    }
-                    provinciasMap.set(provinciaCodigo, provincia);
-                }
-                const provincia = provinciasMap.get(provinciaCodigo);
-                const distritoKey = `${provinciaCodigo}-${distritoCodigo}`;
-                if (!distritosMap.has(distritoKey)) {
-                    let distrito = await distritoRepository.findOne({
-                        where: { codigo: distritoCodigo, provinciaCodigo },
-                    });
-                    if (!distrito) {
-                        distrito = distritoRepository.create({
-                            codigo: distritoCodigo,
-                            nombre: distritoName,
-                            provinciaCodigo: provinciaCodigo,
-                        });
-                        distrito = await distritoRepository.save(distrito);
-                    }
-                    distritosMap.set(distritoKey, distrito);
-                }
-                const distrito = distritosMap.get(distritoKey);
-                const existingCorregimiento = await corregimientoRepository.findOne({
-                    where: { codigo: corregCode },
-                });
-                if (!existingCorregimiento) {
-                    const corregimientoEntity = corregimientoRepository.create({
-                        codigo: corregCode,
-                        nombre: corregimiento,
-                        distritoCodigo: distritoCodigo,
-                    });
-                    await corregimientoRepository.save(corregimientoEntity);
-                }
-            }
-            console.log('✓ Ubicaciones geográficas cargadas desde CSV (Provincias, Distritos, Corregimientos)');
-        }
-        else {
-            console.log('⚠ Archivo ubicacion_geo.csv no encontrado');
-        }
+        await (0, sync_geo_catalog_1.syncGeoCatalog)(dataSource);
         console.log('\n✓ Datos inicializados correctamente');
     }
     catch (error) {
         console.error('✗ Error:', error);
+        process.exitCode = 1;
     }
     finally {
         await app.close();

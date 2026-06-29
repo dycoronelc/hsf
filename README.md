@@ -50,7 +50,7 @@ npm run backend:build
 npm run backend:init
 ```
 
-`backend:init` crea las tablas, usuarios iniciales y carga catálogos (nacionalidades, ubicación geográfica).
+`backend:init` crea las tablas, usuarios iniciales, nacionalidades y el catálogo geográfico completo (referencia TE). Para re-sincronizar solo geo: `npm run backend:sync-geo`.
 
 **Usuarios por defecto:**
 - **Administrador**: admin@hospitalsantafe.com / admin123
@@ -121,10 +121,11 @@ Con ambos en marcha, el sistema queda listo para usar.
 ## Módulos Implementados
 
 ### 1. Preadmisión
-- Wizard de 7 pasos
+- Wizard de 8 pasos
 - Validación completa según PDF
-- Carga de documentos en base64
-- Estados: borrador, enviado, en revisión, aceptado, rechazado
+- Carga de documentos en disco (multipart; PNG, JPG, PDF)
+- Estados: enviado, en revisión, aceptado, rechazado, requiere subsanación
+- Integración Cellbyte (opcional)
 
 ### 2. Gestión de Turnos
 - Creación de tickets virtuales
@@ -193,7 +194,7 @@ La mayoría de las que reporta el informe están en dependencias de desarrollo (
 
 ## Configuración
 
-Crea un archivo `.env` en la raíz del proyecto (o `.env.local`). Plantilla completa en `.env.example`.
+Crea un archivo `.env` en la raíz del proyecto (copia [.env.example](.env.example)).
 
 ```
 NEXT_PUBLIC_API_URL=http://localhost:8000
@@ -216,7 +217,13 @@ En producción use `NODE_ENV=production`. Sin `SMTP_SEND_IN_DEV`, en desarrollo 
 
 **Documento técnico de infraestructura y despliegue (TI del hospital):** [docs/INFRAESTRUCTURA_DESPLIEGUE_HOSPITAL.md](docs/INFRAESTRUCTURA_DESPLIEGUE_HOSPITAL.md)
 
-Si no existe `NEXT_PUBLIC_API_URL`, el frontend suele tomar por defecto `http://localhost:8000` para la API. La base SQLite se genera en `backend/hospital_santa_fe.db` al ejecutar `npm run backend:init`.
+**Paquete de documentación de entrega (manuales, runbook, UAT, API, despliegue on‑prem):** [docs/entrega/INDICE_ENTREGA.md](docs/entrega/INDICE_ENTREGA.md)
+
+**Despliegue QA/Prod (servidores cliente, sin Railway):** [docs/entrega/13_DESPLIEGUE_ONPREM_QA_PROD.md](docs/entrega/13_DESPLIEGUE_ONPREM_QA_PROD.md)
+
+Plantilla de variables: [.env.example](.env.example)
+
+Si no existe `NEXT_PUBLIC_API_URL`, el frontend suele tomar por defecto `http://localhost:8000` para la API. La base de datos es **PostgreSQL** (ver `DATABASE_URL`).
 
 ## Próximos Pasos
 

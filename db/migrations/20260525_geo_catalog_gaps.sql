@@ -1,5 +1,5 @@
 -- Catálogo geográfico: distritos/corregimientos faltantes (Informe QA Hospital Santa Fe).
--- Ejecutar tras actualizar ubicacion_geo.csv o usar npm run backend:init en entorno limpio.
+-- Incluido automáticamente en npm run backend:init y npm run backend:sync-geo.
 
 INSERT INTO distritos (codigo, nombre, "provinciaCodigo")
 SELECT '62', 'TONOSI', '7'
