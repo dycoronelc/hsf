@@ -13,6 +13,8 @@ export const DOCUMENT_ID_MESSAGE = 'Solo letras, números y guiones'
 export const BIRTH_DATE_FORMAT_MESSAGE = 'La fecha debe tener formato DD/MM/YYYY válido'
 export const BIRTH_DATE_FUTURE_MESSAGE = 'La fecha de nacimiento no puede ser futura'
 export const BIRTH_DATE_AGE_MESSAGE = `La fecha de nacimiento no es razonable (máximo ${MAX_PERSON_AGE_YEARS} años)`
+export const PROBABLE_ATTENTION_DATE_PAST_MESSAGE =
+  'La fecha probable de atención no puede ser anterior a hoy'
 
 export function filterPersonNameInput(value: string): string {
   return value.replace(/[^\p{L}\s'-]/gu, '')
@@ -91,4 +93,45 @@ export function getBirthDateValidationMessage(value: string, referenceDate?: Dat
   const result = validateBirthDateDdMmYyyy(value, referenceDate);
   if (!result.valid) return result.message;
   return null;
+}
+
+export type ProbableAttentionDateValidation =
+  | { valid: true; message?: undefined }
+  | { valid: false; message: string }
+
+export function validateProbableAttentionDateDdMmYyyy(
+  value: string,
+  referenceDate: Date = new Date(),
+): ProbableAttentionDateValidation {
+  const date = parseDdMmYyyy(value)
+  if (!date) {
+    return { valid: false, message: BIRTH_DATE_FORMAT_MESSAGE }
+  }
+
+  const today = new Date(
+    referenceDate.getFullYear(),
+    referenceDate.getMonth(),
+    referenceDate.getDate(),
+  )
+  if (date < today) {
+    return { valid: false, message: PROBABLE_ATTENTION_DATE_PAST_MESSAGE }
+  }
+
+  return { valid: true }
+}
+
+export function isValidProbableAttentionDateDdMmYyyy(
+  value: string,
+  referenceDate?: Date,
+): boolean {
+  return validateProbableAttentionDateDdMmYyyy(value, referenceDate).valid
+}
+
+export function getProbableAttentionDateValidationMessage(
+  value: string,
+  referenceDate?: Date,
+): string | null {
+  const result = validateProbableAttentionDateDdMmYyyy(value, referenceDate)
+  if (!result.valid) return result.message
+  return null
 }

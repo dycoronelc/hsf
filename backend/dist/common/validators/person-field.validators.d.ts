@@ -19,3 +19,8 @@ export declare class IsDdMmYyyyConstraint implements ValidatorConstraintInterfac
     defaultMessage(): string;
 }
 export declare function IsDdMmYyyy(allowEmpty?: boolean, validationOptions?: ValidationOptions): (object: object, propertyName: string) => void;
+export declare class IsProbableAttentionDateDdMmYyyyConstraint implements ValidatorConstraintInterface {
+    validate(value: unknown, args: ValidationArguments): boolean;
+    defaultMessage(args: ValidationArguments): string;
+}
+export declare function IsProbableAttentionDateDdMmYyyy(allowEmpty?: boolean, validationOptions?: ValidationOptions): (object: object, propertyName: string) => void;

@@ -74,6 +74,10 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
         if (!fechaprobableatencion?.trim()) {
             throw new common_1.BadRequestException('Fecha probable de atención requerida');
         }
+        const attentionDateError = (0, person_fields_1.getProbableAttentionDateValidationMessage)(fechaprobableatencion);
+        if (attentionDateError) {
+            throw new common_1.BadRequestException(attentionDateError);
+        }
     }
     async findDuplicateForServiceDay(cedula, pasaporte, departamento, fechaprobableatencion) {
         const tipo = pasaporte.trim().toUpperCase();

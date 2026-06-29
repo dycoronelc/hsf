@@ -70,6 +70,9 @@ export {
   getBirthDateValidationMessage,
   isValidBirthDateDdMmYyyy,
   validateBirthDateDdMmYyyy,
+  getProbableAttentionDateValidationMessage,
+  isValidProbableAttentionDateDdMmYyyy,
+  validateProbableAttentionDateDdMmYyyy,
 } from '@/lib/validation/person-fields'
 
 /**

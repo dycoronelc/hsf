@@ -11,7 +11,9 @@ import {
   isValidDdMmYyyy,
   isValidDocumentIdInput,
   isValidPersonName,
+  isValidProbableAttentionDateDdMmYyyy,
   validateBirthDateDdMmYyyy,
+  validateProbableAttentionDateDdMmYyyy,
 } from '../validation/person-fields';
 
 @ValidatorConstraint({ name: 'isPersonName', async: false })
@@ -120,6 +122,41 @@ export function IsDdMmYyyy(allowEmpty = false, validationOptions?: ValidationOpt
       options: validationOptions,
       constraints: [allowEmpty],
       validator: IsDdMmYyyyConstraint,
+    });
+  };
+}
+
+@ValidatorConstraint({ name: 'isProbableAttentionDateDdMmYyyy', async: false })
+export class IsProbableAttentionDateDdMmYyyyConstraint implements ValidatorConstraintInterface {
+  validate(value: unknown, args: ValidationArguments): boolean {
+    if (value === undefined || value === null || value === '') {
+      return args.constraints[0] === true;
+    }
+    if (typeof value !== 'string') return false;
+    return isValidProbableAttentionDateDdMmYyyy(value);
+  }
+
+  defaultMessage(args: ValidationArguments): string {
+    if (typeof args.value !== 'string' || !args.value.trim()) {
+      return BIRTH_DATE_FORMAT_MESSAGE;
+    }
+    const result = validateProbableAttentionDateDdMmYyyy(args.value);
+    if (!result.valid) return result.message;
+    return BIRTH_DATE_FORMAT_MESSAGE;
+  }
+}
+
+export function IsProbableAttentionDateDdMmYyyy(
+  allowEmpty = false,
+  validationOptions?: ValidationOptions,
+) {
+  return function (object: object, propertyName: string) {
+    registerDecorator({
+      target: object.constructor,
+      propertyName,
+      options: validationOptions,
+      constraints: [allowEmpty],
+      validator: IsProbableAttentionDateDdMmYyyyConstraint,
     });
   };
 }

@@ -191,7 +191,7 @@ En despliegue con proxy único, `API_URL` suele ser la URL **interna** del backe
 
 | Variable | Obligatoria | Ejemplo | Descripción |
 |----------|-------------|---------|-------------|
-| `PREADMISSION_UPLOAD_DIR` | No | `/var/lib/hospitalsantafe/preadmissions` | Carpeta raíz de archivos (por defecto `uploads/preadmissions` bajo el cwd del API) |
+| `PREADMISSION_UPLOAD_DIR` | No | `/app/backend/uploads/preadmissions` | Carpeta raíz de archivos. **En Railway:** montar volumen en esta ruta o definir esta variable igual al mount path. Sin volumen, los adjuntos se pierden al redeploy. |
 
 Incluir esta ruta en backup y permisos de escritura para el usuario del servicio `hospital-api`.
 
@@ -496,14 +496,37 @@ No hay integración bidireccional estándar en este despliegue base; prevista co
 
 ## 13. Documentación relacionada en el repositorio
 
+### Paquete de entrega oficial
+
+Índice maestro: **[docs/entrega/INDICE_ENTREGA.md](./entrega/INDICE_ENTREGA.md)**
+
+| Documento | Contenido |
+|-----------|-----------|
+| [01 Manual paciente](./entrega/01_MANUAL_USUARIO_PACIENTE.md) | Uso preadmisión y turnos |
+| [02 Manual staff](./entrega/02_MANUAL_USUARIO_STAFF.md) | Operación recepción/anfitrión |
+| [03 Manual administrador](./entrega/03_MANUAL_ADMINISTRADOR.md) | Usuarios y permisos |
+| [04 Alcance funcional](./entrega/04_ALCANCE_FUNCIONAL.md) | Módulos entregados |
+| [05 Runbook](./entrega/05_RUNBOOK_OPERACION.md) | Soporte e incidentes |
+| [06 Guía Cellbyte](./entrega/06_GUIA_INTEGRACION_CELLBYTE.md) | Integración |
+| [07 Referencia API](./entrega/07_REFERENCIA_API.md) | Endpoints REST |
+| [08 Acta UAT](./entrega/08_ACTA_ACEPTACION_UAT.md) | Aceptación |
+| [09 Matriz trazabilidad](./entrega/09_MATRIZ_TRAZABILIDAD.md) | Requisitos |
+| [10 Release notes](./entrega/10_RELEASE_NOTES.md) | Versión |
+| [11 Inventario secretos](./entrega/11_INVENTARIO_SECRETOS.md) | Credenciales |
+| [12 Plan capacitación](./entrega/12_PLAN_CAPACITACION.md) | Formación |
+| [13 Despliegue QA/Prod](./entrega/13_DESPLIEGUE_ONPREM_QA_PROD.md) | Servidores cliente |
+
+### Documentos técnicos complementarios
+
 | Documento | Contenido |
 |-----------|-----------|
 | [README.md](../README.md) | Inicio rápido desarrollo |
 | [SETUP.md](../SETUP.md) | Instalación local |
+| [.env.example](../.env.example) | Plantilla variables |
 | [RAILWAY_DEPLOY.md](../RAILWAY_DEPLOY.md) | Despliegue PaaS Railway |
 | [GUIA_SMTP_GOOGLE_WORKSPACE.md](./GUIA_SMTP_GOOGLE_WORKSPACE.md) | Correo institucional |
+| [RESPUESTA_INFORME_PRUEBAS_HOSPITAL.md](./RESPUESTA_INFORME_PRUEBAS_HOSPITAL.md) | Respuesta QA |
 | [Hospital_Santa_Fe_Plataforma_Flujo_Preadmision.md](../Hospital_Santa_Fe_Plataforma_Flujo_Preadmision.md) | Visión funcional |
-| [RESPUESTA_ACLARACIONES.md](../RESPUESTA_ACLARACIONES.md) | Alcance, soporte, contingencia |
 
 ---
 

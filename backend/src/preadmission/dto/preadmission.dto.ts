@@ -10,9 +10,9 @@ import {
 import { PreadmissionStatus } from '../../common/enums';
 import {
   IsBirthDateDdMmYyyy,
-  IsDdMmYyyy,
   IsDocumentIdInput,
   IsPersonName,
+  IsProbableAttentionDateDdMmYyyy,
 } from '../../common/validators/person-field.validators';
 
 export class CreatePreadmissionDto {
@@ -116,7 +116,7 @@ export class CreatePreadmissionDto {
   direccion3?: string;
 
   @IsOptional()
-  @IsDdMmYyyy(true)
+  @IsProbableAttentionDateDdMmYyyy(true)
   @IsString()
   fechaprobableatencion?: string;
 

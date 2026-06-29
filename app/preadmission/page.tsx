@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
-import { isValidDdMmYyyy, getBirthDateValidationMessage, isValidBirthDateDdMmYyyy } from '@/lib/dateUtils'
+import { isValidDdMmYyyy, getBirthDateValidationMessage, getProbableAttentionDateValidationMessage, isValidBirthDateDdMmYyyy } from '@/lib/dateUtils'
 import {
   filterDocumentIdInput,
   filterPersonNameInput,
@@ -599,6 +599,8 @@ export default function PreadmissionPage() {
         if (!isValidDdMmYyyy(formData.fechaprobableatencion)) {
           return 'La fecha probable de atención debe tener formato DD/MM/YYYY válido'
         }
+        const attentionDateError = getProbableAttentionDateValidationMessage(formData.fechaprobableatencion)
+        if (attentionDateError) return attentionDateError
         return null
       case 2:
         if (!formData.registradoComo || !formData.pasaporte || !formData.cedula) {
@@ -672,7 +674,8 @@ export default function PreadmissionPage() {
     }
     if (!isValidDdMmYyyy(formData.fechaprobableatencion) || !isValidBirthDateDdMmYyyy(formData.fechanac)) {
       setError(
-        getBirthDateValidationMessage(formData.fechanac) ||
+        getProbableAttentionDateValidationMessage(formData.fechaprobableatencion) ||
+          getBirthDateValidationMessage(formData.fechanac) ||
           'Las fechas deben estar en formato DD/MM/YYYY y ser válidas',
       )
       return

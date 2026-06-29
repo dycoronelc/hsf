@@ -145,7 +145,7 @@ __decorate([
 ], CreatePreadmissionDto.prototype, "direccion3", void 0);
 __decorate([
     (0, class_validator_1.IsOptional)(),
-    (0, person_field_validators_1.IsDdMmYyyy)(true),
+    (0, person_field_validators_1.IsProbableAttentionDateDdMmYyyy)(true),
     (0, class_validator_1.IsString)(),
     __metadata("design:type", String)
 ], CreatePreadmissionDto.prototype, "fechaprobableatencion", void 0);

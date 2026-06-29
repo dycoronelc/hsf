@@ -44,6 +44,7 @@ import {
 import { parsePagination } from '../common/pagination.util';
 import {
   getBirthDateValidationMessage,
+  getProbableAttentionDateValidationMessage,
   isValidDocumentIdInput,
   isValidPersonName,
   PERSON_NAME_MESSAGE,
@@ -99,6 +100,10 @@ export class PreadmissionService {
     }
     if (!fechaprobableatencion?.trim()) {
       throw new BadRequestException('Fecha probable de atención requerida');
+    }
+    const attentionDateError = getProbableAttentionDateValidationMessage(fechaprobableatencion);
+    if (attentionDateError) {
+      throw new BadRequestException(attentionDateError);
     }
   }
 

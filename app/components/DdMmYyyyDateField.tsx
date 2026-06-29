@@ -31,7 +31,12 @@ export function DdMmYyyyDateField({ label, value, onChange, required, minIso, ma
         value={iso}
         min={minIso}
         max={maxIso}
-        onChange={(e) => onChange(e.target.value ? isoToDdMmYyyy(e.target.value) : '')}
+        onChange={(e) => {
+          const isoVal = e.target.value
+          if (isoVal && minIso && isoVal < minIso) return
+          if (isoVal && maxIso && isoVal > maxIso) return
+          onChange(isoVal ? isoToDdMmYyyy(isoVal) : '')
+        }}
         required={required}
       />
       <p className="text-xs text-gray-500 mt-1">
