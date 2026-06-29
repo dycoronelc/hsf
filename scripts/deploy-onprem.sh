@@ -42,6 +42,51 @@ run_app() {
   sudo -u "$APP_USER" bash -lc "cd '$APP_DIR' && $*"
 }
 
+wait_for_http() {
+  local url="$1"
+  local label="$2"
+  local max_attempts="${3:-30}"
+  local sleep_sec="${4:-2}"
+  local attempt=1
+
+  while [[ "$attempt" -le "$max_attempts" ]]; do
+    if curl -sf "$url" >/dev/null 2>&1; then
+      log "$label OK ($url)"
+      return 0
+    fi
+    if [[ "$attempt" -lt "$max_attempts" ]]; then
+      log "Esperando $label... ($attempt/$max_attempts)"
+      sleep "$sleep_sec"
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
+wait_for_http_code() {
+  local url="$1"
+  local expected="$2"
+  local label="$3"
+  local max_attempts="${4:-30}"
+  local sleep_sec="${5:-2}"
+  local attempt=1
+  local code=""
+
+  while [[ "$attempt" -le "$max_attempts" ]]; do
+    code="$(curl -s -o /dev/null -w '%{http_code}' "$url" 2>/dev/null || true)"
+    if [[ "$code" == "$expected" ]]; then
+      log "$label OK ($url) HTTP $code"
+      return 0
+    fi
+    if [[ "$attempt" -lt "$max_attempts" ]]; then
+      log "Esperando $label... ($attempt/$max_attempts, HTTP ${code:-sin respuesta})"
+      sleep "$sleep_sec"
+    fi
+    attempt=$((attempt + 1))
+  done
+  return 1
+}
+
 log "Directorio: $APP_DIR | Usuario app: $APP_USER | Rama: $GIT_BRANCH"
 
 if [[ "${SKIP_GIT_PULL:-0}" != "1" ]]; then
@@ -70,24 +115,18 @@ chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 log "Reiniciando servicios systemd ..."
 systemctl daemon-reload
 systemctl restart "$API_SERVICE"
-sleep 2
 systemctl restart "$WEB_SERVICE"
 
 log "Estado de servicios:"
 systemctl --no-pager --full status "$API_SERVICE" "$WEB_SERVICE" || true
 
-log "Comprobaciones locales ..."
-if curl -sf "http://127.0.0.1:8000/api/health" >/dev/null; then
-  log "API health OK (8000)"
-else
+log "Comprobaciones locales (con reintentos) ..."
+if ! wait_for_http "http://127.0.0.1:8000/api/health" "API health" 30 2; then
   die "API no responde en http://127.0.0.1:8000/api/health — revise: journalctl -u $API_SERVICE -n 50"
 fi
 
-HTTP_WEB="$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:3000/ || true)"
-if [[ "$HTTP_WEB" == "200" ]]; then
-  log "Web OK (3000) HTTP $HTTP_WEB"
-else
-  die "Web no responde 200 en :3000 (código $HTTP_WEB) — revise: journalctl -u $WEB_SERVICE -n 50"
+if ! wait_for_http_code "http://127.0.0.1:3000/" "200" "Web" 30 2; then
+  die "Web no responde 200 en :3000 — revise: journalctl -u $WEB_SERVICE -n 50"
 fi
 
 log "Despliegue completado."
