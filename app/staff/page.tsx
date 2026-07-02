@@ -7,7 +7,7 @@ import { SiteLayout } from '../components/SiteLayout'
 import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
 import { isAgentOperational } from '@/lib/agentState'
 import { canAccessStaffConsole } from '@/lib/authRoles'
-import { authHeaders, isAuthFailureStatus } from '@/lib/authToken'
+import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
 interface Ticket {
@@ -31,7 +31,7 @@ interface Service {
 }
 
 export default function StaffConsolePage() {
-  const { isAuthenticated, user, token, authHydrated } = useAuth()
+  const { isAuthenticated, user, token, authHydrated, notifySessionExpired } = useAuth()
   const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<number | null>(null)
@@ -83,10 +83,7 @@ export default function StaffConsolePage() {
         `/api/tickets/?service_id=${selectedService}`,
         { headers: authHeaders(token) },
       )
-      if (isAuthFailureStatus(response.status)) {
-        setApiError('Sesión expirada o sin permiso. Cierre sesión e ingrese de nuevo.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         const data = await response.json()
         setTickets(data)
@@ -157,10 +154,7 @@ export default function StaffConsolePage() {
           body: JSON.stringify({ windowNumber }),
         }
       )
-      if (isAuthFailureStatus(response.status)) {
-        setApiError('Sesión expirada o sin permiso para llamar turnos.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         fetchTickets()
       } else {
@@ -181,10 +175,7 @@ export default function StaffConsolePage() {
         method: 'POST',
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setApiError('Sesión expirada o sin permiso.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         fetchTickets()
       } else {
@@ -219,10 +210,7 @@ export default function StaffConsolePage() {
         headers: authHeaders(token, { 'Content-Type': 'application/json' }),
         body: JSON.stringify({ targetArea }),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setApiError('Sesión expirada o sin permiso.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         fetchTickets()
       } else {
@@ -243,10 +231,7 @@ export default function StaffConsolePage() {
         method: 'POST',
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setApiError('Sesión expirada o sin permiso.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         fetchTickets()
       } else {

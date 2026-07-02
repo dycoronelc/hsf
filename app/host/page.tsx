@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useAuth } from '../providers'
 import { SiteLayout } from '../components/SiteLayout'
 import { canAccessHost } from '@/lib/authRoles'
-import { authHeaders, isAuthFailureStatus } from '@/lib/authToken'
+import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
 const ARRIVAL_LABELS: Record<string, string> = {
@@ -17,7 +17,7 @@ const ARRIVAL_LABELS: Record<string, string> = {
 }
 
 export default function HostPage() {
-  const { isAuthenticated, token, user, authHydrated } = useAuth()
+  const { isAuthenticated, token, user, authHydrated, notifySessionExpired } = useAuth()
   const router = useRouter()
   const [list, setList] = useState<
     Array<{
@@ -46,10 +46,7 @@ export default function HostPage() {
       const res = await fetch(`/api/preadmission/work-list?${params.toString()}`, {
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(res.status)) {
-        setMsg('Sesión expirada o sin permiso. Cierre sesión e ingrese de nuevo.')
-        return
-      }
+      if (handleAuthFailure(res.status, notifySessionExpired)) return
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         setMsg(apiErrorMessage(body, 'No se pudo cargar la lista'))
@@ -85,6 +82,8 @@ export default function HostPage() {
     if (res.ok) {
       setMsg('Llegada confirmada.')
       await load()
+    } else if (handleAuthFailure(res.status, notifySessionExpired)) {
+      return
     } else {
       const body = await res.json().catch(() => ({}))
       setMsg(apiErrorMessage(body, 'No se pudo confirmar la llegada'))
@@ -101,6 +100,8 @@ export default function HostPage() {
       const data = await res.json()
       setMsg(`Ticket generado: ${data.ticket_number ?? data.id}`)
       await load()
+    } else if (handleAuthFailure(res.status, notifySessionExpired)) {
+      return
     } else {
       const body = await res.json().catch(() => ({}))
       setMsg(apiErrorMessage(body, 'No se pudo generar el ticket'))

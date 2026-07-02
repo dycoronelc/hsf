@@ -1,7 +1,10 @@
 'use client'
 
-import { createContext, useContext, useState, useEffect } from 'react'
+import { createContext, useContext, useState, useEffect, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { HelpProvider } from './components/help/HelpProvider'
+import { SessionExpiredModal } from './components/SessionExpiredModal'
+import { DEFAULT_SESSION_EXPIRED_MESSAGE } from '@/lib/authToken'
 
 interface User {
   id: number
@@ -16,6 +19,7 @@ interface AuthContextType {
   token: string | null
   login: (email: string, password: string) => Promise<void>
   logout: () => void
+  notifySessionExpired: (message?: string) => void
   isAuthenticated: boolean
   authHydrated: boolean
 }
@@ -23,9 +27,33 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function Providers({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [token, setToken] = useState<string | null>(null)
   const [authHydrated, setAuthHydrated] = useState(false)
+  const [sessionExpired, setSessionExpired] = useState(false)
+  const [sessionExpiredMessage, setSessionExpiredMessage] = useState(DEFAULT_SESSION_EXPIRED_MESSAGE)
+
+  const clearStoredAuth = useCallback(() => {
+    setToken(null)
+    setUser(null)
+    localStorage.removeItem('token')
+    localStorage.removeItem('user')
+  }, [])
+
+  const notifySessionExpired = useCallback(
+    (message?: string) => {
+      setSessionExpiredMessage(message?.trim() || DEFAULT_SESSION_EXPIRED_MESSAGE)
+      setSessionExpired(true)
+      clearStoredAuth()
+    },
+    [clearStoredAuth],
+  )
+
+  const goToLoginAfterExpiry = useCallback(() => {
+    setSessionExpired(false)
+    router.replace('/login')
+  }, [router])
 
   useEffect(() => {
     const storedToken = localStorage.getItem('token')
@@ -57,21 +85,33 @@ export function Providers({ children }: { children: React.ReactNode }) {
     })
     const userData = await userResponse.json()
     setUser(userData)
-    
+    setSessionExpired(false)
+
     localStorage.setItem('token', data.access_token)
     localStorage.setItem('user', JSON.stringify(userData))
   }
 
   const logout = () => {
-    setToken(null)
-    setUser(null)
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
+    clearStoredAuth()
+    setSessionExpired(false)
   }
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, authHydrated }}>
+    <AuthContext.Provider
+      value={{
+        user,
+        token,
+        login,
+        logout,
+        notifySessionExpired,
+        isAuthenticated: !!token,
+        authHydrated,
+      }}
+    >
       <HelpProvider>{children}</HelpProvider>
+      {sessionExpired && (
+        <SessionExpiredModal message={sessionExpiredMessage} onLogin={goToLoginAfterExpiry} />
+      )}
     </AuthContext.Provider>
   )
 }

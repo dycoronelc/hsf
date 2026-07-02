@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../components/SiteLayout'
 import { formatDateInput, ddMmYyyyToIso } from '@/lib/dateUtils'
 import { canAccessReports } from '@/lib/authRoles'
-import { authHeaders, isAuthFailureStatus } from '@/lib/authToken'
+import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 
 interface SummaryReport {
   period: { start: string; end: string }
@@ -66,7 +66,7 @@ const ARRIVAL_LABELS: Record<string, string> = {
 }
 
 export default function ReportsPage() {
-  const { isAuthenticated, token, user, authHydrated } = useAuth()
+  const { isAuthenticated, token, user, authHydrated, notifySessionExpired } = useAuth()
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<'summary' | 'realtime' | 'efficiency' | 'preadmissions'>('summary')
   const [summary, setSummary] = useState<SummaryReport | null>(null)
@@ -74,7 +74,6 @@ export default function ReportsPage() {
   const [preadmissions, setPreadmissions] = useState<PreadmissionRow[]>([])
   const [loading, setLoading] = useState(false)
   const [loadingPre, setLoadingPre] = useState(false)
-  const [accessError, setAccessError] = useState('')
   const [startDate, setStartDate] = useState('')
   const [endDate, setEndDate] = useState('')
   const [preTipo, setPreTipo] = useState('')
@@ -94,10 +93,7 @@ export default function ReportsPage() {
         `/api/reports/summary?${params.toString()}`,
         { headers: authHeaders(token) },
       )
-      if (isAuthFailureStatus(response.status)) {
-        setAccessError('Sesión expirada o sin permiso para reportes. Vuelva a iniciar sesión.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         const data = await response.json()
         setSummary(data)
@@ -114,10 +110,7 @@ export default function ReportsPage() {
       const response = await fetch('/api/reports/realtime', {
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setAccessError('Sesión expirada o sin permiso para reportes. Vuelva a iniciar sesión.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         const data = await response.json()
         setRealtime(data)
@@ -143,10 +136,7 @@ export default function ReportsPage() {
       const response = await fetch(`/api/reports/preadmissions?${params.toString()}`, {
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setAccessError('Sesión expirada o sin permiso para reportes. Vuelva a iniciar sesión.')
-        return
-      }
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         const data = await response.json()
         setPreadmissions(Array.isArray(data) ? data : [])
@@ -173,8 +163,13 @@ export default function ReportsPage() {
       const response = await fetch(`/api/reports/preadmissions/export?${params.toString()}`, {
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setAccessError('Sesión expirada o sin permiso para exportar reportes.')
+      if (
+        handleAuthFailure(
+          response.status,
+          notifySessionExpired,
+          'Su sesión ha expirado o no tiene permiso para exportar reportes. Debe iniciar sesión de nuevo.',
+        )
+      ) {
         return
       }
       if (!response.ok) return
@@ -206,8 +201,13 @@ export default function ReportsPage() {
       const response = await fetch(`/api/reports/preadmissions/export?${params.toString()}`, {
         headers: authHeaders(token),
       })
-      if (isAuthFailureStatus(response.status)) {
-        setAccessError('Sesión expirada o sin permiso para exportar reportes.')
+      if (
+        handleAuthFailure(
+          response.status,
+          notifySessionExpired,
+          'Su sesión ha expirado o no tiene permiso para exportar reportes. Debe iniciar sesión de nuevo.',
+        )
+      ) {
         return
       }
       if (!response.ok) return
@@ -263,11 +263,6 @@ export default function ReportsPage() {
             ← Volver al dashboard
           </Link>
         </div>
-        {accessError && (
-          <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
-            {accessError}
-          </div>
-        )}
         <h1 className="text-3xl font-bold text-gray-900 mb-8">Reportes y Analítica</h1>
 
         {/* Tabs */}

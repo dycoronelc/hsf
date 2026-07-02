@@ -19,3 +19,18 @@ export function authHeaders(
 export function isAuthFailureStatus(status: number): boolean {
   return status === 401 || status === 403
 }
+
+export const DEFAULT_SESSION_EXPIRED_MESSAGE =
+  'Su sesión ha expirado o ya no tiene permiso para continuar. Debe iniciar sesión de nuevo.'
+
+export function handleAuthFailure(
+  status: number,
+  onSessionExpired: (message?: string) => void,
+  message = DEFAULT_SESSION_EXPIRED_MESSAGE,
+): boolean {
+  if (isAuthFailureStatus(status)) {
+    onSessionExpired(message)
+    return true
+  }
+  return false
+}
