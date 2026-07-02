@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect } from 'react'
+import { HelpProvider } from './components/help/HelpProvider'
 
 interface User {
   id: number
@@ -70,7 +71,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <AuthContext.Provider value={{ user, token, login, logout, isAuthenticated: !!token, authHydrated }}>
-      {children}
+      <HelpProvider>{children}</HelpProvider>
     </AuthContext.Provider>
   )
 }

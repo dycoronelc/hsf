@@ -16,6 +16,7 @@ import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { mapParsedToRegisterFields } from '@/lib/cedulaQr'
 import { HospitalLogo } from '../components/HospitalLogo'
+import { HelpLauncher } from '../components/help/HelpLauncher'
 
 const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/
 
@@ -228,20 +229,23 @@ export default function RegisterPage() {
               </button>
             </form>
 
-            <div className="mt-6 text-center">
+            <div className="mt-6 text-center space-y-3">
               <p className="text-gray-600">
                 ¿Ya tienes cuenta?{' '}
                 <Link href="/login" className="text-hospital-blue hover:underline">
                   Inicia sesión
                 </Link>
               </p>
-              <p className="text-sm text-gray-500 mt-3">
+              <p className="text-sm text-gray-500">
                 También puede completar una preadmisión sin crear cuenta en{' '}
                 <Link href="/preadmission" className="text-hospital-blue hover:underline">
                   Preadmisión
                 </Link>
                 .
               </p>
+              <div className="flex justify-center pt-1">
+                <HelpLauncher label="¿Necesita ayuda?" />
+              </div>
             </div>
           </div>
         </div>

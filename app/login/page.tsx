@@ -6,6 +6,7 @@ import { useAuth } from '../providers'
 import { getPostLoginPath } from '@/lib/authRedirect'
 import Link from 'next/link'
 import { HospitalLogo } from '../components/HospitalLogo'
+import { HelpLauncher } from '../components/help/HelpLauncher'
 
 export default function LoginPage() {
   const [email, setEmail] = useState('')
@@ -141,40 +142,21 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-6 text-center">
+        <div className="mt-6 text-center space-y-3">
           <p className="text-gray-600">
             ¿No tienes cuenta?{' '}
             <Link href="/register" className="text-hospital-blue hover:underline">
               Regístrate aquí
             </Link>
           </p>
-        </div>
-
-        <div className="mt-6 pt-6 border-t border-gray-200">
-          <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">
-            Usuarios de prueba
-          </p>
-          <div className="space-y-2 text-sm text-gray-600">
-            <div>
-              <span className="font-medium text-gray-700">Administrador:</span>{' '}
-              admin@hospitalsantafe.com / admin123
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Recepción:</span>{' '}
-              reception@hospitalsantafe.com / reception123
-            </div>
-            <div>
-              <span className="font-medium text-gray-700">Paciente:</span>{' '}
-              paciente@hospitalsantafe.com / Paciente123
-            </div>
-            <p className="text-xs text-gray-500 mt-2">
-              También puede crear una cuenta de paciente con el enlace de registro.
-            </p>
+          <div className="flex justify-center">
+            <HelpLauncher label="¿Necesita ayuda?" />
           </div>
         </div>
         </div>
       </div>
       </div>
+      <HelpLauncher variant="floating" className="sm:hidden" />
     </div>
   )
 }

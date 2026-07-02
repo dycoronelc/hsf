@@ -22,6 +22,8 @@ import { validatePhoneNumber } from '@/lib/phoneValidation'
 import { apiErrorMessage, fetchNetworkErrorMessage, parseJsonResponse } from '@/lib/apiErrorMessage'
 import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
 import { HospitalLogo } from '../components/HospitalLogo'
+import { HelpLauncher } from '../components/help/HelpLauncher'
+import { useHelp } from '../components/help/HelpProvider'
 
 const PREADMISSION_ATTACHMENT_FIELDS = [
   'cedulaimagen',
@@ -108,6 +110,7 @@ interface LocationData {
 
 export default function PreadmissionPage() {
   const { isAuthenticated, token } = useAuth()
+  const { setPageContext } = useHelp()
   const router = useRouter()
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -118,6 +121,10 @@ export default function PreadmissionPage() {
   const [createdQrCode, setCreatedQrCode] = useState<string | null>(null)
   const [patientFound, setPatientFound] = useState(false)
   const [searchNotice, setSearchNotice] = useState('')
+
+  useEffect(() => {
+    setPageContext({ preadmissionStep: step })
+  }, [step, setPageContext])
   const [locations, setLocations] = useState<LocationData[]>([])
   const [nationalities, setNationalities] = useState<Array<{codigo: string, nacionalidad: string, pais: string}>>([])
   const [provincias, setProvincias] = useState<Array<{codigo: string, nombre: string}>>([])
@@ -800,7 +807,10 @@ export default function PreadmissionPage() {
           <HospitalLogo href="/" width={160} height={40} className="h-10 w-auto object-contain" />
         </div>
         <div className="bg-white rounded-lg shadow-lg p-4 sm:p-6 lg:p-8 max-w-full min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">Preadmisión Digital</h1>
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-2">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Preadmisión Digital</h1>
+            <HelpLauncher label="Ayuda de este paso" />
+          </div>
           <p className="text-gray-600 mb-4 sm:mb-8 text-sm sm:text-base">Completa los siguientes pasos para tu preadmisión</p>
 
           {/* Progress Steps: en móvil texto + barra; en desktop círculos */}
