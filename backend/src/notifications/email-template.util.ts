@@ -11,12 +11,22 @@ export function escapeHtml(text: string): string {
     .replace(/"/g, '&quot;');
 }
 
+function getPublicLogoUrl(filename: string): string | null {
+  const base = (process.env.FRONTEND_URL || process.env.APP_BASE_URL || '').trim().replace(/\/$/, '');
+  if (!base || base.includes('localhost') || base.includes('127.0.0.1') || base.includes('192.168.')) {
+    return null;
+  }
+  return `${base}/${filename}`;
+}
+
 function resolveLogoPath(): string | null {
   const candidates = [
     path.join(process.cwd(), '..', 'public', 'logo-blanco.png'),
     path.join(process.cwd(), 'public', 'logo-blanco.png'),
+    path.join(__dirname, '..', '..', '..', 'public', 'logo-blanco.png'),
     path.join(process.cwd(), '..', 'public', 'logo-hospital-santa-fe.png'),
     path.join(process.cwd(), 'public', 'logo-hospital-santa-fe.png'),
+    path.join(__dirname, '..', '..', '..', 'public', 'logo-hospital-santa-fe.png'),
   ];
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) return candidate;
@@ -24,8 +34,14 @@ function resolveLogoPath(): string | null {
   return null;
 }
 
-/** Logo incrustado en base64 para máxima compatibilidad en clientes de correo. */
+/** Evita adjuntar PNG enormes en base64 (p. ej. >80 KB) que algunos SMTP rechazan. */
+const MAX_LOGO_EMBED_BYTES = 80_000;
+
+/** Logo para correos: URL pública si existe; si no, base64 embebido (solo si es liviano). */
 export function getEmailLogoSrc(): string {
+  const publicUrl = getPublicLogoUrl('logo-blanco.png');
+  if (publicUrl) return publicUrl;
+
   if (cachedLogoDataUri !== undefined) {
     return cachedLogoDataUri ?? '';
   }
@@ -36,10 +52,19 @@ export function getEmailLogoSrc(): string {
     return '';
   }
 
-  const buffer = fs.readFileSync(logoPath);
-  const ext = path.extname(logoPath).toLowerCase() === '.png' ? 'png' : 'jpeg';
-  cachedLogoDataUri = `data:image/${ext};base64,${buffer.toString('base64')}`;
-  return cachedLogoDataUri;
+  try {
+    const buffer = fs.readFileSync(logoPath);
+    if (buffer.length > MAX_LOGO_EMBED_BYTES) {
+      cachedLogoDataUri = null;
+      return '';
+    }
+    const ext = path.extname(logoPath).toLowerCase() === '.png' ? 'png' : 'jpeg';
+    cachedLogoDataUri = `data:image/${ext};base64,${buffer.toString('base64')}`;
+    return cachedLogoDataUri;
+  } catch {
+    cachedLogoDataUri = null;
+    return '';
+  }
 }
 
 export type EmailTemplateOptions = {

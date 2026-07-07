@@ -23,6 +23,11 @@ import { parseCedulaQr } from './utils/parse-cedula-qr';
 import { AuditService } from '../audit/audit.service';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  formatSmtpError,
+  isSmtpConfigured,
+  isSmtpDeliveryEnabled,
+} from '../notifications/smtp.config';
 import { PreadmissionStorageService } from './preadmission-storage.service';
 import {
   PreadmissionAttachmentField,
@@ -570,7 +575,12 @@ export class PreadmissionService {
     try {
       await this.notificationsService.sendEmailVerificationCode(normalized, code);
     } catch (err) {
-      this.logger.error(`No se pudo enviar código de verificación a ${normalized}`, err);
+      this.logger.error(`No se pudo enviar código de verificación a ${normalized}: ${formatSmtpError(err)}`);
+      if (isSmtpDeliveryEnabled() && !isSmtpConfigured()) {
+        throw new BadRequestException(
+          'El servidor no tiene configurado el correo (SMTP_USER / SMTP_PASS). Contacte al área de TI del hospital.',
+        );
+      }
       throw new BadRequestException('No se pudo enviar el código al correo. Intente más tarde.');
     }
 

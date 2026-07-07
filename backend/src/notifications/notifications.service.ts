@@ -22,6 +22,18 @@ import {
   emailSmallPrint,
   escapeHtml,
 } from './email-template.util';
+import {
+  assertSmtpReadyForSend,
+  formatSmtpError,
+  getSmtpFrom,
+  getSmtpHost,
+  getSmtpPass,
+  getSmtpPort,
+  getSmtpUser,
+  isSmtpDeliveryEnabled,
+} from './smtp.config';
+
+export { isSmtpDeliveryEnabled } from './smtp.config';
 
 export type PreadmissionConfirmationPayload = {
   id: number;
@@ -37,13 +49,6 @@ export type PreadmissionConfirmationPayload = {
   fechapreadmision: Date;
 };
 
-/** Envío real SMTP: producción o desarrollo con SMTP_SEND_IN_DEV=true */
-export function isSmtpDeliveryEnabled(): boolean {
-  return (
-    process.env.NODE_ENV === 'production' || process.env.SMTP_SEND_IN_DEV === 'true'
-  );
-}
-
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -56,14 +61,47 @@ export class NotificationsService {
     private userRepository: Repository<User>,
   ) {
     this.emailTransporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: parseInt(process.env.SMTP_PORT || '587'),
+      host: getSmtpHost(),
+      port: getSmtpPort(),
       secure: false,
       auth: {
-        user: process.env.SMTP_USER || 'test@example.com',
-        pass: process.env.SMTP_PASS || 'password',
+        user: getSmtpUser() || 'test@example.com',
+        pass: getSmtpPass() || 'password',
       },
     });
+  }
+
+  async checkSmtpConnectivity(): Promise<{
+    deliveryEnabled: boolean;
+    configured: boolean;
+    ok: boolean;
+    message: string;
+  }> {
+    if (!isSmtpDeliveryEnabled()) {
+      return {
+        deliveryEnabled: false,
+        configured: false,
+        ok: true,
+        message: 'Envío SMTP deshabilitado (modo desarrollo sin SMTP_SEND_IN_DEV).',
+      };
+    }
+    try {
+      assertSmtpReadyForSend();
+      await this.emailTransporter.verify();
+      return {
+        deliveryEnabled: true,
+        configured: true,
+        ok: true,
+        message: 'Conexión SMTP verificada correctamente.',
+      };
+    } catch (err) {
+      return {
+        deliveryEnabled: true,
+        configured: Boolean(getSmtpUser() && getSmtpPass()),
+        ok: false,
+        message: formatSmtpError(err),
+      };
+    }
   }
 
   async create(createDto: CreateNotificationDto): Promise<Notification> {
@@ -119,14 +157,20 @@ export class NotificationsService {
     attachments?: Attachment[],
   ): Promise<void> {
     if (isSmtpDeliveryEnabled()) {
-      await this.emailTransporter.sendMail({
-        from: process.env.SMTP_FROM || 'noreply@hospitalsantafe.com',
-        to,
-        subject,
-        html: content,
-        attachments,
-      });
-      this.logger.log(`Email sent to ${to}`);
+      assertSmtpReadyForSend();
+      try {
+        await this.emailTransporter.sendMail({
+          from: getSmtpFrom(),
+          to,
+          subject,
+          html: content,
+          attachments,
+        });
+        this.logger.log(`Email sent to ${to}`);
+      } catch (err) {
+        this.logger.error(`SMTP send failed to ${to}: ${formatSmtpError(err)}`);
+        throw err;
+      }
     } else {
       this.logger.log(`[DEV] Email would be sent to ${to}: ${subject}`);
       if (attachments?.length) {
