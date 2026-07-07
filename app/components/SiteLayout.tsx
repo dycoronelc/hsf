@@ -33,7 +33,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
   const homeHref = isAuthenticated ? '/dashboard' : '/login'
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white flex flex-col">
+    <div className="min-h-screen hospital-page-bg flex flex-col">
       <header className="shadow-sm shrink-0" style={{ backgroundColor: '#00816D' }}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex justify-between items-center">

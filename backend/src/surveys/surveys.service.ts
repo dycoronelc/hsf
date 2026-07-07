@@ -5,6 +5,12 @@ import { Survey } from './entities/survey.entity';
 import { CreateSurveyDto, SubmitSurveyDto } from './dto/survey.dto';
 import { Ticket } from '../tickets/entities/ticket.entity';
 import { NotificationsService } from '../notifications/notifications.service';
+import {
+  buildEmailHtml,
+  emailButton,
+  emailMutedNote,
+  emailParagraph,
+} from '../notifications/email-template.util';
 
 @Injectable()
 export class SurveysService {
@@ -131,12 +137,18 @@ export class SurveysService {
 
   private async sendSurveyNotification(patientId: number, surveyId: number): Promise<void> {
     const surveyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/surveys/${surveyId}`;
-    const content = `
-      <h2>Encuesta de Satisfacción</h2>
-      <p>Su opinión es muy importante para nosotros. Por favor complete nuestra breve encuesta:</p>
-      <p><a href="${surveyUrl}" style="background-color: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Completar Encuesta</a></p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
+    const content = buildEmailHtml({
+      title: 'Encuesta de satisfacción',
+      preheader: 'Su opinión nos ayuda a mejorar la atención en Hospital Santa Fe',
+      bodyHtml: [
+        emailParagraph(
+          'Gracias por visitarnos. Su opinión es muy importante para seguir mejorando nuestro servicio.',
+        ),
+        emailParagraph('Complete nuestra breve encuesta; solo le tomará unos minutos:'),
+        emailButton(surveyUrl, 'Completar encuesta'),
+        emailMutedNote('Si ya completó la encuesta, puede ignorar este mensaje.'),
+      ].join(''),
+    });
 
     await this.notificationsService.create({
       recipientId: patientId,

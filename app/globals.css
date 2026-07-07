@@ -15,12 +15,11 @@ html {
 
 body {
   color: rgb(var(--foreground-rgb));
-  background: linear-gradient(
-      to bottom,
-      transparent,
-      rgb(var(--background-end-rgb))
-    )
-    rgb(var(--background-start-rgb));
+  background-color: #f7faf9;
+  background-image:
+    radial-gradient(ellipse 90% 70% at 100% 100%, rgba(0, 170, 131, 0.14) 0%, transparent 58%),
+    radial-gradient(ellipse 55% 45% at 88% 92%, rgba(0, 129, 109, 0.09) 0%, transparent 52%),
+    linear-gradient(180deg, #f2f7f6 0%, #ffffff 45%, #fafdfc 100%);
 }
 
 @layer base {
@@ -38,6 +37,14 @@ body {
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  .hospital-page-bg {
+    background-color: #f7faf9;
+    background-image:
+      radial-gradient(ellipse 90% 70% at 100% 100%, rgba(0, 170, 131, 0.14) 0%, transparent 58%),
+      radial-gradient(ellipse 55% 45% at 88% 92%, rgba(0, 129, 109, 0.09) 0%, transparent 52%),
+      linear-gradient(180deg, #f2f7f6 0%, #ffffff 45%, #fafdfc 100%);
   }
 }
 

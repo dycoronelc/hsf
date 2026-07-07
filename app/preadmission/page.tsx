@@ -745,7 +745,7 @@ export default function PreadmissionPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+      <div className="min-h-screen hospital-page-bg flex items-center justify-center">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
           <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -798,7 +798,7 @@ export default function PreadmissionPage() {
   const totalSteps = 8
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-4 sm:py-8 overflow-x-hidden">
+    <div className="min-h-screen hospital-page-bg py-4 sm:py-8 overflow-x-hidden">
       <div className="max-w-4xl mx-auto px-3 sm:px-4 w-full min-w-0 box-border">
         <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <Link href="/" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium inline-flex items-center gap-1">

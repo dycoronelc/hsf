@@ -10,6 +10,18 @@ import {
   buildPreadmissionQrEmailParts,
   preadmissionQrPayload,
 } from './qr-email.util';
+import {
+  buildEmailHtml,
+  emailBadge,
+  emailButton,
+  emailCodeDisplay,
+  emailDataTable,
+  emailHighlightBox,
+  emailMutedNote,
+  emailParagraph,
+  emailSmallPrint,
+  escapeHtml,
+} from './email-template.util';
 
 export type PreadmissionConfirmationPayload = {
   id: number;
@@ -30,14 +42,6 @@ export function isSmtpDeliveryEnabled(): boolean {
   return (
     process.env.NODE_ENV === 'production' || process.env.SMTP_SEND_IN_DEV === 'true'
   );
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 @Injectable()
@@ -134,34 +138,32 @@ export class NotificationsService {
 
   /** Código de verificación de correo en preadmisión */
   async sendEmailVerificationCode(to: string, code: string): Promise<void> {
-    const content = `
-      <div style="font-family: Arial, sans-serif; max-width: 480px;">
-        <h2 style="color: #0066cc;">Verificación de correo</h2>
-        <p>Su código de verificación para la preadmisión digital es:</p>
-        <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">${escapeHtml(code)}</p>
-        <p style="color: #6b7280; font-size: 14px;">Válido por 15 minutos. No comparta este código.</p>
-        <p>Hospital Santa Fe Panamá</p>
-      </div>
-    `;
+    const content = buildEmailHtml({
+      title: 'Verificación de correo',
+      preheader: `Su código de verificación es ${code}`,
+      bodyHtml: [
+        emailParagraph('Use el siguiente código para confirmar su correo en la <strong>preadmisión digital</strong>:'),
+        emailCodeDisplay(code),
+        emailMutedNote('El código es válido por 15 minutos. No lo comparta con nadie.'),
+      ].join(''),
+    });
     await this.sendEmail(to, 'Código de verificación - Hospital Santa Fe', content);
   }
 
   async sendPasswordResetEmail(to: string, resetUrl: string): Promise<void> {
     const safeUrl = escapeHtml(resetUrl);
-    const content = `
-      <div style="font-family: Arial, sans-serif; max-width: 480px;">
-        <h2 style="color: #00816D;">Recuperación de contraseña</h2>
-        <p>Recibimos una solicitud para restablecer su contraseña en la plataforma del Hospital Santa Fe.</p>
-        <p style="margin: 24px 0;">
-          <a href="${safeUrl}" style="background:#00816D;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
-            Restablecer contraseña
-          </a>
-        </p>
-        <p style="color:#6b7280;font-size:14px;">El enlace expira en 1 hora. Si no solicitó este cambio, ignore este correo.</p>
-        <p style="color:#6b7280;font-size:12px;word-break:break-all;">Enlace directo: ${safeUrl}</p>
-        <p>Hospital Santa Fe Panamá</p>
-      </div>
-    `;
+    const content = buildEmailHtml({
+      title: 'Recuperación de contraseña',
+      preheader: 'Restablezca su contraseña de la plataforma Hospital Santa Fe',
+      bodyHtml: [
+        emailParagraph(
+          'Recibimos una solicitud para restablecer su contraseña en la plataforma del Hospital Santa Fe.',
+        ),
+        emailButton(resetUrl, 'Restablecer contraseña'),
+        emailMutedNote('El enlace expira en 1 hora. Si no solicitó este cambio, ignore este correo.'),
+        emailSmallPrint(`Enlace directo: ${safeUrl}`),
+      ].join(''),
+    });
     await this.sendEmail(to, 'Recuperación de contraseña - Hospital Santa Fe', content);
   }
 
@@ -171,17 +173,26 @@ export class NotificationsService {
     serviceName: string,
     qrCode?: string,
   ): Promise<void> {
-    const content = `
-      <h2>Turno Creado</h2>
-      <p>Su turno ha sido creado exitosamente:</p>
-      <ul>
-        <li><strong>Número de Turno:</strong> ${ticketNumber}</li>
-        <li><strong>Servicio:</strong> ${serviceName}</li>
-      </ul>
-      ${qrCode ? `<p><strong>Código QR:</strong> ${qrCode}</p>` : ''}
-      <p>Por favor presente este número cuando sea llamado.</p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
+    const qrBlock = qrCode
+      ? emailHighlightBox(
+          `<p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Código QR:</strong></p>
+           <p style="margin:0;font-family:Consolas,Monaco,'Courier New',monospace;font-size:14px;color:#00816D;word-break:break-all;">${escapeHtml(qrCode)}</p>`,
+        )
+      : '';
+
+    const content = buildEmailHtml({
+      title: 'Turno creado',
+      preheader: `Su turno ${ticketNumber} fue registrado correctamente`,
+      bodyHtml: [
+        emailParagraph('Su turno ha sido creado exitosamente. Conserve este correo para su referencia.'),
+        emailDataTable([
+          { label: 'Número de turno', value: `<strong>${escapeHtml(ticketNumber)}</strong>` },
+          { label: 'Servicio', value: escapeHtml(serviceName) },
+        ]),
+        qrBlock,
+        emailMutedNote('Presente su número o código QR cuando sea llamado en el hospital.'),
+      ].join(''),
+    });
 
     await this.create({
       recipientId: userId,
@@ -232,27 +243,35 @@ export class NotificationsService {
         err,
       );
       qrHtmlBlock = `
-        <p style="font-family: monospace; font-size: 14px;"><strong>Código para su llegada:</strong> ${escapeHtml(qrPayload)}</p>`;
+        <p style="margin:0;font-family:Consolas,Monaco,'Courier New',monospace;font-size:14px;">
+          <strong>Código para su llegada:</strong> ${escapeHtml(qrPayload)}
+        </p>`;
     }
 
-    const content = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; color: #1f2937;">
-        <h2 style="color: #0066cc;">Preadmisión recibida</h2>
-        <p>Estimado(a) <strong>${escapeHtml(nombre)}</strong>,</p>
-        <p>Hemos recibido su <strong>preadmisión digital</strong> en Hospital Santa Fe Panamá.</p>
-        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Referencia</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">#${data.id}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Área</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(dept)}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Fecha probable de atención</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${fechaAtencion}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Registrado el</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(fechaRegistro)}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Contacto</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(data.celular)}</td></tr>
-        </table>
-        ${qrHtmlBlock}
-        <p>Conserve este correo. Al llegar al hospital, presente el <strong>QR</strong> o el código en recepción para registrar su llegada.</p>
-        <p style="color: #6b7280; font-size: 14px;">Si no realizó esta preadmisión, contacte al hospital.</p>
-        <p style="margin-top: 24px;">Hospital Santa Fe Panamá</p>
-      </div>
-    `;
+    const content = buildEmailHtml({
+      title: 'Preadmisión recibida',
+      preheader: `Confirmación de preadmisión #${data.id} — ${dept}`,
+      bodyHtml: [
+        emailParagraph(`Estimado(a) <strong>${escapeHtml(nombre)}</strong>,`),
+        emailParagraph(
+          `Hemos recibido su <strong>preadmisión digital</strong> en Hospital Santa Fe Panamá. ${emailBadge(dept)}`,
+        ),
+        emailDataTable([
+          { label: 'Referencia', value: `#${data.id}` },
+          { label: 'Área', value: escapeHtml(dept) },
+          { label: 'Fecha probable de atención', value: fechaAtencion },
+          { label: 'Registrado el', value: escapeHtml(fechaRegistro) },
+          { label: 'Contacto', value: escapeHtml(data.celular) },
+        ]),
+        qrHtmlBlock,
+        emailHighlightBox(
+          emailParagraph(
+            'Conserve este correo. Al llegar al hospital, presente el <strong>QR</strong> o el código en recepción para registrar su llegada.',
+          ),
+        ),
+        emailMutedNote('Si no realizó esta preadmisión, contacte al hospital.'),
+      ].join(''),
+    });
 
     await this.sendEmail(
       to,
@@ -267,12 +286,23 @@ export class NotificationsService {
     ticketNumber: string,
     windowNumber: string,
   ): Promise<void> {
-    const content = `
-      <h2>Su Turno ha Sido Llamado</h2>
-      <p>Por favor diríjase a la ventanilla ${windowNumber}</p>
-      <p><strong>Número de Turno:</strong> ${ticketNumber}</p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
+    const content = buildEmailHtml({
+      title: 'Su turno ha sido llamado',
+      preheader: `Diríjase a la ventanilla ${windowNumber}`,
+      bodyHtml: [
+        emailParagraph(
+          `Su turno <strong>${escapeHtml(ticketNumber)}</strong> ha sido llamado. Por favor diríjase a la ventanilla indicada.`,
+        ),
+        emailHighlightBox(
+          `<p style="margin:0;font-size:28px;font-weight:700;color:#00816D;text-align:center;">Ventanilla ${escapeHtml(windowNumber)}</p>`,
+        ),
+        emailDataTable([
+          { label: 'Número de turno', value: `<strong>${escapeHtml(ticketNumber)}</strong>` },
+          { label: 'Ventanilla', value: escapeHtml(windowNumber) },
+        ]),
+        emailMutedNote('Le recomendamos acercarse de inmediato para no perder su turno.'),
+      ].join(''),
+    });
 
     await this.create({
       recipientId: userId,

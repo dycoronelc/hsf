@@ -19,7 +19,7 @@ export default function HelpPageContent() {
   }, [autoPrint])
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen hospital-page-bg">
       <header className="no-print border-b border-gray-200 bg-[#00816D] text-white">
         <div className="max-w-4xl mx-auto px-4 py-4 flex flex-wrap items-center justify-between gap-3">
           <HospitalLogo width={180} height={48} className="h-10 w-auto object-contain" />

@@ -256,7 +256,7 @@ export default function ReportsPage() {
 
   return (
     <SiteLayout>
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8">
+    <div className="py-8">
       <div className="max-w-7xl mx-auto px-4">
         <div className="mb-4">
           <Link href="/dashboard" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium inline-flex items-center gap-1">

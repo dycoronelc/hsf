@@ -85,7 +85,7 @@ export default function NewTicketPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white py-8">
+    <div className="min-h-screen hospital-page-bg py-8">
       <div className="max-w-4xl mx-auto px-4">
         <div className="mb-4 flex flex-wrap gap-3">
           <Link href="/" className="text-hospital-blue hover:text-hospital-blue-dark hover:underline text-sm font-medium">

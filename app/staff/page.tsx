@@ -124,7 +124,7 @@ export default function StaffConsolePage() {
 
   if (!authHydrated) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-blue-50 to-white">
+      <div className="min-h-screen hospital-page-bg flex items-center justify-center">
         <div className="text-xl text-gray-600">Cargando...</div>
       </div>
     )
