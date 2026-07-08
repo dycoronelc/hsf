@@ -25,6 +25,13 @@ export class TicketsController {
     return this.ticketsService.createKioskTicket(createDto);
   }
 
+  @Post('host')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('activate_ticket')
+  async createHostWalkIn(@Body() createDto: CreateTicketDto, @Request() req) {
+    return this.ticketsService.createHostWalkInTicket(createDto, req.user.id);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(@Body() createDto: CreateTicketDto, @Request() req) {

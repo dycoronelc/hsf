@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '../providers'
 import { SiteLayout } from '../components/SiteLayout'
+import { HostNav } from '../components/HostNav'
+import { TicketPrintOverlay, type TicketPrintData } from '../components/TicketPrintSlip'
 import { canAccessHost } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
@@ -35,6 +37,7 @@ export default function HostPage() {
   const [arrivalState, setArrivalState] = useState('')
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
+  const [printTicket, setPrintTicket] = useState<TicketPrintData | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -99,6 +102,12 @@ export default function HostPage() {
     if (res.ok) {
       const data = await res.json()
       setMsg(`Ticket generado: ${data.ticket_number ?? data.id}`)
+      setPrintTicket({
+        ticketNumber: data.ticket_number,
+        serviceName: data.service_name ?? 'Admisión',
+        qrCode: data.qr_code,
+        queuePosition: data.queue_position,
+      })
       await load()
     } else if (handleAuthFailure(res.status, notifySessionExpired)) {
       return
@@ -126,6 +135,8 @@ export default function HostPage() {
             ← Dashboard
           </Link>
         </div>
+
+        <HostNav />
 
         {msg && (
           <div className="mb-4 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm">
@@ -225,6 +236,14 @@ export default function HostPage() {
           </table>
         </div>
       </div>
+
+      {printTicket && (
+        <TicketPrintOverlay
+          ticket={printTicket}
+          autoPrint
+          onClose={() => setPrintTicket(null)}
+        />
+      )}
     </SiteLayout>
   )
 }

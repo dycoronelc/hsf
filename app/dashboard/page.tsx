@@ -57,7 +57,7 @@ export default function DashboardPage() {
                   </svg>
                 </div>
                 <h3 className="text-xl font-semibold mb-2">Mis Turnos</h3>
-                <p className="text-gray-600">Consulta tus turnos y códigos QR</p>
+                <p className="text-gray-600">Consulta turnos asignados en recepción (si aplica)</p>
               </Link>
             </>
           )}
@@ -75,7 +75,22 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Llegadas (Anfitrión)</h3>
-                  <p className="text-gray-600">Confirmar llegada y activar turnos</p>
+                  <p className="text-gray-600">Confirmar llegada, preadmisión y turnos Lab/Rad</p>
+                </Link>
+              )}
+
+              {canAccessHost(user?.role) && (
+                <Link
+                  href="/host/turnos"
+                  className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
+                >
+                  <div className="w-16 h-16 bg-green-100 rounded-lg flex items-center justify-center mb-4">
+                    <svg className="w-8 h-8 text-green-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z" />
+                    </svg>
+                  </div>
+                  <h3 className="text-xl font-semibold mb-2">Crear turno recepción</h3>
+                  <p className="text-gray-600">Laboratorio y Radiología sin registro del paciente</p>
                 </Link>
               )}
 

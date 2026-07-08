@@ -28,7 +28,7 @@ export declare class AdminService {
             readonly label: "Confirmar llegada de paciente";
         }, {
             readonly key: "activate_ticket";
-            readonly label: "Activar ticket de admisión";
+            readonly label: "Activar ticket / crear turno en recepción";
         }, {
             readonly key: "staff_check_in";
             readonly label: "Check-in por QR";
@@ -78,7 +78,7 @@ export declare class AdminService {
             readonly label: "Confirmar llegada de paciente";
         }, {
             readonly key: "activate_ticket";
-            readonly label: "Activar ticket de admisión";
+            readonly label: "Activar ticket / crear turno en recepción";
         }, {
             readonly key: "staff_check_in";
             readonly label: "Check-in por QR";
@@ -132,7 +132,7 @@ export declare class AdminService {
             readonly label: "Confirmar llegada de paciente";
         }, {
             readonly key: "activate_ticket";
-            readonly label: "Activar ticket de admisión";
+            readonly label: "Activar ticket / crear turno en recepción";
         }, {
             readonly key: "staff_check_in";
             readonly label: "Check-in por QR";
@@ -186,7 +186,7 @@ export declare class AdminService {
             readonly label: "Confirmar llegada de paciente";
         }, {
             readonly key: "activate_ticket";
-            readonly label: "Activar ticket de admisión";
+            readonly label: "Activar ticket / crear turno en recepción";
         }, {
             readonly key: "staff_check_in";
             readonly label: "Check-in por QR";
@@ -240,7 +240,7 @@ export declare class AdminService {
             readonly label: "Confirmar llegada de paciente";
         }, {
             readonly key: "activate_ticket";
-            readonly label: "Activar ticket de admisión";
+            readonly label: "Activar ticket / crear turno en recepción";
         }, {
             readonly key: "staff_check_in";
             readonly label: "Check-in por QR";
@@ -294,7 +294,7 @@ export declare class AdminService {
             readonly label: "Confirmar llegada de paciente";
         }, {
             readonly key: "activate_ticket";
-            readonly label: "Activar ticket de admisión";
+            readonly label: "Activar ticket / crear turno en recepción";
         }, {
             readonly key: "staff_check_in";
             readonly label: "Check-in por QR";

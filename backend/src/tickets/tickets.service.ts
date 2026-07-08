@@ -163,6 +163,66 @@ export class TicketsService {
     };
   }
 
+  /** Turno walk-in creado por anfitrión en recepción (Lab/Rad, sin registro del paciente). */
+  async createHostWalkInTicket(createDto: CreateTicketDto, hostUserId: number) {
+    const service = await this.serviceRepository.findOne({
+      where: { id: createDto.serviceId, isActive: true },
+    });
+    if (!service) {
+      throw new NotFoundException('Servicio no encontrado');
+    }
+    if (!['LAB', 'RAD'].includes(service.area)) {
+      throw new BadRequestException(
+        'Solo se permiten turnos de Laboratorio o Radiología en recepción',
+      );
+    }
+
+    const now = new Date();
+    const ticket = this.ticketRepository.create({
+      ticketNumber: this.generateTicketNumber(service),
+      patientId: null,
+      serviceId: createDto.serviceId,
+      priority: createDto.priority || Priority.NORMAL,
+      status: TicketStatus.CHECK_IN,
+      checkInAt: now,
+      qrCode: this.generateQrCode(),
+    });
+
+    const savedTicket = await this.ticketRepository.save(ticket);
+    const queueInfo = await this.enrichWithQueueInfo([
+      { id: savedTicket.id, serviceId: savedTicket.serviceId },
+    ]);
+    const qi = queueInfo.get(savedTicket.id) ?? {
+      queue_position: 0,
+      ahead_count: 0,
+      estimated_wait_seconds: 0,
+      estimated_wait_label: '0h 0m 0s',
+    };
+
+    await this.auditService.log('host_walk_in_ticket_created', {
+      entityType: 'ticket',
+      entityId: savedTicket.id,
+      userId: hostUserId,
+      details: JSON.stringify({
+        ticketNumber: savedTicket.ticketNumber,
+        serviceId: service.id,
+        serviceCode: service.code,
+      }),
+    });
+
+    return {
+      id: savedTicket.id,
+      ticket_number: savedTicket.ticketNumber,
+      service_id: savedTicket.serviceId,
+      service_name: service.name,
+      status: savedTicket.status,
+      priority: savedTicket.priority,
+      created_at: savedTicket.createdAt,
+      qr_code: savedTicket.qrCode,
+      ...qi,
+    };
+  }
+
   async create(createDto: CreateTicketDto, patientId: number) {
     const service = await this.serviceRepository.findOne({
       where: { id: createDto.serviceId },

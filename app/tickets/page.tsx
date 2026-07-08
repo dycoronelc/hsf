@@ -5,6 +5,7 @@ import { useAuth } from '../providers'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
 import { formatDateToDdMmYyyy } from '@/lib/dateUtils'
+import { isPatientRole } from '@/lib/authRoles'
 
 interface Ticket {
   id: number
@@ -20,7 +21,7 @@ interface Ticket {
 }
 
 export default function TicketsPage() {
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, user } = useAuth()
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
@@ -101,14 +102,15 @@ export default function TicketsPage() {
             <Link href="/" className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 text-gray-700 text-sm font-medium">
               Inicio
             </Link>
-            <Link
-              href="/tickets/new"
-              className="bg-hospital-blue text-white px-6 py-3 rounded-lg font-semibold hover:bg-hospital-blue-dark"
-            >
-              Tomar Nuevo Turno
-            </Link>
           </div>
         </div>
+
+        {isPatientRole(user?.role) && (
+          <div className="bg-amber-50 border border-amber-200 text-amber-900 px-4 py-3 rounded-lg mb-6 text-sm">
+            Los turnos de Laboratorio y Radiología se generan en recepción al llegar al hospital.
+            El personal de atención le entregará su ticket impreso con número y código QR.
+          </div>
+        )}
 
         {/* Aviso al crear turno */}
         {typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('created') && (

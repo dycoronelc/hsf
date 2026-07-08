@@ -27,6 +27,7 @@ const parse_cedula_qr_1 = require("./utils/parse-cedula-qr");
 const audit_service_1 = require("../audit/audit.service");
 const verification_code_entity_1 = require("../auth/entities/verification-code.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
+const smtp_config_1 = require("../notifications/smtp.config");
 const preadmission_storage_service_1 = require("./preadmission-storage.service");
 const preadmission_attachments_constants_1 = require("./preadmission-attachments.constants");
 const phone_util_1 = require("../common/phone.util");
@@ -298,6 +299,34 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             });
         return rows.map(preadmission_response_util_1.toPreadmissionResponse);
     }
+    async findAllForManagement(opts) {
+        const { skip, take } = (0, pagination_util_1.parsePagination)(opts.skip, opts.limit, 50, 100);
+        const qb = this.preadmissionRepository
+            .createQueryBuilder('p')
+            .orderBy('p.fechapreadmision', 'DESC')
+            .skip(skip)
+            .take(take);
+        if (opts.departamento === 'RAD' || opts.departamento === 'LAB') {
+            qb.andWhere('p.departamento = :departamento', { departamento: opts.departamento });
+        }
+        if (opts.status?.trim()) {
+            qb.andWhere('p.status = :status', { status: opts.status.trim() });
+        }
+        if (opts.arrivalState?.trim()) {
+            qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState.trim() });
+        }
+        if (opts.q?.trim()) {
+            const term = `%${opts.q.trim()}%`;
+            qb.andWhere('(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.name2 ILIKE :term OR p.apellido1 ILIKE :term OR p.apellido2 ILIKE :term OR p.email ILIKE :term)', { term });
+        }
+        const [rows, total] = await qb.getManyAndCount();
+        return {
+            items: rows.map(preadmission_response_util_1.toPreadmissionResponse),
+            total,
+            skip,
+            limit: take,
+        };
+    }
     async findWorkList(user, opts) {
         void user;
         const { skip, take } = (0, pagination_util_1.parsePagination)(opts.skip, opts.limit);
@@ -437,7 +466,10 @@ let PreadmissionService = PreadmissionService_1 = class PreadmissionService {
             await this.notificationsService.sendEmailVerificationCode(normalized, code);
         }
         catch (err) {
-            this.logger.error(`No se pudo enviar código de verificación a ${normalized}`, err);
+            this.logger.error(`No se pudo enviar código de verificación a ${normalized}: ${(0, smtp_config_1.formatSmtpError)(err)}`);
+            if ((0, smtp_config_1.isSmtpDeliveryEnabled)() && !(0, smtp_config_1.isSmtpConfigured)()) {
+                throw new common_1.BadRequestException('El servidor no tiene configurado el correo (SMTP_USER / SMTP_PASS). Contacte al área de TI del hospital.');
+            }
             throw new common_1.BadRequestException('No se pudo enviar el código al correo. Intente más tarde.');
         }
         return {

@@ -2,6 +2,7 @@ import { Repository } from 'typeorm';
 import { Notification } from './entities/notification.entity';
 import { User } from '../users/entities/user.entity';
 import { CreateNotificationDto } from './dto/notification.dto';
+export { isSmtpDeliveryEnabled } from './smtp.config';
 export type PreadmissionConfirmationPayload = {
     id: number;
     email: string;
@@ -15,13 +16,18 @@ export type PreadmissionConfirmationPayload = {
     celular: string;
     fechapreadmision: Date;
 };
-export declare function isSmtpDeliveryEnabled(): boolean;
 export declare class NotificationsService {
     private notificationRepository;
     private userRepository;
     private readonly logger;
     private emailTransporter;
     constructor(notificationRepository: Repository<Notification>, userRepository: Repository<User>);
+    checkSmtpConnectivity(): Promise<{
+        deliveryEnabled: boolean;
+        configured: boolean;
+        ok: boolean;
+        message: string;
+    }>;
     create(createDto: CreateNotificationDto): Promise<Notification>;
     private sendNotification;
     private sendEmail;

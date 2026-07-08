@@ -13,8 +13,7 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 };
 var NotificationsService_1;
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.NotificationsService = void 0;
-exports.isSmtpDeliveryEnabled = isSmtpDeliveryEnabled;
+exports.NotificationsService = exports.isSmtpDeliveryEnabled = void 0;
 const common_1 = require("@nestjs/common");
 const typeorm_1 = require("@nestjs/typeorm");
 const typeorm_2 = require("typeorm");
@@ -22,30 +21,52 @@ const notification_entity_1 = require("./entities/notification.entity");
 const user_entity_1 = require("../users/entities/user.entity");
 const nodemailer = require("nodemailer");
 const qr_email_util_1 = require("./qr-email.util");
-function isSmtpDeliveryEnabled() {
-    return (process.env.NODE_ENV === 'production' || process.env.SMTP_SEND_IN_DEV === 'true');
-}
-function escapeHtml(text) {
-    return text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-}
+const email_template_util_1 = require("./email-template.util");
+const smtp_config_1 = require("./smtp.config");
+var smtp_config_2 = require("./smtp.config");
+Object.defineProperty(exports, "isSmtpDeliveryEnabled", { enumerable: true, get: function () { return smtp_config_2.isSmtpDeliveryEnabled; } });
 let NotificationsService = NotificationsService_1 = class NotificationsService {
     constructor(notificationRepository, userRepository) {
         this.notificationRepository = notificationRepository;
         this.userRepository = userRepository;
         this.logger = new common_1.Logger(NotificationsService_1.name);
         this.emailTransporter = nodemailer.createTransport({
-            host: process.env.SMTP_HOST || 'smtp.gmail.com',
-            port: parseInt(process.env.SMTP_PORT || '587'),
+            host: (0, smtp_config_1.getSmtpHost)(),
+            port: (0, smtp_config_1.getSmtpPort)(),
             secure: false,
             auth: {
-                user: process.env.SMTP_USER || 'test@example.com',
-                pass: process.env.SMTP_PASS || 'password',
+                user: (0, smtp_config_1.getSmtpUser)() || 'test@example.com',
+                pass: (0, smtp_config_1.getSmtpPass)() || 'password',
             },
         });
+    }
+    async checkSmtpConnectivity() {
+        if (!(0, smtp_config_1.isSmtpDeliveryEnabled)()) {
+            return {
+                deliveryEnabled: false,
+                configured: false,
+                ok: true,
+                message: 'Envío SMTP deshabilitado (modo desarrollo sin SMTP_SEND_IN_DEV).',
+            };
+        }
+        try {
+            (0, smtp_config_1.assertSmtpReadyForSend)();
+            await this.emailTransporter.verify();
+            return {
+                deliveryEnabled: true,
+                configured: true,
+                ok: true,
+                message: 'Conexión SMTP verificada correctamente.',
+            };
+        }
+        catch (err) {
+            return {
+                deliveryEnabled: true,
+                configured: Boolean((0, smtp_config_1.getSmtpUser)() && (0, smtp_config_1.getSmtpPass)()),
+                ok: false,
+                message: (0, smtp_config_1.formatSmtpError)(err),
+            };
+        }
     }
     async create(createDto) {
         if (createDto.type !== notification_entity_1.NotificationType.EMAIL) {
@@ -85,15 +106,22 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         }
     }
     async sendEmail(to, subject, content, attachments) {
-        if (isSmtpDeliveryEnabled()) {
-            await this.emailTransporter.sendMail({
-                from: process.env.SMTP_FROM || 'noreply@hospitalsantafe.com',
-                to,
-                subject,
-                html: content,
-                attachments,
-            });
-            this.logger.log(`Email sent to ${to}`);
+        if ((0, smtp_config_1.isSmtpDeliveryEnabled)()) {
+            (0, smtp_config_1.assertSmtpReadyForSend)();
+            try {
+                await this.emailTransporter.sendMail({
+                    from: (0, smtp_config_1.getSmtpFrom)(),
+                    to,
+                    subject,
+                    html: content,
+                    attachments,
+                });
+                this.logger.log(`Email sent to ${to}`);
+            }
+            catch (err) {
+                this.logger.error(`SMTP send failed to ${to}: ${(0, smtp_config_1.formatSmtpError)(err)}`);
+                throw err;
+            }
         }
         else {
             this.logger.log(`[DEV] Email would be sent to ${to}: ${subject}`);
@@ -104,47 +132,49 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         }
     }
     async sendEmailVerificationCode(to, code) {
-        const content = `
-      <div style="font-family: Arial, sans-serif; max-width: 480px;">
-        <h2 style="color: #0066cc;">Verificación de correo</h2>
-        <p>Su código de verificación para la preadmisión digital es:</p>
-        <p style="font-size: 28px; font-weight: bold; letter-spacing: 4px; font-family: monospace;">${escapeHtml(code)}</p>
-        <p style="color: #6b7280; font-size: 14px;">Válido por 15 minutos. No comparta este código.</p>
-        <p>Hospital Santa Fe Panamá</p>
-      </div>
-    `;
+        const content = (0, email_template_util_1.buildEmailHtml)({
+            title: 'Verificación de correo',
+            preheader: `Su código de verificación es ${code}`,
+            bodyHtml: [
+                (0, email_template_util_1.emailParagraph)('Use el siguiente código para confirmar su correo en la <strong>preadmisión digital</strong>:'),
+                (0, email_template_util_1.emailCodeDisplay)(code),
+                (0, email_template_util_1.emailMutedNote)('El código es válido por 15 minutos. No lo comparta con nadie.'),
+            ].join(''),
+        });
         await this.sendEmail(to, 'Código de verificación - Hospital Santa Fe', content);
     }
     async sendPasswordResetEmail(to, resetUrl) {
-        const safeUrl = escapeHtml(resetUrl);
-        const content = `
-      <div style="font-family: Arial, sans-serif; max-width: 480px;">
-        <h2 style="color: #00816D;">Recuperación de contraseña</h2>
-        <p>Recibimos una solicitud para restablecer su contraseña en la plataforma del Hospital Santa Fe.</p>
-        <p style="margin: 24px 0;">
-          <a href="${safeUrl}" style="background:#00816D;color:#fff;padding:12px 20px;border-radius:6px;text-decoration:none;display:inline-block;">
-            Restablecer contraseña
-          </a>
-        </p>
-        <p style="color:#6b7280;font-size:14px;">El enlace expira en 1 hora. Si no solicitó este cambio, ignore este correo.</p>
-        <p style="color:#6b7280;font-size:12px;word-break:break-all;">Enlace directo: ${safeUrl}</p>
-        <p>Hospital Santa Fe Panamá</p>
-      </div>
-    `;
+        const safeUrl = (0, email_template_util_1.escapeHtml)(resetUrl);
+        const content = (0, email_template_util_1.buildEmailHtml)({
+            title: 'Recuperación de contraseña',
+            preheader: 'Restablezca su contraseña de la plataforma Hospital Santa Fe',
+            bodyHtml: [
+                (0, email_template_util_1.emailParagraph)('Recibimos una solicitud para restablecer su contraseña en la plataforma del Hospital Santa Fe.'),
+                (0, email_template_util_1.emailButton)(resetUrl, 'Restablecer contraseña'),
+                (0, email_template_util_1.emailMutedNote)('El enlace expira en 1 hora. Si no solicitó este cambio, ignore este correo.'),
+                (0, email_template_util_1.emailSmallPrint)(`Enlace directo: ${safeUrl}`),
+            ].join(''),
+        });
         await this.sendEmail(to, 'Recuperación de contraseña - Hospital Santa Fe', content);
     }
     async sendTicketCreated(userId, ticketNumber, serviceName, qrCode) {
-        const content = `
-      <h2>Turno Creado</h2>
-      <p>Su turno ha sido creado exitosamente:</p>
-      <ul>
-        <li><strong>Número de Turno:</strong> ${ticketNumber}</li>
-        <li><strong>Servicio:</strong> ${serviceName}</li>
-      </ul>
-      ${qrCode ? `<p><strong>Código QR:</strong> ${qrCode}</p>` : ''}
-      <p>Por favor presente este número cuando sea llamado.</p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
+        const qrBlock = qrCode
+            ? (0, email_template_util_1.emailHighlightBox)(`<p style="margin:0 0 8px;font-size:14px;color:#374151;"><strong>Código QR:</strong></p>
+           <p style="margin:0;font-family:Consolas,Monaco,'Courier New',monospace;font-size:14px;color:#00816D;word-break:break-all;">${(0, email_template_util_1.escapeHtml)(qrCode)}</p>`)
+            : '';
+        const content = (0, email_template_util_1.buildEmailHtml)({
+            title: 'Turno creado',
+            preheader: `Su turno ${ticketNumber} fue registrado correctamente`,
+            bodyHtml: [
+                (0, email_template_util_1.emailParagraph)('Su turno ha sido creado exitosamente. Conserve este correo para su referencia.'),
+                (0, email_template_util_1.emailDataTable)([
+                    { label: 'Número de turno', value: `<strong>${(0, email_template_util_1.escapeHtml)(ticketNumber)}</strong>` },
+                    { label: 'Servicio', value: (0, email_template_util_1.escapeHtml)(serviceName) },
+                ]),
+                qrBlock,
+                (0, email_template_util_1.emailMutedNote)('Presente su número o código QR cuando sea llamado en el hospital.'),
+            ].join(''),
+        });
         await this.create({
             recipientId: userId,
             type: notification_entity_1.NotificationType.EMAIL,
@@ -175,7 +205,7 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
             minute: '2-digit',
         });
         const fechaAtencion = data.fechaprobableatencion
-            ? escapeHtml(data.fechaprobableatencion)
+            ? (0, email_template_util_1.escapeHtml)(data.fechaprobableatencion)
             : 'Por confirmar';
         const qrPayload = (0, qr_email_util_1.preadmissionQrPayload)(data.qrCode, data.id);
         let qrHtmlBlock = '';
@@ -188,35 +218,44 @@ let NotificationsService = NotificationsService_1 = class NotificationsService {
         catch (err) {
             this.logger.warn(`No se pudo generar imagen QR para preadmisión #${data.id}; se envía solo texto`, err);
             qrHtmlBlock = `
-        <p style="font-family: monospace; font-size: 14px;"><strong>Código para su llegada:</strong> ${escapeHtml(qrPayload)}</p>`;
+        <p style="margin:0;font-family:Consolas,Monaco,'Courier New',monospace;font-size:14px;">
+          <strong>Código para su llegada:</strong> ${(0, email_template_util_1.escapeHtml)(qrPayload)}
+        </p>`;
         }
-        const content = `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; color: #1f2937;">
-        <h2 style="color: #0066cc;">Preadmisión recibida</h2>
-        <p>Estimado(a) <strong>${escapeHtml(nombre)}</strong>,</p>
-        <p>Hemos recibido su <strong>preadmisión digital</strong> en Hospital Santa Fe Panamá.</p>
-        <table style="border-collapse: collapse; width: 100%; margin: 16px 0;">
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Referencia</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">#${data.id}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Área</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(dept)}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Fecha probable de atención</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${fechaAtencion}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Registrado el</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(fechaRegistro)}</td></tr>
-          <tr><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;"><strong>Contacto</strong></td><td style="padding: 8px; border-bottom: 1px solid #e5e7eb;">${escapeHtml(data.celular)}</td></tr>
-        </table>
-        ${qrHtmlBlock}
-        <p>Conserve este correo. Al llegar al hospital, presente el <strong>QR</strong> o el código en recepción para registrar su llegada.</p>
-        <p style="color: #6b7280; font-size: 14px;">Si no realizó esta preadmisión, contacte al hospital.</p>
-        <p style="margin-top: 24px;">Hospital Santa Fe Panamá</p>
-      </div>
-    `;
+        const content = (0, email_template_util_1.buildEmailHtml)({
+            title: 'Preadmisión recibida',
+            preheader: `Confirmación de preadmisión #${data.id} — ${dept}`,
+            bodyHtml: [
+                (0, email_template_util_1.emailParagraph)(`Estimado(a) <strong>${(0, email_template_util_1.escapeHtml)(nombre)}</strong>,`),
+                (0, email_template_util_1.emailParagraph)(`Hemos recibido su <strong>preadmisión digital</strong> en Hospital Santa Fe Panamá. ${(0, email_template_util_1.emailBadge)(dept)}`),
+                (0, email_template_util_1.emailDataTable)([
+                    { label: 'Referencia', value: `#${data.id}` },
+                    { label: 'Área', value: (0, email_template_util_1.escapeHtml)(dept) },
+                    { label: 'Fecha probable de atención', value: fechaAtencion },
+                    { label: 'Registrado el', value: (0, email_template_util_1.escapeHtml)(fechaRegistro) },
+                    { label: 'Contacto', value: (0, email_template_util_1.escapeHtml)(data.celular) },
+                ]),
+                qrHtmlBlock,
+                (0, email_template_util_1.emailHighlightBox)((0, email_template_util_1.emailParagraph)('Conserve este correo. Al llegar al hospital, presente el <strong>QR</strong> o el código en recepción para registrar su llegada.')),
+                (0, email_template_util_1.emailMutedNote)('Si no realizó esta preadmisión, contacte al hospital.'),
+            ].join(''),
+        });
         await this.sendEmail(to, `Confirmación de preadmisión #${data.id} - Hospital Santa Fe`, content, attachments);
     }
     async sendTicketCalled(userId, ticketNumber, windowNumber) {
-        const content = `
-      <h2>Su Turno ha Sido Llamado</h2>
-      <p>Por favor diríjase a la ventanilla ${windowNumber}</p>
-      <p><strong>Número de Turno:</strong> ${ticketNumber}</p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
+        const content = (0, email_template_util_1.buildEmailHtml)({
+            title: 'Su turno ha sido llamado',
+            preheader: `Diríjase a la ventanilla ${windowNumber}`,
+            bodyHtml: [
+                (0, email_template_util_1.emailParagraph)(`Su turno <strong>${(0, email_template_util_1.escapeHtml)(ticketNumber)}</strong> ha sido llamado. Por favor diríjase a la ventanilla indicada.`),
+                (0, email_template_util_1.emailHighlightBox)(`<p style="margin:0;font-size:28px;font-weight:700;color:#00816D;text-align:center;">Ventanilla ${(0, email_template_util_1.escapeHtml)(windowNumber)}</p>`),
+                (0, email_template_util_1.emailDataTable)([
+                    { label: 'Número de turno', value: `<strong>${(0, email_template_util_1.escapeHtml)(ticketNumber)}</strong>` },
+                    { label: 'Ventanilla', value: (0, email_template_util_1.escapeHtml)(windowNumber) },
+                ]),
+                (0, email_template_util_1.emailMutedNote)('Le recomendamos acercarse de inmediato para no perder su turno.'),
+            ].join(''),
+        });
         await this.create({
             recipientId: userId,
             type: notification_entity_1.NotificationType.EMAIL,

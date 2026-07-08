@@ -87,6 +87,16 @@ let PreadmissionController = class PreadmissionController {
             limit,
         });
     }
+    async findAllForManagement(q, departamento, status, arrivalState, skip = 0, limit = 50) {
+        return this.preadmissionService.findAllForManagement({
+            q,
+            departamento,
+            status,
+            arrivalState,
+            skip,
+            limit,
+        });
+    }
     async findAll(req, skip = 0, limit = 100) {
         return this.preadmissionService.findAll(req.user, skip, limit);
     }
@@ -183,6 +193,20 @@ __decorate([
     __metadata("design:paramtypes", [Object, String, String, Object, Object]),
     __metadata("design:returntype", Promise)
 ], PreadmissionController.prototype, "workList", null);
+__decorate([
+    (0, common_1.Get)('manage'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('review_preadmissions'),
+    __param(0, (0, common_1.Query)('q')),
+    __param(1, (0, common_1.Query)('departamento')),
+    __param(2, (0, common_1.Query)('status')),
+    __param(3, (0, common_1.Query)('arrivalState')),
+    __param(4, (0, common_1.Query)('skip', new common_1.DefaultValuePipe(0), common_1.ParseIntPipe)),
+    __param(5, (0, common_1.Query)('limit', new common_1.DefaultValuePipe(50), common_1.ParseIntPipe)),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [String, String, String, String, Object, Object]),
+    __metadata("design:returntype", Promise)
+], PreadmissionController.prototype, "findAllForManagement", null);
 __decorate([
     (0, common_1.Get)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

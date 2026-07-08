@@ -27,6 +27,9 @@ let TicketsController = class TicketsController {
     async createKioskTicket(createDto) {
         return this.ticketsService.createKioskTicket(createDto);
     }
+    async createHostWalkIn(createDto, req) {
+        return this.ticketsService.createHostWalkInTicket(createDto, req.user.id);
+    }
     async create(createDto, req) {
         return this.ticketsService.create(createDto, req.user.id);
     }
@@ -63,6 +66,16 @@ __decorate([
     __metadata("design:paramtypes", [ticket_dto_1.CreateTicketDto]),
     __metadata("design:returntype", Promise)
 ], TicketsController.prototype, "createKioskTicket", null);
+__decorate([
+    (0, common_1.Post)('host'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('activate_ticket'),
+    __param(0, (0, common_1.Body)()),
+    __param(1, (0, common_1.Request)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [ticket_dto_1.CreateTicketDto, Object]),
+    __metadata("design:returntype", Promise)
+], TicketsController.prototype, "createHostWalkIn", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

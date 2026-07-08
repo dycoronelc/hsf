@@ -18,6 +18,20 @@ export declare class TicketsController {
         created_at: Date;
         qr_code: string;
     }>;
+    createHostWalkIn(createDto: CreateTicketDto, req: any): Promise<{
+        queue_position: number;
+        ahead_count: number;
+        estimated_wait_seconds: number;
+        estimated_wait_label: string;
+        id: number;
+        ticket_number: string;
+        service_id: number;
+        service_name: string;
+        status: TicketStatus;
+        priority: import("../common/enums").Priority;
+        created_at: Date;
+        qr_code: string;
+    }>;
     create(createDto: CreateTicketDto, req: any): Promise<{
         queue_position: number;
         ahead_count: number;

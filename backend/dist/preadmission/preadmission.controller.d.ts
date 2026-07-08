@@ -86,6 +86,12 @@ export declare class PreadmissionController {
     }>;
     create(data: string, files: PreadmissionUploadedFilesMap, req: any): Promise<import("./preadmission-response.util").PreadmissionResponse>;
     workList(req: any, arrivalState?: PreadmissionArrivalState, q?: string, skip?: number, limit?: number): Promise<import("./preadmission-response.util").HostWorkListItem[]>;
+    findAllForManagement(q?: string, departamento?: string, status?: string, arrivalState?: string, skip?: number, limit?: number): Promise<{
+        items: import("./preadmission-response.util").PreadmissionResponse[];
+        total: number;
+        skip: number;
+        limit: number;
+    }>;
     findAll(req: any, skip?: number, limit?: number): Promise<import("./preadmission-response.util").PreadmissionResponse[]>;
     getAttachment(id: string, field: string, req: any): Promise<StreamableFile>;
     getCellbytePayload(id: string, req: any): Promise<import("../integrations/cellbyte.service").CellbytePostmanExport>;

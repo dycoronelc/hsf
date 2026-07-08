@@ -17,9 +17,19 @@ const common_1 = require("@nestjs/common");
 const notifications_service_1 = require("./notifications.service");
 const notification_dto_1 = require("./dto/notification.dto");
 const jwt_auth_guard_1 = require("../auth/guards/jwt-auth.guard");
+const permissions_guard_1 = require("../permissions/permissions.guard");
+const require_permissions_decorator_1 = require("../permissions/require-permissions.decorator");
+const smtp_config_1 = require("./smtp.config");
 let NotificationsController = class NotificationsController {
     constructor(notificationsService) {
         this.notificationsService = notificationsService;
+    }
+    async smtpConnectivity() {
+        const result = await this.notificationsService.checkSmtpConnectivity();
+        return {
+            ...result,
+            config: (0, smtp_config_1.getSmtpConfigSummary)(),
+        };
     }
     async create(createDto) {
         return this.notificationsService.create(createDto);
@@ -29,6 +39,14 @@ let NotificationsController = class NotificationsController {
     }
 };
 exports.NotificationsController = NotificationsController;
+__decorate([
+    (0, common_1.Get)('smtp/connectivity'),
+    (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard, permissions_guard_1.PermissionsGuard),
+    (0, require_permissions_decorator_1.RequirePermissions)('review_preadmissions'),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", []),
+    __metadata("design:returntype", Promise)
+], NotificationsController.prototype, "smtpConnectivity", null);
 __decorate([
     (0, common_1.Post)(),
     (0, common_1.UseGuards)(jwt_auth_guard_1.JwtAuthGuard),

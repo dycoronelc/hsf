@@ -19,6 +19,7 @@ const typeorm_2 = require("typeorm");
 const survey_entity_1 = require("./entities/survey.entity");
 const ticket_entity_1 = require("../tickets/entities/ticket.entity");
 const notifications_service_1 = require("../notifications/notifications.service");
+const email_template_util_1 = require("../notifications/email-template.util");
 let SurveysService = class SurveysService {
     constructor(surveyRepository, ticketRepository, notificationsService) {
         this.surveyRepository = surveyRepository;
@@ -119,12 +120,16 @@ let SurveysService = class SurveysService {
     }
     async sendSurveyNotification(patientId, surveyId) {
         const surveyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/surveys/${surveyId}`;
-        const content = `
-      <h2>Encuesta de Satisfacción</h2>
-      <p>Su opinión es muy importante para nosotros. Por favor complete nuestra breve encuesta:</p>
-      <p><a href="${surveyUrl}" style="background-color: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">Completar Encuesta</a></p>
-      <p>Hospital Santa Fe Panamá</p>
-    `;
+        const content = (0, email_template_util_1.buildEmailHtml)({
+            title: 'Encuesta de satisfacción',
+            preheader: 'Su opinión nos ayuda a mejorar la atención en Hospital Santa Fe',
+            bodyHtml: [
+                (0, email_template_util_1.emailParagraph)('Gracias por visitarnos. Su opinión es muy importante para seguir mejorando nuestro servicio.'),
+                (0, email_template_util_1.emailParagraph)('Complete nuestra breve encuesta; solo le tomará unos minutos:'),
+                (0, email_template_util_1.emailButton)(surveyUrl, 'Completar encuesta'),
+                (0, email_template_util_1.emailMutedNote)('Si ya completó la encuesta, puede ignorar este mensaje.'),
+            ].join(''),
+        });
         await this.notificationsService.create({
             recipientId: patientId,
             type: 'email',

@@ -3,7 +3,7 @@ import { UserRole } from '../common/enums';
 export const ADMIN_PERMISSION_CATALOG = [
   { key: 'view_host_work_list', label: 'Ver lista de llegadas (anfitrión)' },
   { key: 'confirm_arrival', label: 'Confirmar llegada de paciente' },
-  { key: 'activate_ticket', label: 'Activar ticket de admisión' },
+  { key: 'activate_ticket', label: 'Activar ticket / crear turno en recepción' },
   { key: 'staff_check_in', label: 'Check-in por QR' },
   { key: 'staff_call_ticket', label: 'Llamar ticket' },
   { key: 'staff_transfer_ticket', label: 'Transferir ticket' },

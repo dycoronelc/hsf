@@ -54,6 +54,19 @@ export declare class PreadmissionService {
         filename: string;
     }>;
     findAll(user: User, skip?: number, limit?: number): Promise<PreadmissionResponse[]>;
+    findAllForManagement(opts: {
+        q?: string;
+        departamento?: string;
+        status?: string;
+        arrivalState?: string;
+        skip?: number;
+        limit?: number;
+    }): Promise<{
+        items: PreadmissionResponse[];
+        total: number;
+        skip: number;
+        limit: number;
+    }>;
     findWorkList(user: User, opts: {
         arrivalState?: PreadmissionArrivalState;
         q?: string;
