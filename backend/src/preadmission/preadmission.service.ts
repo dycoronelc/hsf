@@ -483,6 +483,29 @@ export class PreadmissionService {
     }
   }
 
+  /** Preadmisiones visibles en consola staff (cola / espera de llegada). */
+  async findStaffQueue(opts: { departamento?: string }): Promise<HostWorkListItem[]> {
+    const queueStates = [
+      PreadmissionArrivalState.ESPERA_LLEGADA,
+      PreadmissionArrivalState.PACIENTE_PRESENTE,
+      PreadmissionArrivalState.TICKET_GENERADO,
+    ];
+
+    const qb = this.preadmissionRepository
+      .createQueryBuilder('p')
+      .where('p.arrivalState IN (:...queueStates)', { queueStates })
+      .orderBy('p.fechapreadmision', 'ASC')
+      .take(200);
+
+    const dept = opts.departamento?.trim().toUpperCase();
+    if (dept === 'LAB' || dept === 'RAD') {
+      qb.andWhere('p.departamento = :dept', { dept });
+    }
+
+    const rows = await qb.getMany();
+    return rows.map(toHostWorkListItem);
+  }
+
   async confirmArrival(id: number, user: User): Promise<PreadmissionResponse> {
     const pre = await this.preadmissionRepository.findOne({ where: { id } });
     if (!pre) {

@@ -40,8 +40,25 @@ export class AuthService {
     if (!user) {
       throw new UnauthorizedException('Credenciales incorrectas');
     }
+    await this.auditService.log('user_login', {
+      entityType: 'user',
+      entityId: user.id,
+      userId: user.id,
+    });
+    return this.issueToken(user);
+  }
+
+  async refreshSession(user: { id: number; email: string }): Promise<TokenResponseDto> {
+    await this.auditService.log('session_refreshed', {
+      entityType: 'user',
+      entityId: user.id,
+      userId: user.id,
+    });
+    return this.issueToken(user);
+  }
+
+  private issueToken(user: { id: number; email: string }): TokenResponseDto {
     const payload = { email: user.email, sub: user.id };
-    await this.auditService.log('user_login', { entityType: 'user', entityId: user.id, userId: user.id });
     return {
       access_token: this.jwtService.sign(payload),
       token_type: 'bearer',

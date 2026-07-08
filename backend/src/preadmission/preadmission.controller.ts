@@ -153,6 +153,13 @@ export class PreadmissionController {
     });
   }
 
+  @Get('staff-queue')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_check_in')
+  async staffQueue(@Query('departamento') departamento?: string) {
+    return this.preadmissionService.findStaffQueue({ departamento });
+  }
+
   @Get('manage')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('review_preadmissions')

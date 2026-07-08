@@ -37,6 +37,12 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
+  @Post('refresh-session')
+  @UseGuards(JwtAuthGuard)
+  async refreshSession(@Request() req): Promise<TokenResponseDto> {
+    return this.authService.refreshSession(req.user);
+  }
+
   @Post('forgot-password')
   async forgotPassword(@Body() body: ForgotPasswordDto) {
     return this.authService.requestPasswordReset(body.email);
