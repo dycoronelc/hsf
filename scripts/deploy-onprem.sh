@@ -90,10 +90,14 @@ wait_for_http_code() {
 log "Directorio: $APP_DIR | Usuario app: $APP_USER | Rama: $GIT_BRANCH"
 
 if [[ "${SKIP_GIT_PULL:-0}" != "1" ]]; then
-  log "git pull origin $GIT_BRANCH ..."
-  run_app "git pull origin '$GIT_BRANCH'"
+  # reset --hard evita fallos cuando backend/dist u otros artefactos locales
+  # difieren del remoto (p. ej. tras npm run backend:build en el servidor).
+  log "Sincronizando con origin/$GIT_BRANCH (fetch + reset --hard) ..."
+  run_app "git fetch origin '$GIT_BRANCH'"
+  run_app "git reset --hard 'origin/$GIT_BRANCH'"
+  run_app "git clean -fd"
 else
-  log "Omitiendo git pull (SKIP_GIT_PULL=1)"
+  log "Omitiendo sincronización git (SKIP_GIT_PULL=1)"
 fi
 
 if [[ "${SKIP_NPM_CI:-0}" != "1" ]]; then
