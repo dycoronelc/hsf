@@ -82,16 +82,43 @@ body {
     display: none !important;
   }
 
-  .print-only {
-    display: block !important;
+  html,
+  body {
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: white !important;
+    color: #111827 !important;
   }
 
-  body {
+  /* Ocultar toda la app excepto el ticket (portal en body) */
+  body.ticket-print-active > *:not(#ticket-print-root) {
+    display: none !important;
+  }
+
+  #ticket-print-root {
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    width: 100%;
+    padding: 1rem;
+    box-sizing: border-box;
     background: white !important;
-    color: #111827;
+  }
+
+  #ticket-print-root .ticket-print-slip {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  #ticket-print-root svg {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
   }
 
   @page {
-    margin: 1.5cm;
+    margin: 10mm;
+    size: auto;
   }
 }
