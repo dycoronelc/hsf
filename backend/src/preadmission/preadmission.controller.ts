@@ -153,6 +153,27 @@ export class PreadmissionController {
     });
   }
 
+  @Get('manage')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('review_preadmissions')
+  async findAllForManagement(
+    @Query('q') q?: string,
+    @Query('departamento') departamento?: string,
+    @Query('status') status?: string,
+    @Query('arrivalState') arrivalState?: string,
+    @Query('skip', new DefaultValuePipe(0), ParseIntPipe) skip = 0,
+    @Query('limit', new DefaultValuePipe(50), ParseIntPipe) limit = 50,
+  ) {
+    return this.preadmissionService.findAllForManagement({
+      q,
+      departamento,
+      status,
+      arrivalState,
+      skip,
+      limit,
+    });
+  }
+
   @Get()
   @UseGuards(JwtAuthGuard)
   async findAll(

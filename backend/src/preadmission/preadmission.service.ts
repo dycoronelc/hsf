@@ -392,6 +392,50 @@ export class PreadmissionService {
     return rows.map(toPreadmissionResponse);
   }
 
+  async findAllForManagement(opts: {
+    q?: string;
+    departamento?: string;
+    status?: string;
+    arrivalState?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<{ items: PreadmissionResponse[]; total: number; skip: number; limit: number }> {
+    const { skip, take } = parsePagination(opts.skip, opts.limit, 50, 100);
+    const qb = this.preadmissionRepository
+      .createQueryBuilder('p')
+      .orderBy('p.fechapreadmision', 'DESC')
+      .skip(skip)
+      .take(take);
+
+    if (opts.departamento === 'RAD' || opts.departamento === 'LAB') {
+      qb.andWhere('p.departamento = :departamento', { departamento: opts.departamento });
+    }
+
+    if (opts.status?.trim()) {
+      qb.andWhere('p.status = :status', { status: opts.status.trim() });
+    }
+
+    if (opts.arrivalState?.trim()) {
+      qb.andWhere('p.arrivalState = :arrivalState', { arrivalState: opts.arrivalState.trim() });
+    }
+
+    if (opts.q?.trim()) {
+      const term = `%${opts.q.trim()}%`;
+      qb.andWhere(
+        '(p.cedula ILIKE :term OR p.name1 ILIKE :term OR p.name2 ILIKE :term OR p.apellido1 ILIKE :term OR p.apellido2 ILIKE :term OR p.email ILIKE :term)',
+        { term },
+      );
+    }
+
+    const [rows, total] = await qb.getManyAndCount();
+    return {
+      items: rows.map(toPreadmissionResponse),
+      total,
+      skip,
+      limit: take,
+    };
+  }
+
   async findWorkList(
     user: User,
     opts: { arrivalState?: PreadmissionArrivalState; q?: string; skip?: number; limit?: number },

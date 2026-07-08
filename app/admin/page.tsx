@@ -8,6 +8,11 @@ import { useAuth } from '../providers'
 
 const adminCards = [
   {
+    href: '/admin/preadmissions',
+    title: 'Preadmisiones',
+    description: 'Consulte y administre las preadmisiones digitales de pacientes.',
+  },
+  {
     href: '/admin/permissions',
     title: 'Permisos por rol',
     description: 'Configure qué acciones puede realizar cada rol operativo.',
@@ -49,7 +54,7 @@ export default function AdminHomePage() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Administración</h1>
           <p className="text-gray-600 mt-2">
-            Configuración de permisos, tipos de ticket y usuarios del Hospital Santa Fe.
+            Configuración de permisos, tipos de ticket, usuarios y preadmisiones del Hospital Santa Fe.
           </p>
         </div>
 
