@@ -38,3 +38,8 @@ export class TransferTicketDto {
   @IsIn(['RAD', 'LAB', 'BOTH'])
   targetArea: 'RAD' | 'LAB' | 'BOTH';
 }
+
+export class NoShowTicketDto {
+  @IsString()
+  reason: string;
+}

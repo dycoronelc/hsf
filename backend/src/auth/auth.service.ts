@@ -49,18 +49,40 @@ export class AuthService {
   }
 
   async refreshSession(user: { id: number; email: string }): Promise<TokenResponseDto> {
+    const full = await this.usersService.findByEmail(user.email);
+    if (!full) {
+      throw new UnauthorizedException('Usuario no encontrado');
+    }
     await this.auditService.log('session_refreshed', {
       entityType: 'user',
-      entityId: user.id,
-      userId: user.id,
+      entityId: full.id,
+      userId: full.id,
     });
-    return this.issueToken(user);
+    const { hashedPassword, ...safeUser } = full;
+    return this.issueToken(safeUser);
   }
 
-  private issueToken(user: { id: number; email: string }): TokenResponseDto {
+  private resolveExpiresIn(user: { role: string; sessionNeverExpires?: boolean }): string | number {
+    if (user.sessionNeverExpires) {
+      return process.env.JWT_EXPIRES_MONITOR || '3650d';
+    }
+    const roleEnvKey = `JWT_EXPIRES_${String(user.role).toUpperCase()}`;
+    const roleSpecific = process.env[roleEnvKey]?.trim();
+    if (roleSpecific) return roleSpecific;
+    return process.env.JWT_EXPIRES || '30m';
+  }
+
+  private issueToken(user: {
+    id: number;
+    email: string;
+    role: string;
+    sessionNeverExpires?: boolean;
+  }): TokenResponseDto {
     const payload = { email: user.email, sub: user.id };
     return {
-      access_token: this.jwtService.sign(payload),
+      access_token: this.jwtService.sign(payload, {
+        expiresIn: this.resolveExpiresIn(user),
+      }),
       token_type: 'bearer',
     };
   }

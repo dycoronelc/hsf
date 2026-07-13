@@ -109,7 +109,7 @@ interface LocationData {
 }
 
 export default function PreadmissionPage() {
-  const { isAuthenticated, token } = useAuth()
+  const { isAuthenticated, token, authHydrated } = useAuth()
   const { setPageContext } = useHelp()
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -125,6 +125,13 @@ export default function PreadmissionPage() {
   useEffect(() => {
     setPageContext({ preadmissionStep: step })
   }, [step, setPageContext])
+
+  useEffect(() => {
+    if (!authHydrated) return
+    if (!isAuthenticated) {
+      router.replace('/login?next=/preadmission')
+    }
+  }, [authHydrated, isAuthenticated, router])
   const [locations, setLocations] = useState<LocationData[]>([])
   const [nationalities, setNationalities] = useState<Array<{codigo: string, nacionalidad: string, pais: string}>>([])
   const [provincias, setProvincias] = useState<Array<{codigo: string, nombre: string}>>([])
@@ -664,6 +671,9 @@ export default function PreadmissionPage() {
       case 7:
         if (!attachmentFilesRef.current.cedulaimagen && !attachmentFiles.cedulaimagen) {
           return 'Adjunte la imagen de la cédula'
+        }
+        if (!attachmentFilesRef.current.ordenimagen && !attachmentFiles.ordenimagen) {
+          return 'Adjunte la imagen de la orden médica'
         }
         return null
       default:
@@ -1486,7 +1496,7 @@ export default function PreadmissionPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Orden Médica (Imagen) — opcional
+                    Orden Médica (Imagen) *
                   </label>
                   <input
                     type="file"
@@ -1497,6 +1507,7 @@ export default function PreadmissionPage() {
                       if (file) handleFileSelect('ordenimagen', file)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                    required
                   />
                   {attachmentFiles.ordenimagen && (
                     <p className="text-xs text-green-700 mt-1">

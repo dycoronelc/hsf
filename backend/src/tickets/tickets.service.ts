@@ -171,9 +171,9 @@ export class TicketsService {
     if (!service) {
       throw new NotFoundException('Servicio no encontrado');
     }
-    if (!['LAB', 'RAD'].includes(service.area)) {
+    if (!['LAB', 'RAD', 'ADM'].includes(service.area)) {
       throw new BadRequestException(
-        'Solo se permiten turnos de Laboratorio o Radiología en recepción',
+        'Solo se permiten turnos de Admisión, Laboratorio o Radiología en recepción',
       );
     }
 
@@ -315,6 +315,9 @@ export class TicketsService {
         created_at: ticket.createdAt,
         qr_code: ticket.qrCode,
         window_number: ticket.windowNumber ?? null,
+        call_count: ticket.callCount ?? 0,
+        called_at: ticket.calledAt ?? null,
+        notes: ticket.notes ?? null,
         ...qi,
       };
     });
@@ -407,6 +410,7 @@ export class TicketsService {
     ticket.calledAt = new Date();
     ticket.calledBy = agent.id;
     ticket.windowNumber = windowNumber;
+    ticket.callCount = (ticket.callCount ?? 0) + 1;
     await this.ticketRepository.save(ticket);
     await this.auditService.log('ticket_called', {
       entityType: 'ticket',
@@ -426,7 +430,67 @@ export class TicketsService {
       });
     }
     
-    return { message: 'Ticket llamado', ticket_number: ticket.ticketNumber };
+    return { message: 'Ticket llamado', ticket_number: ticket.ticketNumber, call_count: ticket.callCount };
+  }
+
+  async recall(id: number, windowNumber: string, agent: Pick<User, 'id' | 'agentState'>) {
+    this.assertAgentCanOperate(agent);
+    const ticket = await this.ticketRepository.findOne({ where: { id } });
+    if (!ticket) {
+      throw new NotFoundException('Ticket no encontrado');
+    }
+    if (ticket.status !== TicketStatus.LLAMADO) {
+      throw new BadRequestException('Solo se puede volver a llamar un turno en estado Llamado');
+    }
+    if ((ticket.callCount ?? 0) < 2) {
+      throw new BadRequestException('Debe llamar al paciente al menos dos veces antes de volver a llamar');
+    }
+    const minSeconds = parseInt(process.env.TICKET_RECALL_MIN_SECONDS || '60', 10);
+    const elapsed = ticket.calledAt ? (Date.now() - ticket.calledAt.getTime()) / 1000 : 0;
+    if (elapsed < minSeconds) {
+      throw new BadRequestException(
+        `Espere ${Math.ceil(minSeconds - elapsed)} segundos antes de volver a llamar`,
+      );
+    }
+    ticket.status = TicketStatus.LLAMADO;
+    ticket.calledAt = new Date();
+    ticket.calledBy = agent.id;
+    ticket.windowNumber = windowNumber;
+    ticket.callCount = (ticket.callCount ?? 0) + 1;
+    await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_recalled', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent.id,
+      details: `window=${windowNumber}`,
+    });
+    return { message: 'Turno re-llamado', ticket_number: ticket.ticketNumber, call_count: ticket.callCount };
+  }
+
+  async markNoShow(id: number, reason: string, agent: Pick<User, 'id' | 'agentState'>) {
+    this.assertAgentCanOperate(agent);
+    const ticket = await this.ticketRepository.findOne({ where: { id } });
+    if (!ticket) {
+      throw new NotFoundException('Ticket no encontrado');
+    }
+    if (ticket.status !== TicketStatus.LLAMADO) {
+      throw new BadRequestException('Solo se puede marcar no presentado un turno que fue llamado');
+    }
+    const trimmed = reason?.trim();
+    if (!trimmed) {
+      throw new BadRequestException('Indique el motivo de no presentación');
+    }
+    ticket.status = TicketStatus.NO_SHOW;
+    ticket.notes = trimmed;
+    ticket.completedAt = new Date();
+    await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_no_show', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent.id,
+      details: trimmed,
+    });
+    return { message: 'Marcado como no se presentó', ticket_number: ticket.ticketNumber };
   }
 
   async start(id: number, agent?: Pick<User, 'id' | 'agentState'>) {

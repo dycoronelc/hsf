@@ -27,6 +27,11 @@ const adminCards = [
     title: 'Usuarios del sistema',
     description: 'Asigne roles y active o desactive cuentas de personal.',
   },
+  {
+    href: '/admin/patients',
+    title: 'Pacientes registrados',
+    description: 'Consulte cuentas de pacientes registrados en la plataforma.',
+  },
 ]
 
 export default function AdminHomePage() {

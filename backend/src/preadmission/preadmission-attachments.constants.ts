@@ -9,7 +9,7 @@ export const PREADMISSION_ATTACHMENT_FIELDS = [
 
 export type PreadmissionAttachmentField = (typeof PREADMISSION_ATTACHMENT_FIELDS)[number];
 
-export const REQUIRED_ATTACHMENT_FIELDS: PreadmissionAttachmentField[] = ['cedulaimagen'];
+export const REQUIRED_ATTACHMENT_FIELDS: PreadmissionAttachmentField[] = ['cedulaimagen', 'ordenimagen'];
 
 export const ALLOWED_ATTACHMENT_MIME = new Set([
   'image/jpeg',

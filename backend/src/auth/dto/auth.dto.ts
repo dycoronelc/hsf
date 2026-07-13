@@ -114,6 +114,8 @@ export class UserResponseDto {
   fullName?: string;
   role: UserRole;
   isActive: boolean;
+  sessionNeverExpires?: boolean;
+  agentState?: string | null;
 }
 
 export class TokenResponseDto {

@@ -41,6 +41,10 @@ export class User {
   @Column({ default: true })
   isActive: boolean;
 
+  /** Usuario dedicado (p. ej. pantalla monitor) sin expiración de sesión JWT. */
+  @Column({ default: false })
+  sessionNeverExpires: boolean;
+
   @Column({ type: 'text', nullable: true })
   agentState: AgentState | null;
 

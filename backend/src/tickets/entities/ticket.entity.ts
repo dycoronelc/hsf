@@ -65,6 +65,10 @@ export class Ticket {
   @Column({ nullable: true })
   calledBy: number;
 
+  /** Cantidad de veces que se ha llamado al paciente en ventanilla. */
+  @Column({ type: 'int', default: 0 })
+  callCount: number;
+
   @Column('text', { nullable: true })
   notes: string;
 

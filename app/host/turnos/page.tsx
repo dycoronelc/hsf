@@ -21,6 +21,7 @@ interface Service {
 }
 
 const AREA_LABELS: Record<string, string> = {
+  ADM: 'Admisión',
   LAB: 'Laboratorio',
   RAD: 'Radiología',
 }
@@ -36,12 +37,12 @@ export default function HostTurnosPage() {
   const [autoPrint, setAutoPrint] = useState(false)
 
   const receptionServices = useMemo(
-    () => services.filter((s) => s.area === 'LAB' || s.area === 'RAD'),
+    () => services.filter((s) => s.area === 'ADM' || s.area === 'LAB' || s.area === 'RAD'),
     [services],
   )
 
   const groupedServices = useMemo(() => {
-    const groups: Record<string, Service[]> = { LAB: [], RAD: [] }
+    const groups: Record<string, Service[]> = { ADM: [], LAB: [], RAD: [] }
     for (const service of receptionServices) {
       groups[service.area]?.push(service)
     }
@@ -120,8 +121,7 @@ export default function HostTurnosPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Crear turno en recepción</h1>
             <p className="text-gray-600 text-sm mt-1">
-              Genere turnos de Laboratorio o Radiología para pacientes sin registro previo. Al confirmar,
-              se imprimirá el ticket con número y código QR.
+              Genere turnos de Admisión, Laboratorio o Radiología. Al confirmar, se imprimirá el ticket.
             </p>
           </div>
           <Link href="/dashboard" className="text-hospital-blue font-medium hover:underline text-sm">
@@ -139,9 +139,9 @@ export default function HostTurnosPage() {
 
         <div className="bg-white rounded-lg shadow p-6 space-y-6">
           {receptionServices.length === 0 ? (
-            <p className="text-gray-500 text-sm">No hay servicios de Laboratorio o Radiología activos.</p>
+            <p className="text-gray-500 text-sm">No hay servicios de Admisión, Laboratorio o Radiología activos.</p>
           ) : (
-            (['LAB', 'RAD'] as const).map((area) =>
+            (['ADM', 'LAB', 'RAD'] as const).map((area) =>
               groupedServices[area].length > 0 ? (
                 <div key={area}>
                   <h2 className="text-sm font-semibold text-gray-700 mb-3">{AREA_LABELS[area]}</h2>

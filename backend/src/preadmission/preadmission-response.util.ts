@@ -31,6 +31,7 @@ export type HostWorkListItem = {
   departamento: string;
   arrivalState: string;
   fechapreadmision: Date;
+  fechaprobableatencion: string;
   ticketId: number | null;
 };
 
@@ -44,6 +45,7 @@ export function toHostWorkListItem(entity: Preadmission): HostWorkListItem {
     departamento: entity.departamento ?? '',
     arrivalState: entity.arrivalState ?? 'espera_llegada',
     fechapreadmision: entity.fechapreadmision,
+    fechaprobableatencion: entity.fechaprobableatencion ?? '',
     ticketId: entity.ticketId ?? null,
   };
 }

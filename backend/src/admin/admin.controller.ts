@@ -7,6 +7,7 @@ import {
   Patch,
   Post,
   Put,
+  Query,
   Request,
   UseGuards,
 } from '@nestjs/common';
@@ -123,6 +124,12 @@ export class AdminController {
   @RequirePermissions('manage_users')
   deleteStaffUser(@Param('id') id: number, @Request() req) {
     return this.adminService.deleteStaffUser(+id, req.user.id);
+  }
+
+  @Get('patients')
+  @RequirePermissions('manage_users')
+  listPatients(@Query('q') q?: string) {
+    return this.adminService.listPatients(q);
   }
 
   /** Compatibilidad con endpoint anterior */

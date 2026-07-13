@@ -49,14 +49,9 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                     Inicio
                   </Link>
                   {isPatientRole(user?.role) && (
-                    <>
-                      <Link href="/preadmission" className="text-white/90 hover:text-white font-medium">
-                        Preadmisión
-                      </Link>
-                      <Link href="/tickets" className="text-white/90 hover:text-white font-medium">
-                        Mis Turnos
-                      </Link>
-                    </>
+                    <Link href="/preadmission" className="text-white/90 hover:text-white font-medium">
+                      Preadmisión
+                    </Link>
                   )}
                   {canAccessHost(user?.role) && (
                     <Link href="/host" className="text-white/90 hover:text-white font-medium">

@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 
 const links = [
   { href: '/host', label: 'Llegadas (preadmisión)' },
-  { href: '/host/turnos', label: 'Crear turno Lab/Rad' },
+  { href: '/host/turnos', label: 'Crear turnos Adm/Lab/Rad' },
 ]
 
 export function HostNav() {

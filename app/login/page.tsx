@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useAuth } from '../providers'
 import { getPostLoginPath } from '@/lib/authRedirect'
 import Link from 'next/link'
@@ -19,6 +19,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const nextPath = searchParams.get('next')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +30,9 @@ export default function LoginPage() {
       await login(email, password)
       const storedUser = localStorage.getItem('user')
       const role = storedUser ? (JSON.parse(storedUser).role as string | undefined) : undefined
-      router.push(getPostLoginPath(role))
+      const safeNext =
+        nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : null
+      router.push(safeNext ?? getPostLoginPath(role))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Credenciales incorrectas')
     } finally {

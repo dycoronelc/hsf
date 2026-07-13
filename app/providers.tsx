@@ -18,6 +18,7 @@ interface User {
   fullName: string | null
   role: string
   agentState?: string | null
+  sessionNeverExpires?: boolean
 }
 
 interface AuthContextType {
@@ -88,7 +89,11 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }, [router])
 
   const scheduleSessionTimers = useCallback(
-    (accessToken: string) => {
+    (accessToken: string, neverExpires?: boolean) => {
+      if (neverExpires) {
+        clearSessionTimers()
+        return
+      }
       clearSessionTimers()
       const expMs = getJwtExpMs(accessToken)
       if (expMs == null) return
@@ -120,7 +125,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setSessionExpiring(false)
       localStorage.setItem('token', accessToken)
       localStorage.setItem('user', JSON.stringify(userData))
-      scheduleSessionTimers(accessToken)
+      scheduleSessionTimers(accessToken, userData.sessionNeverExpires)
     },
     [scheduleSessionTimers],
   )

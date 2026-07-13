@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
-import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RequirePermissions } from '../permissions/require-permissions.decorator';
@@ -67,6 +67,28 @@ export class TicketsController {
     @Request() req,
   ) {
     return this.ticketsService.call(+id, callDto.windowNumber, req.user);
+  }
+
+  @Post(':id/recall')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
+  async recall(
+    @Param('id') id: number,
+    @Body() callDto: CallTicketDto,
+    @Request() req,
+  ) {
+    return this.ticketsService.recall(+id, callDto.windowNumber, req.user);
+  }
+
+  @Post(':id/no-show')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
+  async noShow(
+    @Param('id') id: number,
+    @Body() dto: NoShowTicketDto,
+    @Request() req,
+  ) {
+    return this.ticketsService.markNoShow(+id, dto.reason, req.user);
   }
 
   @Post(':id/start')

@@ -53,6 +53,10 @@ export default function RegisterPage() {
       setError(birthDateError)
       return
     }
+    if (!/^\d+$/.test(formData.phone.replace(/\s/g, ''))) {
+      setError('El número de celular debe contener solo dígitos')
+      return
+    }
     setLoading(true)
     try {
       const payload = {
@@ -105,7 +109,7 @@ export default function RegisterPage() {
           <div className="p-8">
             <div className="text-center mb-6">
               <h1 className="text-2xl font-bold text-gray-900">Crear Cuenta de Paciente</h1>
-              <p className="text-gray-600 mt-2">Opcional para gestionar preadmisiones con inicio de sesión</p>
+              <p className="text-gray-600 mt-2">Registro obligatorio para solicitar preadmisión y servicios.</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -197,7 +201,11 @@ export default function RegisterPage() {
                   id="phone"
                   type="tel"
                   value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })
+                  }
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-blue focus:border-transparent"
                   placeholder="6000-0000"
@@ -235,13 +243,6 @@ export default function RegisterPage() {
                 <Link href="/login" className="text-hospital-blue hover:underline">
                   Inicia sesión
                 </Link>
-              </p>
-              <p className="text-sm text-gray-500">
-                También puede completar una preadmisión sin crear cuenta en{' '}
-                <Link href="/preadmission" className="text-hospital-blue hover:underline">
-                  Preadmisión
-                </Link>
-                .
               </p>
               <div className="flex justify-center pt-1">
                 <HelpLauncher label="¿Necesita ayuda?" />

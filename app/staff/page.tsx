@@ -21,18 +21,11 @@ interface Ticket {
   created_at: string
   window_number: string | null
   estimated_wait_label?: string
+  call_count?: number
+  called_at?: string | null
 }
 
-interface PreadmissionQueueItem {
-  id: number
-  name1: string
-  apellido1: string
-  cedula: string
-  departamento: string
-  arrivalState: string
-  fechapreadmision: string
-  ticketId?: number | null
-}
+const RECALL_MIN_MS = 60_000
 
 interface Service {
   id: number
@@ -47,9 +40,10 @@ export default function StaffConsolePage() {
   const [services, setServices] = useState<Service[]>([])
   const [selectedService, setSelectedService] = useState<number | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
-  const [preadmissions, setPreadmissions] = useState<PreadmissionQueueItem[]>([])
   const [windowNumber, setWindowNumber] = useState('')
   const [loading, setLoading] = useState(false)
+  const [noShowTarget, setNoShowTarget] = useState<Ticket | null>(null)
+  const [noShowReason, setNoShowReason] = useState('')
   const [checkInCode, setCheckInCode] = useState('')
   const [checkInLoading, setCheckInLoading] = useState(false)
   const [checkInMessage, setCheckInMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -59,13 +53,6 @@ export default function StaffConsolePage() {
   const [queueView, setQueueView] = useState<'all' | 'priority'>('all')
   const [apiError, setApiError] = useState('')
   const scannerContainerId = 'staff-qr-reader'
-
-  const ARRIVAL_LABELS: Record<string, string> = {
-    registrado: 'Registrado',
-    espera_llegada: 'En espera de llegada',
-    paciente_presente: 'Paciente presente',
-    ticket_generado: 'Ticket generado',
-  }
 
   const agentStateOptions = [
     { value: 'en_linea', label: 'En línea' },
@@ -91,10 +78,6 @@ export default function StaffConsolePage() {
     }
   }
 
-  const selectedServiceArea = selectedService
-    ? services.find((s) => s.id === selectedService)?.area
-    : null
-
   const fetchTickets = async () => {
     if (!token) return
 
@@ -117,32 +100,6 @@ export default function StaffConsolePage() {
     }
   }
 
-  const fetchPreadmissions = async () => {
-    if (!token) return
-
-    try {
-      const params = new URLSearchParams()
-      if (selectedServiceArea === 'LAB' || selectedServiceArea === 'RAD') {
-        params.set('departamento', selectedServiceArea)
-      }
-      const qs = params.toString()
-      const response = await fetch(
-        `/api/preadmission/staff-queue${qs ? `?${qs}` : ''}`,
-        { headers: authHeaders(token) },
-      )
-      if (handleAuthFailure(response.status, notifySessionExpired)) return
-      if (response.ok) {
-        setPreadmissions(await response.json())
-      }
-    } catch (error) {
-      console.error('Error fetching preadmissions queue:', error)
-    }
-  }
-
-  const fetchQueueData = async () => {
-    await Promise.all([fetchTickets(), fetchPreadmissions()])
-  }
-
   useEffect(() => {
     if (!authHydrated) return
     if (!isAuthenticated) {
@@ -163,10 +120,10 @@ export default function StaffConsolePage() {
 
   useEffect(() => {
     if (!canUseStaff || !token) return
-    fetchQueueData()
-    const interval = setInterval(fetchQueueData, 3000)
+    fetchTickets()
+    const interval = setInterval(fetchTickets, 3000)
     return () => clearInterval(interval)
-  }, [canUseStaff, selectedService, selectedServiceArea, token])
+  }, [canUseStaff, selectedService, token])
 
   if (!authHydrated) {
     return (
@@ -202,7 +159,7 @@ export default function StaffConsolePage() {
       )
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
-        fetchQueueData()
+        fetchTickets()
       } else {
         const data = await response.json().catch(() => ({}))
         setApiError(apiErrorMessage(data, 'No se pudo llamar el turno'))
@@ -223,7 +180,7 @@ export default function StaffConsolePage() {
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
-        fetchQueueData()
+        fetchTickets()
       } else {
         const data = await response.json().catch(() => ({}))
         setApiError(apiErrorMessage(data, 'No se pudo iniciar la atención'))
@@ -258,7 +215,7 @@ export default function StaffConsolePage() {
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
-        fetchQueueData()
+        fetchTickets()
       } else {
         const data = await response.json().catch(() => ({}))
         setApiError(apiErrorMessage(data, 'No se pudo transferir el turno'))
@@ -279,7 +236,7 @@ export default function StaffConsolePage() {
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
-        fetchQueueData()
+        fetchTickets()
       } else {
         const data = await response.json().catch(() => ({}))
         setApiError(apiErrorMessage(data, 'No se pudo finalizar el turno'))
@@ -289,6 +246,60 @@ export default function StaffConsolePage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleRecallTicket = async (ticketId: number) => {
+    if (!windowNumber) {
+      alert('Por favor ingresa un número de ventanilla')
+      return
+    }
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/recall`, {
+        method: 'POST',
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ windowNumber }),
+      })
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
+      if (response.ok) {
+        fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo volver a llamar el turno'))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleNoShowTicket = async () => {
+    if (!noShowTarget || !noShowReason.trim()) return
+    setLoading(true)
+    try {
+      const response = await fetch(`/api/tickets/${noShowTarget.id}/no-show`, {
+        method: 'POST',
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ reason: noShowReason.trim() }),
+      })
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
+      if (response.ok) {
+        setNoShowTarget(null)
+        setNoShowReason('')
+        fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo marcar como no se presentó'))
+      }
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const canRecallTicket = (ticket: Ticket) => {
+    if (ticket.status !== 'llamado') return false
+    if ((ticket.call_count ?? 0) < 2) return false
+    if (!ticket.called_at) return false
+    return Date.now() - new Date(ticket.called_at).getTime() >= RECALL_MIN_MS
   }
 
   const getStatusColor = (status: string) => {
@@ -337,7 +348,7 @@ export default function StaffConsolePage() {
           })
         } else {
           setCheckInMessage({ type: 'success', text: `Llegada registrada: turno ${data.ticket_number}` })
-          fetchQueueData()
+          fetchTickets()
         }
         setCheckInCode('')
         return true
@@ -360,7 +371,7 @@ export default function StaffConsolePage() {
   const agentCanOperate = isAgentOperational(agentState)
 
   const queueTickets = tickets
-    .filter((t) => ['creado', 'check_in', 'en_cola'].includes(t.status))
+    .filter((t) => ['creado', 'check_in'].includes(t.status))
     .filter((t) => (queueView === 'priority' ? (t.priority_level ?? 2) <= 2 : true))
     .sort((a, b) => {
       const levelA = a.priority_level ?? 2
@@ -452,7 +463,7 @@ export default function StaffConsolePage() {
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Por defecto se muestran todos los turnos y preadmisiones en cola de espera.
+              Por defecto se muestran todos los turnos en cola (Solicitado o Arribado).
             </p>
           </div>
 
@@ -493,25 +504,71 @@ export default function StaffConsolePage() {
               {tickets
                 .filter(t => t.status === 'llamado' || t.status === 'en_atencion')
                 .map((ticket) => (
-                  <div key={ticket.id} className="flex items-center justify-between">
+                  <div key={ticket.id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
                     <div>
                       <span className="text-2xl font-bold">{ticket.ticket_number}</span>
+                      <span className="ml-3 text-sm text-gray-600">{ticket.service_name}</span>
                       {ticket.window_number && (
                         <span className="ml-4 text-gray-600">Ventanilla: {ticket.window_number}</span>
                       )}
+                      {(ticket.call_count ?? 0) > 0 && (
+                        <span className="ml-4 text-xs text-gray-500">Llamados: {ticket.call_count}</span>
+                      )}
                     </div>
-                    <div className="space-x-2">
+                    <div className="flex flex-wrap gap-2">
                       {ticket.status === 'llamado' && (
-                        <button
-                          onClick={() => handleStartTicket(ticket.id)}
-                          className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
-                        >
-                          Iniciar Atención
-                        </button>
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleStartTicket(ticket.id)}
+                            disabled={loading || !agentCanOperate}
+                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                          >
+                            Iniciar Atención
+                          </button>
+                          <select
+                            value=""
+                            onChange={(e) => {
+                              const v = e.target.value
+                              if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
+                              e.target.value = ''
+                            }}
+                            disabled={transferringId === ticket.id || !agentCanOperate}
+                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                          >
+                            <option value="">Transferir…</option>
+                            <option value="RAD">Radiología</option>
+                            <option value="LAB">Laboratorio</option>
+                            <option value="BOTH">Ambos</option>
+                          </select>
+                          {canRecallTicket(ticket) && (
+                            <button
+                              type="button"
+                              onClick={() => handleRecallTicket(ticket.id)}
+                              disabled={loading || !windowNumber || !agentCanOperate}
+                              className="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50"
+                            >
+                              Volver a llamar
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setNoShowTarget(ticket)
+                              setNoShowReason('')
+                            }}
+                            disabled={loading || !agentCanOperate}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                          >
+                            No se presentó
+                          </button>
+                        </>
                       )}
                       {ticket.status === 'en_atencion' && (
                         <button
+                          type="button"
                           onClick={() => handleCompleteTicket(ticket.id)}
+                          disabled={loading}
                           className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                         >
                           Finalizar
@@ -543,41 +600,12 @@ export default function StaffConsolePage() {
           {/* Queue */}
           <div>
             <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
-            {queueTickets.length === 0 && preadmissions.length === 0 ? (
+            {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 No hay pacientes en cola
               </div>
             ) : (
               <div className="space-y-2">
-                {preadmissions.map((pre) => (
-                  <div
-                    key={`pre-${pre.id}`}
-                    className="flex items-center justify-between p-4 bg-teal-50 rounded-lg border border-teal-100"
-                  >
-                    <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                      <span className="text-sm font-semibold text-teal-800 uppercase tracking-wide">
-                        Preadmisión #{pre.id}
-                      </span>
-                      <span className="font-medium text-gray-900">
-                        {pre.name1} {pre.apellido1}
-                      </span>
-                      <span className="text-sm text-gray-600 font-mono">{pre.cedula}</span>
-                      <span className="px-3 py-1 rounded-full text-sm font-medium bg-teal-100 text-teal-800">
-                        {ARRIVAL_LABELS[pre.arrivalState] ?? pre.arrivalState}
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        {pre.departamento === 'LAB' ? 'Laboratorio' : pre.departamento === 'RAD' ? 'Radiología' : pre.departamento}
-                      </span>
-                    </div>
-                    <span className="text-xs text-gray-500 shrink-0">
-                      {pre.arrivalState === 'ticket_generado'
-                        ? pre.ticketId
-                          ? `Ticket #${pre.ticketId}`
-                          : 'Ticket de admisión generado'
-                        : 'Preadmisión en espera'}
-                    </span>
-                  </div>
-                ))}
                 {queueTickets.map((ticket) => (
                   <div
                     key={ticket.id}
@@ -600,21 +628,6 @@ export default function StaffConsolePage() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          const v = e.target.value
-                          if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
-                          e.target.value = ''
-                        }}
-                        disabled={transferringId === ticket.id || !agentCanOperate}
-                        className="px-3 py-2 border border-gray-300 rounded-lg text-sm"
-                      >
-                        <option value="">Transferir...</option>
-                        <option value="RAD">Radiología</option>
-                        <option value="LAB">Laboratorio</option>
-                        <option value="BOTH">Ambos</option>
-                      </select>
                       <button
                         onClick={() => handleCallTicket(ticket.id)}
                         disabled={loading || !windowNumber || !agentCanOperate}
@@ -649,6 +662,40 @@ export default function StaffConsolePage() {
           </p>
         }
       />
+      {noShowTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">No se presentó</h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Turno <strong>{noShowTarget.ticket_number}</strong>. Indique el motivo:
+            </p>
+            <textarea
+              value={noShowReason}
+              onChange={(e) => setNoShowReason(e.target.value)}
+              rows={4}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              placeholder="Motivo de no presentación"
+            />
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setNoShowTarget(null)}
+                className="px-4 py-2 border border-gray-300 rounded-lg text-sm"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleNoShowTicket()}
+                disabled={loading || !noShowReason.trim()}
+                className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm disabled:opacity-50"
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </SiteLayout>
   )
 }

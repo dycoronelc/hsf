@@ -46,14 +46,7 @@ export function HelpProvider({ children }: { children: ReactNode }) {
   return (
     <HelpContext.Provider value={value}>
       {children}
-      <HelpModal
-        open={open}
-        tab={tab}
-        onTabChange={setTab}
-        onClose={closeHelp}
-        pathname={pathname}
-        pageContext={pageContext}
-      />
+      <HelpModal open={open} onClose={closeHelp} />
     </HelpContext.Provider>
   )
 }

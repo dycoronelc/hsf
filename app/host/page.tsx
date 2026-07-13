@@ -30,6 +30,7 @@ export default function HostPage() {
       departamento: string
       arrivalState: string
       fechapreadmision: string
+      fechaprobableatencion?: string
       ticketId?: number | null
     }>
   >([])
@@ -187,13 +188,14 @@ export default function HostPage() {
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Cédula</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Área</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Estado</th>
+                <th className="text-left px-4 py-3 font-semibold text-gray-700">Fecha posible atención</th>
                 <th className="text-left px-4 py-3 font-semibold text-gray-700">Acciones</th>
               </tr>
             </thead>
             <tbody>
               {list.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-gray-500">
+                  <td colSpan={7} className="px-4 py-8 text-center text-gray-500">
                     No hay registros con los filtros actuales.
                   </td>
                 </tr>
@@ -207,6 +209,9 @@ export default function HostPage() {
                   <td className="px-4 py-3 font-mono">{row.cedula}</td>
                   <td className="px-4 py-3">{row.departamento}</td>
                   <td className="px-4 py-3">{ARRIVAL_LABELS[row.arrivalState] ?? row.arrivalState}</td>
+                  <td className="px-4 py-3 font-mono text-gray-700">
+                    {row.fechaprobableatencion || '—'}
+                  </td>
                   <td className="px-4 py-3 space-x-2 whitespace-nowrap">
                     {(row.arrivalState === 'espera_llegada' || row.arrivalState === 'registrado') && (
                       <button

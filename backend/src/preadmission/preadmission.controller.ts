@@ -97,14 +97,10 @@ export class PreadmissionController {
   }
 
   @Post('public')
-  @UseInterceptors(attachmentUpload)
-  async createPublic(
-    @Body('data') data: string,
-    @UploadedFiles()
-    files: PreadmissionUploadedFilesMap,
-  ) {
-    const createDto = await parseCreateBody(data);
-    return this.preadmissionService.create(createDto, null, files);
+  async createPublic() {
+    throw new BadRequestException(
+      'La preadmisión requiere una cuenta registrada. Cree su cuenta e inicie sesión antes de continuar.',
+    );
   }
 
   @Post('parse-cedula-qr')

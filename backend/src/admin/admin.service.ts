@@ -360,8 +360,36 @@ export class AdminService {
     return this.userRepository.find({
       where: { role: Not(UserRole.PATIENT) },
       order: { fullName: 'ASC', email: 'ASC' },
-      select: ['id', 'email', 'fullName', 'role', 'isActive', 'createdAt'],
+      select: ['id', 'email', 'fullName', 'role', 'isActive', 'createdAt', 'sessionNeverExpires'],
     });
+  }
+
+  async listPatients(q?: string) {
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .where('u.role = :role', { role: UserRole.PATIENT })
+      .orderBy('u.createdAt', 'DESC')
+      .take(200);
+
+    if (q?.trim()) {
+      const term = `%${q.trim()}%`;
+      qb.andWhere(
+        '(u.email ILIKE :term OR u.fullName ILIKE :term OR u.nationalId ILIKE :term OR u.phone ILIKE :term)',
+        { term },
+      );
+    }
+
+    const rows = await qb.getMany();
+    return rows.map((u) => ({
+      id: u.id,
+      email: u.email,
+      fullName: u.fullName,
+      nationalId: u.nationalId,
+      phone: u.phone,
+      birthDate: u.birthDate,
+      isActive: u.isActive,
+      createdAt: u.createdAt,
+    }));
   }
 
   private async assertRoleAssignable(role: UserRole): Promise<void> {

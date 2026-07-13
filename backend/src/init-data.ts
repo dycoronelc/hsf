@@ -80,6 +80,28 @@ async function bootstrap() {
       );
     }
 
+    let monitorUser = await userRepository.findOne({
+      where: { email: 'monitor@hospitalsantafe.com' },
+    });
+    if (!monitorUser) {
+      const hashedPassword = await bcrypt.hash('monitor123', 10);
+      monitorUser = userRepository.create({
+        email: 'monitor@hospitalsantafe.com',
+        hashedPassword,
+        fullName: 'Pantalla Monitor',
+        role: UserRole.AUDITOR,
+        isActive: true,
+        sessionNeverExpires: true,
+      });
+      await userRepository.save(monitorUser);
+      console.log(
+        '✓ Usuario monitor creado: monitor@hospitalsantafe.com / monitor123 (sesión sin expiración)',
+      );
+    } else if (!monitorUser.sessionNeverExpires) {
+      monitorUser.sessionNeverExpires = true;
+      await userRepository.save(monitorUser);
+    }
+
     let patient = await userRepository.findOne({
       where: { email: 'paciente@hospitalsantafe.com' },
     });

@@ -25,13 +25,13 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       caption: 'Complete la preadmisión antes de su cita en Radiología o Laboratorio.',
     },
     paragraphs: [
-      'No necesita cuenta para enviar una preadmisión. El proceso tiene 8 pasos: área y fecha, identificación, datos personales, contacto, emergencia, seguro, documentos y confirmación.',
+      'Debe tener una cuenta registrada e iniciar sesión antes de completar la preadmisión. El proceso tiene 8 pasos: área y fecha, identificación, datos personales, contacto, emergencia, seguro, documentos y confirmación.',
     ],
     bullets: [
       'Seleccione departamento RAD (Radiología) o LAB (Laboratorio).',
       'La fecha probable de atención no puede ser anterior a hoy.',
       'Verifique su correo con el código de 6 dígitos en el paso 4.',
-      'Adjunte imagen de cédula (obligatorio) en formatos JPG, PNG o PDF.',
+      'Adjunte imagen de cédula y orden médica (obligatorios) en formatos JPG, PNG o PDF.',
       'Al finalizar recibirá un código QR y correo de confirmación (si SMTP está configurado).',
     ],
   },
@@ -57,11 +57,10 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Cuenta de paciente y turnos',
     audience: 'patient',
     paragraphs: [
-      'Opcionalmente puede registrarse para ver sus turnos y agilizar futuras preadmisiones.',
+      'Regístrese con su correo y contraseña para acceder a la preadmisión digital y agilizar futuros trámites.',
     ],
     bullets: [
       'Registro: correo, contraseña segura, documento y datos básicos.',
-      'Mis turnos: consulte estado, posición en cola y código QR del ticket.',
       'Recuperación de contraseña desde «¿Se le olvidó la contraseña?» en el login.',
     ],
   },
@@ -133,7 +132,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: 'Preadmisión',
     question: '¿Necesito crear una cuenta para la preadmisión?',
     answer:
-      'No. Puede completar la preadmisión como invitado. Una cuenta es opcional si desea ver turnos o agilizar registros futuros.',
+      'Sí. Debe crear una cuenta e iniciar sesión antes de iniciar la preadmisión digital.',
   },
   {
     id: 'faq-duplicate',
@@ -167,7 +166,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: 'Preadmisión',
     question: '¿Qué documentos debo adjuntar?',
     answer:
-      'La imagen de cédula es obligatoria (JPG, PNG o PDF). Orden médica, preautorización y carnet de seguro son opcionales según su caso.',
+      'La imagen de cédula y la orden médica son obligatorias (JPG, PNG o PDF). Preautorización y carnet de seguro son opcionales según su caso.',
   },
   {
     id: 'faq-password',
@@ -336,7 +335,7 @@ export const CONTEXTUAL_HELP: ContextualHelpBlock[] = [
     title: 'Panel de inicio',
     summary: 'Accesos rápidos según su rol en el hospital.',
     tips: [
-      'Pacientes: preadmisión y mis turnos.',
+      'Pacientes: preadmisión digital (requiere cuenta).',
       'Staff: consola, llegadas, monitor y reportes según permisos.',
     ],
   },
