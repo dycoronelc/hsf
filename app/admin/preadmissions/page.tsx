@@ -100,7 +100,7 @@ export default function AdminPreadmissionsPage() {
 
   return (
     <SiteLayout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-10 py-8">
         <div className="mb-6">
           <Link href="/admin" className="text-hospital-blue hover:underline text-sm font-medium">
             ← Administración
@@ -190,19 +190,19 @@ export default function AdminPreadmissionsPage() {
         ) : (
           <>
             <div className="bg-white rounded-lg shadow-lg overflow-x-auto">
-              <table className="min-w-full text-sm">
+              <table className="w-full min-w-[1280px] text-sm">
                 <thead className="bg-gray-50 border-b">
                   <tr>
-                    <th className="text-left px-4 py-3 font-semibold">ID</th>
-                    <th className="text-left px-4 py-3 font-semibold">Paciente</th>
-                    <th className="text-left px-4 py-3 font-semibold">Cédula</th>
-                    <th className="text-left px-4 py-3 font-semibold">Correo</th>
-                    <th className="text-left px-4 py-3 font-semibold">Área</th>
-                    <th className="text-left px-4 py-3 font-semibold">Fecha atención</th>
-                    <th className="text-left px-4 py-3 font-semibold">Revisión</th>
-                    <th className="text-left px-4 py-3 font-semibold">Llegada</th>
-                    <th className="text-left px-4 py-3 font-semibold">Enviado</th>
-                    <th className="text-right px-4 py-3 font-semibold">Acciones</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">ID</th>
+                    <th className="text-left px-4 py-3 font-semibold min-w-[180px]">Paciente</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Cédula</th>
+                    <th className="text-left px-4 py-3 font-semibold min-w-[200px]">Correo</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Área</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Fecha atención</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Revisión</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Llegada</th>
+                    <th className="text-left px-4 py-3 font-semibold whitespace-nowrap">Enviado</th>
+                    <th className="text-right px-4 py-3 font-semibold whitespace-nowrap">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -226,13 +226,13 @@ export default function AdminPreadmissionsPage() {
                         <td className="px-4 py-3">
                           {PREADMISSION_STATUS_LABELS[row.status] ?? row.status}
                         </td>
-                        <td className="px-4 py-3">
+                        <td className="px-4 py-3 whitespace-nowrap">
                           {ARRIVAL_STATE_LABELS[row.arrivalState] ?? row.arrivalState}
                         </td>
                         <td className="px-4 py-3 whitespace-nowrap">
                           {formatPreadmissionDate(row.fechapreadmision)}
                         </td>
-                        <td className="px-4 py-3 text-right">
+                        <td className="px-4 py-3 text-right whitespace-nowrap">
                           <Link
                             href={`/admin/preadmissions/${row.id}`}
                             className="text-hospital-blue hover:underline font-medium"
