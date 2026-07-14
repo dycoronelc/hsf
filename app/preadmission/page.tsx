@@ -20,6 +20,7 @@ import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
 import { validatePhoneNumber } from '@/lib/phoneValidation'
 import { apiErrorMessage, fetchNetworkErrorMessage, parseJsonResponse } from '@/lib/apiErrorMessage'
+import { authHeaders, handleAuthFailure, resolveAuthToken } from '@/lib/authToken'
 import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
 import { HospitalLogo } from '../components/HospitalLogo'
 import { HelpLauncher } from '../components/help/HelpLauncher'
@@ -109,7 +110,7 @@ interface LocationData {
 }
 
 export default function PreadmissionPage() {
-  const { isAuthenticated, token, authHydrated } = useAuth()
+  const { isAuthenticated, token, authHydrated, notifySessionExpired } = useAuth()
   const { setPageContext } = useHelp()
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -704,6 +705,14 @@ export default function PreadmissionPage() {
     setLoading(true)
     setError('')
 
+    const authToken = resolveAuthToken(token)
+    if (!authToken) {
+      setError('Debe iniciar sesión para enviar la preadmisión.')
+      router.replace('/login?next=/preadmission')
+      setLoading(false)
+      return
+    }
+
     try {
       let totalBytes = 0
       for (const field of PREADMISSION_ATTACHMENT_FIELDS) {
@@ -731,13 +740,17 @@ export default function PreadmissionPage() {
       const controller = new AbortController()
       const timeoutId = window.setTimeout(() => controller.abort(), 180_000)
 
-      const response = await fetch('/api/preadmission/public', {
+      const response = await fetch('/api/preadmission', {
         method: 'POST',
+        headers: authHeaders(token),
         body,
         signal: controller.signal,
       }).finally(() => window.clearTimeout(timeoutId))
 
       if (!response.ok) {
+        if (handleAuthFailure(response.status, notifySessionExpired)) {
+          return
+        }
         const data = await response.json().catch(() => ({}))
         throw new Error(apiErrorMessage(data, 'Error al enviar preadmisión'))
       }
@@ -806,6 +819,18 @@ export default function PreadmissionPage() {
   }
 
   const totalSteps = 8
+
+  if (!authHydrated) {
+    return (
+      <div className="min-h-screen hospital-page-bg flex items-center justify-center text-gray-600">
+        Cargando…
+      </div>
+    )
+  }
+
+  if (!isAuthenticated) {
+    return null
+  }
 
   return (
     <div className="min-h-screen hospital-page-bg py-4 sm:py-8 overflow-x-hidden">
