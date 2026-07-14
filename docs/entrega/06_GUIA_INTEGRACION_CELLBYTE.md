@@ -94,14 +94,16 @@ Referencia: `docs/Archivos/ejemplo_json.json`
 | `medico` | string | |
 | `doblecobertura` | string | SI / NO |
 | `compania1`, `poliza1` | string | Vacíos si NO |
-| **`cedulaimagen`** | string | **Base64** imagen cédula |
-| **`ordenimagen`** | string | **Base64** orden médica |
-| **`ssimagen`** | string | **Base64** imagen SS |
+| **`cedulaimagen`** | string | **Base64** cédula/pasaporte (obligatorio) |
+| **`ordenimagen`** | string | **Base64** orden médica (obligatorio) |
+| **`preautorizacion`** | string | **Base64** preautorización (opcional) |
+| **`carnetseguro`** | string | **Base64** carné de seguro (si `doblecobertura=SI`) |
+| **`ssimagen`** | string | **Base64** imagen SS (opcional; sin campo en wizard) |
 | `fechapreadmision` | string | DD/MM/YYYY |
 
-### Campos de adjuntos NO enviados a Cellbyte
+### Adjuntos almacenados pero no enviados a Cellbyte
 
-`preautorizacion`, `carnetseguro`, `certificadoSeguro` — se almacenan en la plataforma pero no están en el contrato Cellbyte actual.
+`certificadoSeguro` — se guarda en la plataforma; no forma parte del contrato Cellbyte actual.
 
 ---
 

@@ -3,6 +3,8 @@ import { Preadmission } from '../preadmission/entities/preadmission.entity';
 export type CellbyteAttachmentBase64 = {
   cedulaimagen: string;
   ordenimagen: string;
+  preautorizacion: string;
+  carnetseguro: string;
   ssimagen: string;
 };
 
@@ -63,6 +65,8 @@ export function buildCellbytePayload(
     poliza1: p.doblecobertura === 'SI' ? (p.poliza1 ?? '') : '',
     cedulaimagen: attachments.cedulaimagen,
     ordenimagen: attachments.ordenimagen,
+    preautorizacion: attachments.preautorizacion,
+    carnetseguro: attachments.carnetseguro,
     ssimagen: attachments.ssimagen,
     fechapreadmision: formatDdMmYyyy(p.fechapreadmision),
   };
@@ -76,10 +80,15 @@ export function buildCellbyteAttachmentWarnings(
   const checks: Array<{ field: keyof CellbyteAttachmentBase64; label: string }> = [
     { field: 'cedulaimagen', label: 'Imagen de cédula (cedulaimagen)' },
     { field: 'ordenimagen', label: 'Orden médica (ordenimagen)' },
+    { field: 'preautorizacion', label: 'Preautorización (preautorizacion)' },
+    { field: 'carnetseguro', label: 'Carné de seguro (carnetseguro)' },
     { field: 'ssimagen', label: 'Imagen SS (ssimagen)' },
   ];
 
   for (const { field, label } of checks) {
+    if (field === 'carnetseguro' && preadmission.doblecobertura !== 'SI') {
+      continue;
+    }
     const stored = preadmission[field];
     if (stored && !attachments[field]) {
       warnings.push(

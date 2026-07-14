@@ -46,6 +46,8 @@ export type CellbytePostmanExport = {
   attachmentSizes: {
     cedulaimagen: number;
     ordenimagen: number;
+    preautorizacion: number;
+    carnetseguro: number;
     ssimagen: number;
   };
   usage: {
@@ -76,6 +78,9 @@ export class CellbyteService {
     return {
       cedulaimagen: this.storageService.readAsBase64(p.cedulaimagen),
       ordenimagen: this.storageService.readAsBase64(p.ordenimagen),
+      preautorizacion: this.storageService.readAsBase64(p.preautorizacion),
+      carnetseguro:
+        p.doblecobertura === 'SI' ? this.storageService.readAsBase64(p.carnetseguro) : '',
       ssimagen: this.storageService.readAsBase64(p.ssimagen),
     };
   }
@@ -107,6 +112,8 @@ export class CellbyteService {
       attachmentSizes: {
         cedulaimagen: payload.cedulaimagen.length,
         ordenimagen: payload.ordenimagen.length,
+        preautorizacion: payload.preautorizacion.length,
+        carnetseguro: payload.carnetseguro.length,
         ssimagen: payload.ssimagen.length,
       },
       usage: {
@@ -223,6 +230,10 @@ export class CellbyteService {
       ...payload,
       cedulaimagen: payload.cedulaimagen ? `[base64 ${payload.cedulaimagen.length} chars]` : '',
       ordenimagen: payload.ordenimagen ? `[base64 ${payload.ordenimagen.length} chars]` : '',
+      preautorizacion: payload.preautorizacion
+        ? `[base64 ${payload.preautorizacion.length} chars]`
+        : '',
+      carnetseguro: payload.carnetseguro ? `[base64 ${payload.carnetseguro.length} chars]` : '',
       ssimagen: payload.ssimagen ? `[base64 ${payload.ssimagen.length} chars]` : '',
     };
 
