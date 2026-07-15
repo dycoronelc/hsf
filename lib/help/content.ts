@@ -166,7 +166,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: 'Preadmisión',
     question: '¿Qué documentos debo adjuntar?',
     answer:
-      'La imagen de cédula y la orden médica son obligatorias (JPG, PNG o PDF). Preautorización y carnet de seguro son opcionales según su caso.',
+      'La imagen de cédula y la orden médica son obligatorias (JPG, PNG o PDF). Si tiene seguro, el carné y el certificado de seguro también son obligatorios. La preautorización es opcional.',
   },
   {
     id: 'faq-password',
