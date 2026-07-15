@@ -448,7 +448,28 @@ export default function PreadmissionPage() {
     }
   }
 
+  const clearInsuranceAttachments = () => {
+    const next = { ...attachmentFilesRef.current }
+    delete next.carnetseguro
+    delete next.certificadoSeguro
+    attachmentFilesRef.current = next
+    setAttachmentFiles(next)
+  }
+
+  useEffect(() => {
+    if (step === 7 && formData.doblecobertura === 'NO') {
+      clearInsuranceAttachments()
+    }
+  }, [step, formData.doblecobertura])
+
   const handleFileSelect = (field: PreadmissionAttachmentField, file: File) => {
+    if (
+      (field === 'carnetseguro' || field === 'certificadoSeguro') &&
+      formData.doblecobertura !== 'SI'
+    ) {
+      setError('No puede adjuntar documentos de seguro si indicó que no tiene seguro.')
+      return
+    }
     if (file.size > MAX_ATTACHMENT_BYTES) {
       setError('El archivo supera el tamaño máximo de 15 MB')
       return
@@ -675,6 +696,22 @@ export default function PreadmissionPage() {
         }
         if (!attachmentFilesRef.current.ordenimagen && !attachmentFiles.ordenimagen) {
           return 'Adjunte la imagen de la orden médica'
+        }
+        if (formData.doblecobertura === 'NO') {
+          if (attachmentFilesRef.current.carnetseguro || attachmentFiles.carnetseguro) {
+            return 'No puede adjuntar carné de seguro si indicó que no tiene seguro'
+          }
+          if (attachmentFilesRef.current.certificadoSeguro || attachmentFiles.certificadoSeguro) {
+            return 'No puede adjuntar certificado de seguro si indicó que no tiene seguro'
+          }
+        }
+        if (formData.doblecobertura === 'SI') {
+          if (!attachmentFilesRef.current.carnetseguro && !attachmentFiles.carnetseguro) {
+            return 'Adjunte el carné de seguro'
+          }
+          if (!attachmentFilesRef.current.certificadoSeguro && !attachmentFiles.certificadoSeguro) {
+            return 'Adjunte el certificado de seguro'
+          }
         }
         return null
       default:
@@ -1411,11 +1448,7 @@ export default function PreadmissionPage() {
                       ...(v === 'NO' ? { compania1: '', poliza1: '' } : {}),
                     })
                     if (v === 'NO') {
-                      const next = { ...attachmentFilesRef.current }
-                      delete next.carnetseguro
-                      delete next.certificadoSeguro
-                      attachmentFilesRef.current = next
-                      setAttachmentFiles(next)
+                      clearInsuranceAttachments()
                     }
                   }}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
@@ -1560,30 +1593,33 @@ export default function PreadmissionPage() {
                     </p>
                   )}
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Carné de seguro {formData.doblecobertura === 'SI' ? '*' : '(solo si tiene seguro)'}
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
-                    key={`carnetseguro-${attachmentFiles.carnetseguro?.name ?? 'empty'}`}
-                    onChange={(e) => {
-                      const file = e.target.files?.[0]
-                      if (file) handleFileSelect('carnetseguro', file)
-                    }}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
-                  />
-                  {attachmentFiles.carnetseguro && (
-                    <p className="text-xs text-green-700 mt-1">
-                      Archivo: {attachmentFiles.carnetseguro.name}
-                    </p>
-                  )}
-                </div>
                 {formData.doblecobertura === 'SI' && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Certificado de seguro (opcional)
+                      Carné de seguro *
+                    </label>
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,.jpg,.jpeg,.png,.pdf,application/pdf"
+                      key={`carnetseguro-${attachmentFiles.carnetseguro?.name ?? 'empty'}`}
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) handleFileSelect('carnetseguro', file)
+                      }}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                      required
+                    />
+                    {attachmentFiles.carnetseguro && (
+                      <p className="text-xs text-green-700 mt-1">
+                        Archivo: {attachmentFiles.carnetseguro.name}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {formData.doblecobertura === 'SI' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Certificado de seguro *
                     </label>
                     <input
                       type="file"
@@ -1594,6 +1630,7 @@ export default function PreadmissionPage() {
                         if (file) handleFileSelect('certificadoSeguro', file)
                       }}
                       className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                      required
                     />
                     {attachmentFiles.certificadoSeguro && (
                       <p className="text-xs text-green-700 mt-1">
@@ -1623,6 +1660,12 @@ export default function PreadmissionPage() {
                     <p className="font-medium mb-1">Documentos adjuntos:</p>
                     <ul className="list-disc list-inside space-y-1">
                       {PREADMISSION_ATTACHMENT_FIELDS.map((field) => {
+                        if (
+                          (field === 'carnetseguro' || field === 'certificadoSeguro') &&
+                          formData.doblecobertura !== 'SI'
+                        ) {
+                          return null
+                        }
                         const file = attachmentFilesRef.current[field] || attachmentFiles[field]
                         if (!file) return null
                         return <li key={field}>{file.name}</li>

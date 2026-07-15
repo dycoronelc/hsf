@@ -48,6 +48,7 @@ export type CellbytePostmanExport = {
     ordenimagen: number;
     preautorizacion: number;
     carnetseguro: number;
+    certificadoSeguro: number;
     ssimagen: number;
   };
   usage: {
@@ -75,12 +76,15 @@ export class CellbyteService {
   ) {}
 
   private readAttachments(p: Preadmission) {
+    const withInsurance = p.doblecobertura === 'SI';
     return {
       cedulaimagen: this.storageService.readAsBase64(p.cedulaimagen),
       ordenimagen: this.storageService.readAsBase64(p.ordenimagen),
       preautorizacion: this.storageService.readAsBase64(p.preautorizacion),
-      carnetseguro:
-        p.doblecobertura === 'SI' ? this.storageService.readAsBase64(p.carnetseguro) : '',
+      carnetseguro: withInsurance ? this.storageService.readAsBase64(p.carnetseguro) : '',
+      certificadoSeguro: withInsurance
+        ? this.storageService.readAsBase64(p.certificadoSeguro)
+        : '',
       ssimagen: this.storageService.readAsBase64(p.ssimagen),
     };
   }
@@ -114,6 +118,7 @@ export class CellbyteService {
         ordenimagen: payload.ordenimagen.length,
         preautorizacion: payload.preautorizacion.length,
         carnetseguro: payload.carnetseguro.length,
+        certificadoSeguro: payload.certificadoSeguro.length,
         ssimagen: payload.ssimagen.length,
       },
       usage: {
@@ -234,6 +239,9 @@ export class CellbyteService {
         ? `[base64 ${payload.preautorizacion.length} chars]`
         : '',
       carnetseguro: payload.carnetseguro ? `[base64 ${payload.carnetseguro.length} chars]` : '',
+      certificadoSeguro: payload.certificadoSeguro
+        ? `[base64 ${payload.certificadoSeguro.length} chars]`
+        : '',
       ssimagen: payload.ssimagen ? `[base64 ${payload.ssimagen.length} chars]` : '',
     };
 

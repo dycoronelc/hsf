@@ -98,12 +98,11 @@ Referencia: `docs/Archivos/ejemplo_json.json`
 | **`ordenimagen`** | string | **Base64** orden médica (obligatorio) |
 | **`preautorizacion`** | string | **Base64** preautorización (opcional) |
 | **`carnetseguro`** | string | **Base64** carné de seguro (si `doblecobertura=SI`) |
+| **`certificadoSeguro`** | string | **Base64** certificado de seguro (si `doblecobertura=SI`) |
 | **`ssimagen`** | string | **Base64** imagen SS (opcional; sin campo en wizard) |
 | `fechapreadmision` | string | DD/MM/YYYY |
 
-### Adjuntos almacenados pero no enviados a Cellbyte
-
-`certificadoSeguro` — se guarda en la plataforma; no forma parte del contrato Cellbyte actual.
+Todos los adjuntos aceptan **PNG, JPG o PDF** codificados en base64 (sin prefijo `data:`).
 
 ---
 

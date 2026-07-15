@@ -5,6 +5,7 @@ export type CellbyteAttachmentBase64 = {
   ordenimagen: string;
   preautorizacion: string;
   carnetseguro: string;
+  certificadoSeguro: string;
   ssimagen: string;
 };
 
@@ -67,6 +68,7 @@ export function buildCellbytePayload(
     ordenimagen: attachments.ordenimagen,
     preautorizacion: attachments.preautorizacion,
     carnetseguro: attachments.carnetseguro,
+    certificadoSeguro: attachments.certificadoSeguro,
     ssimagen: attachments.ssimagen,
     fechapreadmision: formatDdMmYyyy(p.fechapreadmision),
   };
@@ -82,14 +84,18 @@ export function buildCellbyteAttachmentWarnings(
     { field: 'ordenimagen', label: 'Orden médica (ordenimagen)' },
     { field: 'preautorizacion', label: 'Preautorización (preautorizacion)' },
     { field: 'carnetseguro', label: 'Carné de seguro (carnetseguro)' },
+    { field: 'certificadoSeguro', label: 'Certificado de seguro (certificadoSeguro)' },
     { field: 'ssimagen', label: 'Imagen SS (ssimagen)' },
   ];
 
   for (const { field, label } of checks) {
-    if (field === 'carnetseguro' && preadmission.doblecobertura !== 'SI') {
+    if (
+      (field === 'carnetseguro' || field === 'certificadoSeguro') &&
+      preadmission.doblecobertura !== 'SI'
+    ) {
       continue;
     }
-    const stored = preadmission[field];
+    const stored = preadmission[field as keyof Preadmission] as string | null | undefined;
     if (stored && !attachments[field]) {
       warnings.push(
         `${label}: hay ruta en BD (${stored}) pero el archivo no está en disco. En Railway configure un volumen persistente en PREADMISSION_UPLOAD_DIR o vuelva a registrar la preadmisión con adjuntos.`,

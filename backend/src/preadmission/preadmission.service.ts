@@ -296,6 +296,17 @@ export class PreadmissionService {
       );
     }
 
+    if (createDto.doblecobertura === 'NO') {
+      const hasInsuranceFiles =
+        (uploadedFiles.carnetseguro?.length ?? 0) > 0 ||
+        (uploadedFiles.certificadoSeguro?.length ?? 0) > 0;
+      if (hasInsuranceFiles) {
+        throw new BadRequestException(
+          'No puede adjuntar documentos de seguro si indicó que no tiene seguro',
+        );
+      }
+    }
+
     const preadmission = this.buildEntityFromDto(createDto, patientId, {});
     const saved = await this.preadmissionRepository.save(preadmission);
 
@@ -310,6 +321,15 @@ export class PreadmissionService {
       saved.certificadoSeguro = null;
     }
     await this.preadmissionRepository.save(saved);
+
+    if (createDto.doblecobertura === 'SI') {
+      if (!attachmentPaths.carnetseguro) {
+        throw new BadRequestException('Adjunte el carné de seguro');
+      }
+      if (!attachmentPaths.certificadoSeguro) {
+        throw new BadRequestException('Adjunte el certificado de seguro');
+      }
+    }
 
     await this.auditService.log('preadmission_created', {
       entityType: 'preadmission',

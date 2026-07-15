@@ -15,7 +15,7 @@ import {
   REQUIRED_ATTACHMENT_FIELDS,
 } from './preadmission-attachments.constants';
 import { PreadmissionUploadedFilesMap } from './preadmission-upload.types';
-import { assertValidAttachmentBuffer } from '../common/file-signature.util';
+import { resolveEffectiveAttachmentMime } from '../common/file-signature.util';
 
 export type SavedAttachmentPaths = Partial<Record<PreadmissionAttachmentField, string>>;
 
@@ -68,7 +68,8 @@ export class PreadmissionStorageService {
       const file = files[field]?.[0];
       if (!file?.buffer?.length) continue;
 
-      if (!ALLOWED_ATTACHMENT_MIME.has(file.mimetype)) {
+      const verifiedKind = resolveEffectiveAttachmentMime(file.buffer, file.mimetype);
+      if (!ALLOWED_ATTACHMENT_MIME.has(verifiedKind)) {
         throw new BadRequestException(
           `Tipo de archivo no permitido en ${field}. Solo PNG, JPG y PDF`,
         );
@@ -78,8 +79,6 @@ export class PreadmissionStorageService {
           `El archivo ${field} supera el tamaño máximo de 15 MB`,
         );
       }
-
-      const verifiedKind = assertValidAttachmentBuffer(file.buffer, file.mimetype);
 
       const ext = this.extensionFor(verifiedKind, file.originalname);
       const filename = `${field}${ext}`;

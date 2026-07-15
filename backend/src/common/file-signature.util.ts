@@ -19,6 +19,16 @@ export function detectAttachmentKind(buffer: Buffer): AllowedAttachmentKind | nu
 }
 
 export function assertValidAttachmentBuffer(buffer: Buffer, declaredMime: string): AllowedAttachmentKind {
+  return resolveEffectiveAttachmentMime(buffer, declaredMime);
+}
+
+const TRUST_DETECTED_MIMES = new Set(['', 'application/octet-stream', 'binary/octet-stream']);
+
+/** Usa la firma del archivo cuando el navegador envía MIME vacío o genérico (común en PDF móvil). */
+export function resolveEffectiveAttachmentMime(
+  buffer: Buffer,
+  declaredMime?: string | null,
+): AllowedAttachmentKind {
   if (!buffer?.length) {
     throw new BadRequestException('El archivo está vacío o corrupto');
   }
@@ -28,14 +38,18 @@ export function assertValidAttachmentBuffer(buffer: Buffer, declaredMime: string
     throw new BadRequestException('Formato no permitido. Use PNG, JPG o PDF válidos');
   }
 
-  const normalizedDeclared = declaredMime.toLowerCase();
-  const jpegAliases = new Set(['image/jpeg', 'image/jpg', 'image/pjpeg']);
-  if (detected === 'image/jpeg' && jpegAliases.has(normalizedDeclared)) {
+  const declared = (declaredMime ?? '').toLowerCase().trim();
+  if (!declared || TRUST_DETECTED_MIMES.has(declared)) {
     return detected;
   }
-  if (detected !== normalizedDeclared) {
-    throw new BadRequestException('El contenido del archivo no coincide con su formato declarado');
+
+  const jpegAliases = new Set(['image/jpeg', 'image/jpg', 'image/pjpeg']);
+  if (detected === 'image/jpeg' && jpegAliases.has(declared)) {
+    return detected;
+  }
+  if (detected === declared) {
+    return detected;
   }
 
-  return detected;
+  throw new BadRequestException('El contenido del archivo no coincide con su formato declarado');
 }
