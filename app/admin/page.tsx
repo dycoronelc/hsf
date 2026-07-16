@@ -30,7 +30,12 @@ const adminCards = [
   {
     href: '/admin/patients',
     title: 'Pacientes registrados',
-    description: 'Consulte cuentas de pacientes registrados en la plataforma.',
+    description: 'Consulte y edite cuentas de pacientes registrados en la plataforma.',
+  },
+  {
+    href: '/admin/monitor-media',
+    title: 'Contenido del monitor',
+    description: 'Mensajes, imágenes y videos para la pantalla de llamados.',
   },
 ]
 

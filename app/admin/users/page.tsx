@@ -15,6 +15,8 @@ interface StaffUser {
   fullName: string | null
   role: string
   isActive: boolean
+  sessionNeverExpires?: boolean
+  sessionExpiresMinutes?: number | null
 }
 
 const emptyCreate = {
@@ -39,7 +41,12 @@ export default function AdminUsersPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
   const [editUser, setEditUser] = useState<StaffUser | null>(null)
-  const [editForm, setEditForm] = useState({ fullName: '', role: 'reception' })
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    role: 'reception',
+    sessionNeverExpires: false,
+    sessionExpiresMinutes: '' as string,
+  })
 
   const loadAssignableRoles = useCallback(async () => {
     if (!token) return
@@ -92,6 +99,9 @@ export default function AdminUsersPage() {
     setEditForm({
       fullName: editUser.fullName || '',
       role: editUser.role,
+      sessionNeverExpires: !!editUser.sessionNeverExpires,
+      sessionExpiresMinutes:
+        editUser.sessionExpiresMinutes != null ? String(editUser.sessionExpiresMinutes) : '',
     })
   }, [editUser])
 
@@ -135,7 +145,16 @@ export default function AdminUsersPage() {
     }
   }
 
-  const updateUser = async (id: number, patch: { role?: string; isActive?: boolean; fullName?: string }) => {
+  const updateUser = async (
+    id: number,
+    patch: {
+      role?: string
+      isActive?: boolean
+      fullName?: string
+      sessionNeverExpires?: boolean
+      sessionExpiresMinutes?: number | null
+    },
+  ) => {
     if (!token) return
     setSaving(true)
     setMessage('')
@@ -173,6 +192,12 @@ export default function AdminUsersPage() {
     await updateUser(editUser.id, {
       fullName: editForm.fullName.trim(),
       role: editForm.role,
+      sessionNeverExpires: editForm.sessionNeverExpires,
+      sessionExpiresMinutes: editForm.sessionNeverExpires
+        ? null
+        : editForm.sessionExpiresMinutes.trim()
+          ? Number(editForm.sessionExpiresMinutes)
+          : null,
     })
     setEditUser(null)
   }
@@ -378,6 +403,38 @@ export default function AdminUsersPage() {
                   ))}
                 </select>
               </div>
+              <label className="flex items-center gap-2 text-sm text-gray-700">
+                <input
+                  type="checkbox"
+                  checked={editForm.sessionNeverExpires}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      sessionNeverExpires: e.target.checked,
+                      sessionExpiresMinutes: e.target.checked ? '' : editForm.sessionExpiresMinutes,
+                    })
+                  }
+                />
+                Sesión sin expiración (p. ej. monitor)
+              </label>
+              {!editForm.sessionNeverExpires && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Expiración de sesión (minutos)
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    value={editForm.sessionExpiresMinutes}
+                    onChange={(e) => setEditForm({ ...editForm, sessionExpiresMinutes: e.target.value })}
+                    placeholder="Vacío = usar JWT_EXPIRES del rol/env"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Si queda vacío, se usa la variable de entorno del rol (JWT_EXPIRES_*).
+                  </p>
+                </div>
+              )}
               <div className="flex gap-2 justify-end pt-2">
                 <button
                   type="button"

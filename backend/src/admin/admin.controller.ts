@@ -20,15 +20,21 @@ import {
   CreateStaffUserDto,
   CreateTicketTypeDto,
   PatchMatrixRoleDto,
+  UpdatePatientDto,
   UpdateRolePermissionsDto,
   UpdateStaffUserDto,
   UpdateTicketTypeDto,
 } from './dto/admin.dto';
+import { CreateMonitorMediaDto, UpdateMonitorMediaDto } from './dto/monitor-media.dto';
+import { MonitorMediaService } from '../monitor/monitor-media.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(
+    private readonly adminService: AdminService,
+    private readonly monitorMediaService: MonitorMediaService,
+  ) {}
 
   @Get('permission-catalog')
   @RequirePermissions('manage_role_permissions')
@@ -130,6 +136,36 @@ export class AdminController {
   @RequirePermissions('manage_users')
   listPatients(@Query('q') q?: string) {
     return this.adminService.listPatients(q);
+  }
+
+  @Patch('patients/:id')
+  @RequirePermissions('manage_users')
+  updatePatient(@Param('id') id: number, @Body() dto: UpdatePatientDto, @Request() req) {
+    return this.adminService.updatePatient(+id, dto, req.user.id);
+  }
+
+  @Get('monitor-media')
+  @RequirePermissions('manage_users')
+  listMonitorMedia() {
+    return this.monitorMediaService.listAll();
+  }
+
+  @Post('monitor-media')
+  @RequirePermissions('manage_users')
+  createMonitorMedia(@Body() dto: CreateMonitorMediaDto) {
+    return this.monitorMediaService.create(dto);
+  }
+
+  @Patch('monitor-media/:id')
+  @RequirePermissions('manage_users')
+  updateMonitorMedia(@Param('id') id: number, @Body() dto: UpdateMonitorMediaDto) {
+    return this.monitorMediaService.update(+id, dto);
+  }
+
+  @Delete('monitor-media/:id')
+  @RequirePermissions('manage_users')
+  deleteMonitorMedia(@Param('id') id: number) {
+    return this.monitorMediaService.remove(+id);
   }
 
   /** Compatibilidad con endpoint anterior */

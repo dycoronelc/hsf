@@ -20,7 +20,15 @@ interface Service {
   estimatedTime?: number | null
 }
 
-const AREA_LABELS: Record<string, string> = {
+function normalizeHostArea(area: string): 'ADM' | 'LAB' | 'RAD' | null {
+  const a = String(area || '').toUpperCase()
+  if (a === 'ADM' || a === 'ADMISION') return 'ADM'
+  if (a === 'LAB') return 'LAB'
+  if (a === 'RAD') return 'RAD'
+  return null
+}
+
+const AREA_LABELS: Record<'ADM' | 'LAB' | 'RAD', string> = {
   ADM: 'Admisión',
   LAB: 'Laboratorio',
   RAD: 'Radiología',
@@ -37,14 +45,16 @@ export default function HostTurnosPage() {
   const [autoPrint, setAutoPrint] = useState(false)
 
   const receptionServices = useMemo(
-    () => services.filter((s) => s.area === 'ADM' || s.area === 'LAB' || s.area === 'RAD'),
+    () =>
+      services.filter((s) => normalizeHostArea(s.area) !== null),
     [services],
   )
 
   const groupedServices = useMemo(() => {
-    const groups: Record<string, Service[]> = { ADM: [], LAB: [], RAD: [] }
+    const groups: Record<'ADM' | 'LAB' | 'RAD', Service[]> = { ADM: [], LAB: [], RAD: [] }
     for (const service of receptionServices) {
-      groups[service.area]?.push(service)
+      const key = normalizeHostArea(service.area)
+      if (key) groups[key].push(service)
     }
     return groups
   }, [receptionServices])
@@ -119,82 +129,84 @@ export default function HostTurnosPage() {
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Crear turno en recepción</h1>
-            <p className="text-gray-600 text-sm mt-1">
+            <h1 className="text-3xl font-bold text-gray-900">Crear turno en recepción</h1>
+            <p className="text-gray-600 mt-2">
               Genere turnos de Admisión, Laboratorio o Radiología. Al confirmar, se imprimirá el ticket.
             </p>
           </div>
-          <Link href="/dashboard" className="text-hospital-blue font-medium hover:underline text-sm">
+          <Link href="/dashboard" className="text-hospital-blue hover:underline text-sm font-medium">
             ← Dashboard
           </Link>
         </div>
 
-        <HostNav />
+        <HostNav className="mb-6" />
 
-        {msg && (
-          <div className="mb-4 px-4 py-3 rounded-lg bg-blue-50 border border-blue-200 text-blue-900 text-sm">
-            {msg}
-          </div>
-        )}
-
-        <div className="bg-white rounded-lg shadow p-6 space-y-6">
-          {receptionServices.length === 0 ? (
-            <p className="text-gray-500 text-sm">No hay servicios de Admisión, Laboratorio o Radiología activos.</p>
-          ) : (
-            (['ADM', 'LAB', 'RAD'] as const).map((area) =>
-              groupedServices[area].length > 0 ? (
-                <div key={area}>
-                  <h2 className="text-sm font-semibold text-gray-700 mb-3">{AREA_LABELS[area]}</h2>
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {groupedServices[area].map((service) => {
-                      const selected = selectedService === service.id
-                      const wait = service.estimated_time ?? service.estimatedTime
-                      return (
-                        <button
-                          key={service.id}
-                          type="button"
-                          onClick={() => setSelectedService(service.id)}
-                          className={`rounded-lg border-2 p-4 text-left transition-colors ${
-                            selected
-                              ? 'border-hospital-blue bg-blue-50'
-                              : 'border-gray-200 hover:border-gray-300'
-                          }`}
-                        >
-                          <p className="font-semibold text-gray-900">{service.name}</p>
-                          <p className="text-xs text-gray-500 mt-1">{service.code}</p>
-                          {wait != null && (
-                            <p className="text-xs text-gray-500 mt-1">Tiempo estimado: {wait} min</p>
-                          )}
-                        </button>
-                      )
-                    })}
-                  </div>
+        <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
+          {(['ADM', 'LAB', 'RAD'] as const).map((area) => {
+            const items = groupedServices[area]
+            if (!items.length) return null
+            return (
+              <div key={area}>
+                <h2 className="text-lg font-semibold text-gray-900 mb-3">{AREA_LABELS[area]}</h2>
+                <div className="grid sm:grid-cols-2 gap-3">
+                  {items.map((service) => {
+                    const selected = selectedService === service.id
+                    const minutes = service.estimatedTime ?? service.estimated_time
+                    return (
+                      <button
+                        key={service.id}
+                        type="button"
+                        onClick={() => setSelectedService(service.id)}
+                        className={`text-left rounded-lg border-2 p-4 transition-colors ${
+                          selected
+                            ? 'border-hospital-blue bg-hospital-blue/5'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-semibold text-gray-900">{service.name}</div>
+                        <div className="text-xs text-gray-500 mt-1">{service.code}</div>
+                        {minutes != null && (
+                          <div className="text-xs text-gray-500 mt-1">Tiempo estimado: {minutes} min</div>
+                        )}
+                      </button>
+                    )
+                  })}
                 </div>
-              ) : null,
+              </div>
             )
+          })}
+
+          {receptionServices.length === 0 && (
+            <p className="text-sm text-amber-700">
+              No hay tipos de ticket activos para Admisión, Laboratorio o Radiología.
+            </p>
+          )}
+
+          {msg && (
+            <div className="text-sm rounded-lg px-3 py-2 bg-gray-50 border border-gray-200 text-gray-800">
+              {msg}
+            </div>
           )}
 
           <button
             type="button"
             onClick={createTicket}
             disabled={loading || !selectedService}
-            className="w-full sm:w-auto px-6 py-3 bg-hospital-blue text-white rounded-lg font-semibold hover:bg-hospital-blue-dark disabled:opacity-50"
+            className="w-full bg-hospital-blue text-white py-3 rounded-lg font-semibold hover:bg-hospital-blue-dark disabled:opacity-50"
           >
-            {loading ? 'Creando turno…' : 'Confirmar y imprimir ticket'}
+            {loading ? 'Creando…' : 'Confirmar y imprimir ticket'}
           </button>
         </div>
       </div>
 
-      {printTicket && (
-        <TicketPrintOverlay
-          ticket={printTicket}
-          autoPrint={autoPrint}
-          onClose={() => {
-            setPrintTicket(null)
-            setAutoPrint(false)
-          }}
-        />
-      )}
+      <TicketPrintOverlay
+        ticket={printTicket}
+        autoPrint={autoPrint}
+        onClose={() => {
+          setPrintTicket(null)
+          setAutoPrint(false)
+        }}
+      />
     </SiteLayout>
   )
 }

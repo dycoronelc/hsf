@@ -45,6 +45,10 @@ export class User {
   @Column({ default: false })
   sessionNeverExpires: boolean;
 
+  /** Minutos de vigencia JWT para este usuario (null = usar JWT_EXPIRES del rol/env). */
+  @Column({ type: 'int', nullable: true })
+  sessionExpiresMinutes: number | null;
+
   @Column({ type: 'text', nullable: true })
   agentState: AgentState | null;
 

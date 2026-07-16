@@ -10,10 +10,12 @@ import { User } from '../users/entities/user.entity';
 import { Ticket } from '../tickets/entities/ticket.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
+import { MonitorModule } from '../monitor/monitor.module';
 
 @Module({
   imports: [
     PermissionsModule,
+    MonitorModule,
     TypeOrmModule.forFeature([
       Service,
       RolePermission,

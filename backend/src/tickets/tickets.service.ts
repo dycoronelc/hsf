@@ -171,7 +171,8 @@ export class TicketsService {
     if (!service) {
       throw new NotFoundException('Servicio no encontrado');
     }
-    if (!['LAB', 'RAD', 'ADM'].includes(service.area)) {
+    const allowedAreas = ['LAB', 'RAD', 'ADM', 'ADMISION'];
+    if (!allowedAreas.includes(String(service.area || '').toUpperCase())) {
       throw new BadRequestException(
         'Solo se permiten turnos de Admisión, Laboratorio o Radiología en recepción',
       );
@@ -442,8 +443,8 @@ export class TicketsService {
     if (ticket.status !== TicketStatus.LLAMADO) {
       throw new BadRequestException('Solo se puede volver a llamar un turno en estado Llamado');
     }
-    if ((ticket.callCount ?? 0) < 2) {
-      throw new BadRequestException('Debe llamar al paciente al menos dos veces antes de volver a llamar');
+    if ((ticket.callCount ?? 0) < 1) {
+      throw new BadRequestException('Debe llamar al paciente al menos una vez antes de volver a llamar');
     }
     const minSeconds = parseInt(process.env.TICKET_RECALL_MIN_SECONDS || '60', 10);
     const elapsed = ticket.calledAt ? (Date.now() - ticket.calledAt.getTime()) / 1000 : 0;

@@ -101,6 +101,46 @@ export class UpdateStaffUserDto {
   @IsPersonName(true)
   @IsString()
   fullName?: string;
+
+  @IsOptional()
+  @IsBoolean()
+  sessionNeverExpires?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(525600)
+  sessionExpiresMinutes?: number | null;
+}
+
+export class UpdatePatientDto {
+  @IsOptional()
+  @IsPersonName(true)
+  @IsString()
+  fullName?: string;
+
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  nationalId?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{0,8}$/, {
+    message: 'El celular debe contener solo dígitos (máximo 8)',
+  })
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  birthDate?: string | null;
+
+  @IsOptional()
+  @IsBoolean()
+  isActive?: boolean;
 }
 
 export class CreateStaffUserDto {

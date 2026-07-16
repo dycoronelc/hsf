@@ -70,6 +70,9 @@ export class RegisterPublicUserDto {
 
   @IsOptional()
   @IsString()
+  @Matches(/^\d{1,8}$/, {
+    message: 'El número de celular debe contener solo dígitos (máximo 8)',
+  })
   phone?: string;
 
   @IsOptional()
@@ -115,6 +118,7 @@ export class UserResponseDto {
   role: UserRole;
   isActive: boolean;
   sessionNeverExpires?: boolean;
+  sessionExpiresMinutes?: number | null;
   agentState?: string | null;
 }
 

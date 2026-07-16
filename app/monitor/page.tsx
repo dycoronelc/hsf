@@ -32,17 +32,40 @@ interface MonitorData {
   next_numbers: string[]
 }
 
-function callPanelClass(priority?: string): string {
-  if (priority === 'emergencia') return 'bg-red-600'
-  if (priority === 'cita' || priority === 'adulto_mayor') return 'bg-amber-500'
-  return 'bg-emerald-600'
+interface MonitorMediaItem {
+  id: number
+  kind: 'message' | 'image' | 'video'
+  title: string
+  body: string | null
+}
+
+function isTriageService(name: string): boolean {
+  return /triage/i.test(name)
+}
+
+function youtubeEmbedUrl(url: string): string | null {
+  try {
+    const u = new URL(url)
+    if (u.hostname.includes('youtu.be')) {
+      const id = u.pathname.replace('/', '')
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1` : null
+    }
+    if (u.hostname.includes('youtube.com')) {
+      const id = u.searchParams.get('v')
+      return id ? `https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1` : null
+    }
+  } catch {
+    /* ignore */
+  }
+  return null
 }
 
 export default function MonitorPage() {
   const [queues, setQueues] = useState<MonitorData[]>([])
+  const [media, setMedia] = useState<MonitorMediaItem[]>([])
+  const [mediaIndex, setMediaIndex] = useState(0)
   const [loading, setLoading] = useState(true)
   const [voiceArmed, setVoiceArmed] = useState(false)
-  const [voicePreferenceSaved, setVoicePreferenceSaved] = useState(false)
   const [lastAnnouncement, setLastAnnouncement] = useState<string | null>(null)
 
   const prevSnapRef = useRef<Record<number, string | null>>({})
@@ -50,10 +73,12 @@ export default function MonitorPage() {
 
   const fetchAll = async () => {
     try {
-      const queuesRes = await fetch('/api/monitor/all-queues')
-      if (queuesRes.ok) {
-        setQueues(await queuesRes.json())
-      }
+      const [queuesRes, mediaRes] = await Promise.all([
+        fetch('/api/monitor/all-queues'),
+        fetch('/api/monitor/media'),
+      ])
+      if (queuesRes.ok) setQueues(await queuesRes.json())
+      if (mediaRes.ok) setMedia(await mediaRes.json())
     } catch (error) {
       console.error('Error fetching monitor data:', error)
     } finally {
@@ -68,12 +93,12 @@ export default function MonitorPage() {
   }, [])
 
   useEffect(() => {
-    try {
-      if (localStorage.getItem(VOICE_STORAGE_KEY) === '1') setVoicePreferenceSaved(true)
-    } catch {
-      /* ignore */
-    }
-  }, [])
+    if (media.length <= 1) return
+    const t = setInterval(() => {
+      setMediaIndex((i) => (i + 1) % media.length)
+    }, 12000)
+    return () => clearInterval(t)
+  }, [media.length])
 
   useEffect(() => {
     warmupSpeechVoices()
@@ -125,7 +150,6 @@ export default function MonitorPage() {
   const enableVoiceClick = useCallback(() => {
     unlockSpeechWithTestPhrase()
     setVoiceArmed(true)
-    setVoicePreferenceSaved(true)
     try {
       localStorage.setItem(VOICE_STORAGE_KEY, '1')
     } catch {
@@ -142,137 +166,157 @@ export default function MonitorPage() {
     } catch {
       /* ignore */
     }
-    setVoicePreferenceSaved(false)
   }, [])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white text-xl">Cargando...</div>
+      <div className="min-h-screen flex items-center justify-center bg-slate-100">
+        <div className="text-slate-700 text-xl">Cargando...</div>
       </div>
     )
   }
 
-  const primaryCall = queues.find((q) => q.current)?.current ?? null
-  const primaryService = queues.find((q) => q.current)?.service_name ?? ''
+  const activeCalls = queues
+    .filter((q) => q.current)
+    .map((q) => ({
+      service_id: q.service_id,
+      service_name: q.service_name,
+      current: q.current!,
+    }))
+
+  const currentMedia = media[mediaIndex] ?? null
+  const videoEmbed = currentMedia?.kind === 'video' && currentMedia.body
+    ? youtubeEmbedUrl(currentMedia.body)
+    : null
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="max-w-7xl mx-auto p-6 sm:p-8">
-        <header className="flex flex-wrap items-center justify-between gap-4 mb-8 border-b border-gray-700 pb-6">
-          <div className="flex items-center gap-4">
+    <div className="min-h-screen bg-slate-100 text-slate-900 flex flex-col">
+      <div className="flex-1 grid lg:grid-cols-[1.2fr_0.8fr] min-h-0">
+        <section className="p-6 sm:p-8 flex flex-col gap-6 bg-white border-r border-slate-200">
+          <header className="flex flex-wrap items-center justify-between gap-4">
             <Image
               src="/logo-hospital-santa-fe.png"
               alt="Hospital Santa Fe"
-              width={200}
-              height={56}
-              className="h-12 w-auto object-contain"
+              width={220}
+              height={60}
+              className="h-14 w-auto object-contain"
               unoptimized
             />
-            <div>
-              <h1 className="text-xl sm:text-2xl font-bold">Pantalla de Llamados</h1>
-              <p className="text-gray-400 text-sm">Hospital Santa Fe Panamá</p>
+            <div className="flex items-center gap-3">
+              {!voiceArmed ? (
+                <button
+                  type="button"
+                  onClick={enableVoiceClick}
+                  className="px-4 py-2 rounded-lg bg-[#00816D] hover:bg-[#006b5a] text-white font-semibold text-sm"
+                >
+                  Activar voz
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={disableVoiceClick}
+                  className="px-4 py-2 rounded-lg bg-slate-200 hover:bg-slate-300 text-sm"
+                >
+                  Silenciar
+                </button>
+              )}
+              <Link href="/" className="text-sm text-slate-500 hover:text-slate-800">
+                Inicio
+              </Link>
             </div>
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            {!voiceArmed ? (
-              <button
-                type="button"
-                onClick={enableVoiceClick}
-                className="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-sm"
-              >
-                Activar voz
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={disableVoiceClick}
-                className="px-4 py-2 rounded-lg bg-gray-700 hover:bg-gray-600 text-sm"
-              >
-                Silenciar
-              </button>
-            )}
-            <Link href="/" className="text-sm text-gray-400 hover:text-white">
-              Inicio
-            </Link>
-          </div>
-        </header>
+          </header>
 
-        <div className="grid lg:grid-cols-2 gap-6 mb-8">
-          <div className="rounded-xl bg-gray-800 border border-gray-700 p-6 min-h-[220px] flex flex-col justify-center">
-            <p className="text-sm uppercase tracking-wide text-gray-400 mb-2">Información</p>
-            <p className="text-lg text-gray-200 leading-relaxed">
-              Por favor permanezca en la sala de espera. Será llamado por su número de turno en la
-              ventanilla indicada.
-            </p>
+          <div className="flex-1 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden min-h-[280px] flex flex-col">
+            {currentMedia ? (
+              <>
+                {currentMedia.kind === 'image' && currentMedia.body && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={currentMedia.body}
+                    alt={currentMedia.title}
+                    className="w-full flex-1 object-cover max-h-[420px]"
+                  />
+                )}
+                {currentMedia.kind === 'video' && (
+                  <div className="w-full aspect-video bg-black">
+                    {videoEmbed ? (
+                      <iframe
+                        title={currentMedia.title}
+                        src={videoEmbed}
+                        className="w-full h-full border-0"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                      />
+                    ) : currentMedia.body ? (
+                      <video src={currentMedia.body} className="w-full h-full object-contain" autoPlay muted loop playsInline />
+                    ) : null}
+                  </div>
+                )}
+                <div className="p-6">
+                  <p className="text-sm uppercase tracking-wide text-slate-500 mb-1">Información</p>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">{currentMedia.title}</h2>
+                  {currentMedia.kind === 'message' && currentMedia.body && (
+                    <p className="text-lg text-slate-700 leading-relaxed whitespace-pre-wrap">{currentMedia.body}</p>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="p-8 flex flex-col justify-center flex-1">
+                <p className="text-sm uppercase tracking-wide text-slate-500 mb-2">Información</p>
+                <p className="text-lg text-slate-700 leading-relaxed">
+                  Por favor permanezca en la sala de espera. Será llamado por su número de turno en la
+                  ventanilla indicada.
+                </p>
+                <p className="mt-4 text-sm text-slate-500">
+                  El administrador puede cargar mensajes, imágenes o videos desde Administración → Contenido del monitor.
+                </p>
+              </div>
+            )}
             {lastAnnouncement && (
-              <p className="mt-4 text-sm text-emerald-300" aria-live="polite">
+              <p className="px-6 pb-4 text-sm text-[#00816D]" aria-live="polite">
                 {lastAnnouncement}
               </p>
             )}
-            <p className="mt-4 text-xs text-gray-500">
-              Espacio reservado para mensajes institucionales o contenido multimedia.
-            </p>
           </div>
+        </section>
 
-          <div
-            className={`rounded-xl p-8 min-h-[220px] flex flex-col items-center justify-center text-center shadow-lg ${
-              primaryCall ? callPanelClass(primaryCall.priority) : 'bg-gray-800 border border-gray-700'
-            }`}
-          >
-            <p className="text-sm uppercase tracking-wide text-white/80 mb-2">Turno en llamado</p>
-            {primaryCall ? (
-              <>
-                <p className="text-5xl sm:text-6xl font-bold">{primaryCall.ticket_number}</p>
-                <p className="text-xl mt-3 font-medium">{primaryService}</p>
-                {primaryCall.window_number && (
-                  <p className="text-2xl mt-4 font-semibold">Ventanilla {primaryCall.window_number}</p>
-                )}
-              </>
+        <section className="bg-[#00816D] text-white p-6 sm:p-8 flex flex-col">
+          <h2 className="text-3xl font-bold tracking-wide mb-6">TURNO</h2>
+          <div className="flex-1 space-y-4 overflow-y-auto">
+            {activeCalls.length === 0 ? (
+              <p className="text-white/80 text-xl">En espera de llamados</p>
             ) : (
-              <p className="text-2xl text-gray-400">En espera de llamado</p>
-            )}
-          </div>
-        </div>
-
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {queues.map((queue) => (
-            <div key={queue.service_id} className="bg-gray-800 rounded-lg p-6 shadow-lg border border-gray-700">
-              <h2 className="text-xl font-bold mb-4 text-emerald-300">{queue.service_name}</h2>
-
-              {queue.current && (
-                <div className={`${callPanelClass(queue.current.priority)} rounded-lg p-4 mb-4`}>
-                  <div className="text-sm text-white/80 mb-1">Llamando:</div>
-                  <div className="text-3xl font-bold">{queue.current.ticket_number}</div>
-                  {queue.current.window_number && (
-                    <div className="text-lg font-semibold mt-2">Ventanilla {queue.current.window_number}</div>
+              activeCalls.map(({ service_id, service_name, current }) => (
+                <div
+                  key={`${service_id}-${current.ticket_number}`}
+                  className="rounded-xl bg-white/10 border border-white/20 p-5"
+                >
+                  <div
+                    className={`inline-block px-4 py-2 rounded-lg text-3xl font-bold mb-3 ${
+                      isTriageService(service_name) ? 'bg-[#0B4F6C]' : 'bg-transparent'
+                    }`}
+                  >
+                    {current.ticket_number}
+                  </div>
+                  <div className="text-sm text-white/80 mb-2">{service_name}</div>
+                  {current.window_number ? (
+                    <div className="inline-block bg-white text-slate-900 rounded-lg px-4 py-2 font-semibold">
+                      Ventanilla {current.window_number}
+                    </div>
+                  ) : (
+                    <div className="inline-block bg-white/80 text-slate-500 rounded-lg px-4 py-2 min-w-[8rem]">&nbsp;</div>
                   )}
                 </div>
-              )}
-
-              <div className="space-y-2">
-                <div className="text-sm text-gray-400 mb-2">En cola</div>
-                {queue.queue.length === 0 ? (
-                  <div className="text-gray-500 text-center py-4 text-sm">Sin pacientes en cola</div>
-                ) : (
-                  queue.queue.slice(0, 8).map((item) => (
-                    <div key={item.ticket_number} className="flex justify-between items-center p-2 rounded bg-gray-700/60">
-                      <span className="text-lg font-semibold">{item.ticket_number}</span>
-                      {item.wait_time != null && (
-                        <span className="text-xs text-gray-400">{item.wait_time} min</span>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 text-center text-gray-500 text-sm">
-          Actualizado: {new Date().toLocaleTimeString()}
-        </div>
+              ))
+            )}
+          </div>
+          <p className="text-xs text-white/60 mt-4">Actualizado: {new Date().toLocaleTimeString()}</p>
+        </section>
       </div>
+
+      <footer className="bg-[#00816D] text-white text-center py-3 px-4 text-sm sm:text-base font-medium">
+        Bienvenido al Hospital Santa Fe, por favor estar atento a su turno.
+      </footer>
     </div>
   )
 }

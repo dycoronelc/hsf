@@ -29,6 +29,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       isActive: user.isActive,
       agentState: user.agentState ?? null,
       sessionNeverExpires: user.sessionNeverExpires ?? false,
+      sessionExpiresMinutes: user.sessionExpiresMinutes ?? null,
     };
   }
 }

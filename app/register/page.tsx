@@ -53,8 +53,13 @@ export default function RegisterPage() {
       setError(birthDateError)
       return
     }
-    if (!/^\d+$/.test(formData.phone.replace(/\s/g, ''))) {
+    const phoneDigits = formData.phone.replace(/\D/g, '')
+    if (!/^\d+$/.test(phoneDigits)) {
       setError('El número de celular debe contener solo dígitos')
+      return
+    }
+    if (phoneDigits.length === 0 || phoneDigits.length > 8) {
+      setError('El número de celular debe tener máximo 8 dígitos')
       return
     }
     setLoading(true)
@@ -65,7 +70,7 @@ export default function RegisterPage() {
         fullName: formData.full_name || undefined,
         nationalId: normalizeDocumentId(formData.national_id, 'C') || undefined,
         birthDate: formData.birth_date || undefined,
-        phone: formData.phone || undefined,
+        phone: phoneDigits || undefined,
       }
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -202,13 +207,14 @@ export default function RegisterPage() {
                   type="tel"
                   value={formData.phone}
                   onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })
+                    setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 8) })
                   }
                   inputMode="numeric"
                   pattern="[0-9]*"
+                  maxLength={8}
                   required
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-hospital-blue focus:border-transparent"
-                  placeholder="6000-0000"
+                  placeholder="61234567"
                 />
               </div>
 

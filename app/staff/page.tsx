@@ -297,6 +297,14 @@ export default function StaffConsolePage() {
 
   const canRecallTicket = (ticket: Ticket) => {
     if (ticket.status !== 'llamado') return false
+    if ((ticket.call_count ?? 0) < 1) return false
+    if (!ticket.called_at) return false
+    return Date.now() - new Date(ticket.called_at).getTime() >= RECALL_MIN_MS
+  }
+
+  const canMarkNoShow = (ticket: Ticket) => {
+    if (ticket.status !== 'llamado') return false
+    // Tras el segundo llamado (y el tiempo de espera) se habilita no presentado
     if ((ticket.call_count ?? 0) < 2) return false
     if (!ticket.called_at) return false
     return Date.now() - new Date(ticket.called_at).getTime() >= RECALL_MIN_MS
@@ -307,9 +315,10 @@ export default function StaffConsolePage() {
       creado: 'bg-gray-100 text-gray-800',
       check_in: 'bg-blue-100 text-blue-800',
       en_cola: 'bg-yellow-100 text-yellow-800',
-      llamado: 'bg-orange-100 text-orange-800',
+      llamado: 'bg-orange-100 text-orange-800 border border-orange-300',
       en_atencion: 'bg-purple-100 text-purple-800',
       finalizado: 'bg-green-100 text-green-800',
+      no_show: 'bg-red-100 text-red-800',
     }
     return colors[status] || 'bg-gray-100 text-gray-800'
   }
@@ -322,6 +331,7 @@ export default function StaffConsolePage() {
       llamado: 'Llamado',
       en_atencion: 'En Atención',
       finalizado: 'Finalizado',
+      no_show: 'No se presentó',
     }
     return labels[status] || status
   }
@@ -514,6 +524,9 @@ export default function StaffConsolePage() {
                       {(ticket.call_count ?? 0) > 0 && (
                         <span className="ml-4 text-xs text-gray-500">Llamados: {ticket.call_count}</span>
                       )}
+                      <span className={`ml-4 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
+                        {getStatusLabel(ticket.status)}
+                      </span>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       {ticket.status === 'llamado' && (
@@ -551,17 +564,19 @@ export default function StaffConsolePage() {
                               Volver a llamar
                             </button>
                           )}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setNoShowTarget(ticket)
-                              setNoShowReason('')
-                            }}
-                            disabled={loading || !agentCanOperate}
-                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                          >
-                            No se presentó
-                          </button>
+                          {canMarkNoShow(ticket) && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setNoShowTarget(ticket)
+                                setNoShowReason('')
+                              }}
+                              disabled={loading || !agentCanOperate}
+                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                            >
+                              No se presentó
+                            </button>
+                          )}
                         </>
                       )}
                       {ticket.status === 'en_atencion' && (

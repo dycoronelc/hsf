@@ -57,10 +57,15 @@ export function buildCallAnnouncement(params: {
   windowNumber: string | null | undefined
 }): string {
   const ticket = ticketNumberToSpeechPhrase(params.ticketNumber)
-  const vent = params.windowNumber
-    ? `Ventanilla ${ventanillaToSpeech(params.windowNumber)}.`
-    : ''
-  return `Atención. Paciente con turno ${ticket}. ${vent} Servicio ${params.serviceName}. Por favor acercarse.`
+  const windowLabel = params.windowNumber?.trim()
+  const ventSpoken = windowLabel ? ventanillaToSpeech(windowLabel) : ''
+  const ventPhrase = ventSpoken ? `Ventanilla ${ventSpoken}.` : ''
+  const approach = windowLabel
+    ? `Por favor acercarse a Ventanilla ${ventSpoken}.`
+    : 'Por favor acercarse.'
+  return `Atención. Paciente con turno ${ticket}. ${ventPhrase} Servicio ${params.serviceName}. ${approach}`
+    .replace(/\s+/g, ' ')
+    .trim()
 }
 
 let queue: string[] = []

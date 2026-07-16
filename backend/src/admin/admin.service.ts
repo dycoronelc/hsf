@@ -360,7 +360,16 @@ export class AdminService {
     return this.userRepository.find({
       where: { role: Not(UserRole.PATIENT) },
       order: { fullName: 'ASC', email: 'ASC' },
-      select: ['id', 'email', 'fullName', 'role', 'isActive', 'createdAt', 'sessionNeverExpires'],
+      select: [
+        'id',
+        'email',
+        'fullName',
+        'role',
+        'isActive',
+        'createdAt',
+        'sessionNeverExpires',
+        'sessionExpiresMinutes',
+      ],
     });
   }
 
@@ -390,6 +399,67 @@ export class AdminService {
       isActive: u.isActive,
       createdAt: u.createdAt,
     }));
+  }
+
+  async updatePatient(
+    id: number,
+    dto: {
+      fullName?: string;
+      email?: string;
+      nationalId?: string | null;
+      phone?: string | null;
+      birthDate?: string | null;
+      isActive?: boolean;
+    },
+    adminUserId: number,
+  ) {
+    const user = await this.userRepository.findOne({ where: { id, role: UserRole.PATIENT } });
+    if (!user) {
+      throw new NotFoundException('Paciente no encontrado');
+    }
+    if (dto.email !== undefined && dto.email !== user.email) {
+      const existing = await this.userRepository.findOne({ where: { email: dto.email } });
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Ya existe una cuenta con este correo electrónico');
+      }
+      user.email = dto.email.trim().toLowerCase();
+    }
+    if (dto.fullName !== undefined) user.fullName = dto.fullName?.trim() || null;
+    if (dto.nationalId !== undefined) {
+      const nid = dto.nationalId?.trim() || null;
+      if (nid) {
+        const existingNid = await this.userRepository.findOne({ where: { nationalId: nid } });
+        if (existingNid && existingNid.id !== id) {
+          throw new ConflictException('Ya existe un paciente con esta cédula');
+        }
+      }
+      user.nationalId = nid;
+    }
+    if (dto.phone !== undefined) {
+      const phone = dto.phone?.replace(/\D/g, '') || null;
+      if (phone && phone.length > 8) {
+        throw new BadRequestException('El celular debe tener máximo 8 dígitos');
+      }
+      user.phone = phone;
+    }
+    if (dto.birthDate !== undefined) user.birthDate = dto.birthDate || null;
+    if (dto.isActive !== undefined) user.isActive = dto.isActive;
+    const saved = await this.userRepository.save(user);
+    await this.auditService.log('patient_updated', {
+      entityType: 'user',
+      entityId: saved.id,
+      userId: adminUserId,
+    });
+    return {
+      id: saved.id,
+      email: saved.email,
+      fullName: saved.fullName,
+      nationalId: saved.nationalId,
+      phone: saved.phone,
+      birthDate: saved.birthDate,
+      isActive: saved.isActive,
+      createdAt: saved.createdAt,
+    };
   }
 
   private async assertRoleAssignable(role: UserRole): Promise<void> {
@@ -456,12 +526,21 @@ export class AdminService {
     if (dto.role !== undefined) user.role = dto.role;
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
     if (dto.fullName !== undefined) user.fullName = dto.fullName || null;
+    if (dto.sessionNeverExpires !== undefined) {
+      user.sessionNeverExpires = dto.sessionNeverExpires;
+      if (dto.sessionNeverExpires) {
+        user.sessionExpiresMinutes = null;
+      }
+    }
+    if (dto.sessionExpiresMinutes !== undefined && !user.sessionNeverExpires) {
+      user.sessionExpiresMinutes = dto.sessionExpiresMinutes;
+    }
     const saved = await this.userRepository.save(user);
     await this.auditService.log('staff_user_updated', {
       entityType: 'user',
       entityId: saved.id,
       userId: adminUserId,
-      details: `role=${saved.role};active=${saved.isActive}`,
+      details: `role=${saved.role};active=${saved.isActive};neverExpires=${saved.sessionNeverExpires}`,
     });
     return {
       id: saved.id,
@@ -469,6 +548,8 @@ export class AdminService {
       fullName: saved.fullName,
       role: saved.role,
       isActive: saved.isActive,
+      sessionNeverExpires: saved.sessionNeverExpires,
+      sessionExpiresMinutes: saved.sessionExpiresMinutes,
     };
   }
 

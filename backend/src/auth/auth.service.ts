@@ -62,9 +62,16 @@ export class AuthService {
     return this.issueToken(safeUser);
   }
 
-  private resolveExpiresIn(user: { role: string; sessionNeverExpires?: boolean }): string | number {
+  private resolveExpiresIn(user: {
+    role: string;
+    sessionNeverExpires?: boolean;
+    sessionExpiresMinutes?: number | null;
+  }): string | number {
     if (user.sessionNeverExpires) {
       return process.env.JWT_EXPIRES_MONITOR || '3650d';
+    }
+    if (user.sessionExpiresMinutes != null && user.sessionExpiresMinutes > 0) {
+      return `${user.sessionExpiresMinutes}m`;
     }
     const roleEnvKey = `JWT_EXPIRES_${String(user.role).toUpperCase()}`;
     const roleSpecific = process.env[roleEnvKey]?.trim();
@@ -77,6 +84,7 @@ export class AuthService {
     email: string;
     role: string;
     sessionNeverExpires?: boolean;
+    sessionExpiresMinutes?: number | null;
   }): TokenResponseDto {
     const payload = { email: user.email, sub: user.id };
     return {
