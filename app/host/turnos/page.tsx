@@ -139,7 +139,7 @@ export default function HostTurnosPage() {
           </Link>
         </div>
 
-        <HostNav className="mb-6" />
+        <HostNav />
 
         <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
           {(['ADM', 'LAB', 'RAD'] as const).map((area) => {
