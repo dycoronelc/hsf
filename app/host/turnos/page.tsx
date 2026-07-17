@@ -199,14 +199,16 @@ export default function HostTurnosPage() {
         </div>
       </div>
 
-      <TicketPrintOverlay
-        ticket={printTicket}
-        autoPrint={autoPrint}
-        onClose={() => {
-          setPrintTicket(null)
-          setAutoPrint(false)
-        }}
-      />
+      {printTicket && (
+        <TicketPrintOverlay
+          ticket={printTicket}
+          autoPrint={autoPrint}
+          onClose={() => {
+            setPrintTicket(null)
+            setAutoPrint(false)
+          }}
+        />
+      )}
     </SiteLayout>
   )
 }
