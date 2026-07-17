@@ -11,11 +11,13 @@ import { Ticket } from '../tickets/entities/ticket.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { PasswordResetToken } from '../auth/entities/password-reset-token.entity';
 import { MonitorModule } from '../monitor/monitor.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
     PermissionsModule,
     MonitorModule,
+    SettingsModule,
     TypeOrmModule.forFeature([
       Service,
       RolePermission,

@@ -26,7 +26,9 @@ import {
   UpdateTicketTypeDto,
 } from './dto/admin.dto';
 import { CreateMonitorMediaDto, UpdateMonitorMediaDto } from './dto/monitor-media.dto';
+import { UpdateCallTimingsDto } from './dto/call-timings.dto';
 import { MonitorMediaService } from '../monitor/monitor-media.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Controller('admin')
 @UseGuards(JwtAuthGuard, PermissionsGuard)
@@ -34,6 +36,7 @@ export class AdminController {
   constructor(
     private readonly adminService: AdminService,
     private readonly monitorMediaService: MonitorMediaService,
+    private readonly settingsService: SettingsService,
   ) {}
 
   @Get('permission-catalog')
@@ -136,6 +139,18 @@ export class AdminController {
   @RequirePermissions('manage_users')
   listPatients(@Query('q') q?: string) {
     return this.adminService.listPatients(q);
+  }
+
+  @Get('call-timings')
+  @RequirePermissions('manage_ticket_types')
+  getCallTimings() {
+    return this.settingsService.getCallTimings();
+  }
+
+  @Patch('call-timings')
+  @RequirePermissions('manage_ticket_types')
+  updateCallTimings(@Body() dto: UpdateCallTimingsDto) {
+    return this.settingsService.updateCallTimings(dto);
   }
 
   @Patch('patients/:id')

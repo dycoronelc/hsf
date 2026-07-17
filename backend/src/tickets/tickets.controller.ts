@@ -15,10 +15,20 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RequirePermissions } from '../permissions/require-permissions.decorator';
 import { TicketStatus } from '../common/enums';
+import { SettingsService } from '../settings/settings.service';
 
 @Controller('tickets')
 export class TicketsController {
-  constructor(private readonly ticketsService: TicketsService) {}
+  constructor(
+    private readonly ticketsService: TicketsService,
+    private readonly settingsService: SettingsService,
+  ) {}
+
+  @Get('call-timings')
+  @UseGuards(JwtAuthGuard)
+  async getCallTimings() {
+    return this.settingsService.getCallTimings();
+  }
 
   @Post('kiosk')
   async createKioskTicket(@Body() createDto: CreateTicketDto) {

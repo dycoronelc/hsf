@@ -25,7 +25,8 @@ interface Ticket {
   called_at?: string | null
 }
 
-const RECALL_MIN_MS = 60_000
+const DEFAULT_RECALL_WAIT_SECONDS = 60
+const DEFAULT_NO_SHOW_WAIT_SECONDS = 60
 
 interface Service {
   id: number
@@ -38,6 +39,9 @@ export default function StaffConsolePage() {
   const { isAuthenticated, user, token, authHydrated, notifySessionExpired } = useAuth()
   const router = useRouter()
   const [services, setServices] = useState<Service[]>([])
+  const [recallWaitSeconds, setRecallWaitSeconds] = useState(DEFAULT_RECALL_WAIT_SECONDS)
+  const [noShowWaitSeconds, setNoShowWaitSeconds] = useState(DEFAULT_NO_SHOW_WAIT_SECONDS)
+  const [nowMs, setNowMs] = useState(() => Date.now())
   const [selectedService, setSelectedService] = useState<number | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [windowNumber, setWindowNumber] = useState('')
@@ -112,6 +116,36 @@ export default function StaffConsolePage() {
     }
     fetchServices()
   }, [authHydrated, isAuthenticated, user, router])
+
+  useEffect(() => {
+    if (!canUseStaff || !token) return
+    const loadTimings = async () => {
+      try {
+        const response = await fetch('/api/tickets/call-timings', {
+          headers: authHeaders(token),
+        })
+        if (!response.ok) return
+        const data = await response.json()
+        if (typeof data.recallWaitSeconds === 'number') {
+          setRecallWaitSeconds(data.recallWaitSeconds)
+        }
+        if (typeof data.noShowWaitSeconds === 'number') {
+          setNoShowWaitSeconds(data.noShowWaitSeconds)
+        }
+      } catch {
+        /* keep defaults */
+      }
+    }
+    void loadTimings()
+  }, [canUseStaff, token])
+
+  useEffect(() => {
+    if (!canUseStaff) return
+    const hasCalled = tickets.some((t) => t.status === 'llamado')
+    if (!hasCalled) return
+    const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
+    return () => window.clearInterval(timer)
+  }, [canUseStaff, tickets])
 
   useEffect(() => {
     if (!canUseStaff) return
@@ -299,15 +333,15 @@ export default function StaffConsolePage() {
     if (ticket.status !== 'llamado') return false
     if ((ticket.call_count ?? 0) < 1) return false
     if (!ticket.called_at) return false
-    return Date.now() - new Date(ticket.called_at).getTime() >= RECALL_MIN_MS
+    return nowMs - new Date(ticket.called_at).getTime() >= recallWaitSeconds * 1000
   }
 
   const canMarkNoShow = (ticket: Ticket) => {
     if (ticket.status !== 'llamado') return false
-    // Tras el segundo llamado (y el tiempo de espera) se habilita no presentado
+    // Tras el segundo llamado (y el tiempo configurado) se habilita no presentado
     if ((ticket.call_count ?? 0) < 2) return false
     if (!ticket.called_at) return false
-    return Date.now() - new Date(ticket.called_at).getTime() >= RECALL_MIN_MS
+    return nowMs - new Date(ticket.called_at).getTime() >= noShowWaitSeconds * 1000
   }
 
   const getStatusColor = (status: string) => {

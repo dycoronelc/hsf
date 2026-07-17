@@ -37,6 +37,11 @@ const adminCards = [
     title: 'Contenido del monitor',
     description: 'Mensajes, imágenes y videos para la pantalla de llamados.',
   },
+  {
+    href: '/admin/settings',
+    title: 'Configuración operativa',
+    description: 'Tiempos para Volver a llamar y No se presentó en la consola staff.',
+  },
 ]
 
 export default function AdminHomePage() {

@@ -8,11 +8,13 @@ import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { SurveysModule } from '../surveys/surveys.module';
 import { PermissionsModule } from '../permissions/permissions.module';
+import { SettingsModule } from '../settings/settings.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ticket, Service, Preadmission]),
     PermissionsModule,
+    SettingsModule,
     forwardRef(() => NotificationsModule),
     forwardRef(() => SurveysModule),
   ],

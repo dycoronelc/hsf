@@ -18,6 +18,7 @@ import { NotificationsService } from '../notifications/notifications.service';
 import { SurveysService } from '../surveys/surveys.service';
 import { isAgentOperational } from '../common/agent-utils';
 import { AuditService } from '../audit/audit.service';
+import { SettingsService } from '../settings/settings.service';
 
 @Injectable()
 export class TicketsService {
@@ -33,6 +34,7 @@ export class TicketsService {
     @Inject(forwardRef(() => SurveysService))
     private surveysService: SurveysService,
     private auditService: AuditService,
+    private settingsService: SettingsService,
   ) {}
 
   private generateTicketNumber(service: Pick<Service, 'code' | 'ticketPrefix'>): string {
@@ -446,11 +448,11 @@ export class TicketsService {
     if ((ticket.callCount ?? 0) < 1) {
       throw new BadRequestException('Debe llamar al paciente al menos una vez antes de volver a llamar');
     }
-    const minSeconds = parseInt(process.env.TICKET_RECALL_MIN_SECONDS || '60', 10);
+    const { recallWaitSeconds } = await this.settingsService.getCallTimings();
     const elapsed = ticket.calledAt ? (Date.now() - ticket.calledAt.getTime()) / 1000 : 0;
-    if (elapsed < minSeconds) {
+    if (elapsed < recallWaitSeconds) {
       throw new BadRequestException(
-        `Espere ${Math.ceil(minSeconds - elapsed)} segundos antes de volver a llamar`,
+        `Espere ${Math.ceil(recallWaitSeconds - elapsed)} segundos antes de volver a llamar`,
       );
     }
     ticket.status = TicketStatus.LLAMADO;
@@ -476,6 +478,16 @@ export class TicketsService {
     }
     if (ticket.status !== TicketStatus.LLAMADO) {
       throw new BadRequestException('Solo se puede marcar no presentado un turno que fue llamado');
+    }
+    if ((ticket.callCount ?? 0) < 2) {
+      throw new BadRequestException('Debe llamar al paciente al menos dos veces antes de marcar no presentado');
+    }
+    const { noShowWaitSeconds } = await this.settingsService.getCallTimings();
+    const elapsed = ticket.calledAt ? (Date.now() - ticket.calledAt.getTime()) / 1000 : 0;
+    if (elapsed < noShowWaitSeconds) {
+      throw new BadRequestException(
+        `Espere ${Math.ceil(noShowWaitSeconds - elapsed)} segundos antes de marcar no presentado`,
+      );
     }
     const trimmed = reason?.trim();
     if (!trimmed) {
