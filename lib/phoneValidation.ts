@@ -37,7 +37,7 @@ export function validatePhoneNumber(
   }
 
   if (p === '507' && digits.startsWith('0')) {
-    return { valid: false, message: 'En Panamá no use 0 inicial; ingrese el número local (ej. 6123-4567)' }
+    return { valid: false, message: 'En Panamá no use 0 inicial; ingrese el número local (ej. 61234567)' }
   }
 
   return { valid: true }

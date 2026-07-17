@@ -1270,7 +1270,15 @@ export default function PreadmissionPage() {
                   <div className="flex flex-col sm:flex-row gap-2">
                     <select
                       value={formData.celularPrefix}
-                      onChange={(e) => setFormData({ ...formData, celularPrefix: e.target.value })}
+                      onChange={(e) => {
+                        const prefix = e.target.value
+                        const maxLen = prefix === '507' ? 8 : 15
+                        setFormData({
+                          ...formData,
+                          celularPrefix: prefix,
+                          celular: formData.celular.replace(/\D/g, '').slice(0, maxLen),
+                        })
+                      }}
                       className="sm:w-40 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     >
                       <option value="507">+507 Panamá</option>
@@ -1282,10 +1290,16 @@ export default function PreadmissionPage() {
                       type="tel"
                       value={formData.celular}
                       onChange={(e) => {
-                        setFormData({ ...formData, celular: e.target.value.replace(/[^\d\s-]/g, '') })
+                        const maxLen = formData.celularPrefix === '507' ? 8 : 15
+                        setFormData({
+                          ...formData,
+                          celular: e.target.value.replace(/\D/g, '').slice(0, maxLen),
+                        })
                       }}
                       className="flex-1 min-w-0 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
-                      placeholder="Ej: 6123-4567"
+                      placeholder={formData.celularPrefix === '507' ? '61234567' : 'Solo números'}
+                      inputMode="numeric"
+                      maxLength={formData.celularPrefix === '507' ? 8 : 15}
                       required
                     />
                   </div>
@@ -1421,8 +1435,16 @@ export default function PreadmissionPage() {
                   <input
                     type="tel"
                     value={formData.celular3}
-                    onChange={(e) => setFormData({ ...formData, celular3: e.target.value.replace(/[^\d\s-]/g, '') })}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        celular3: e.target.value.replace(/\D/g, '').slice(0, 8),
+                      })
+                    }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                    placeholder="61234567"
+                    inputMode="numeric"
+                    maxLength={8}
                     required
                   />
                 </div>

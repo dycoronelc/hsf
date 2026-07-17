@@ -111,7 +111,7 @@ async function bootstrap() {
         email: 'paciente@hospitalsantafe.com',
         hashedPassword,
         fullName: 'Paciente de Prueba',
-        phone: '6000-0000',
+        phone: '60000000',
         nationalId: '8-888-8888',
         birthDate: '1990-01-15',
         role: UserRole.PATIENT,
