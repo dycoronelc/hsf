@@ -32,6 +32,7 @@ import {
 } from './dto/admin.dto';
 import { CreateMonitorMediaDto, UpdateMonitorMediaDto } from './dto/monitor-media.dto';
 import { UpdateCallTimingsDto } from './dto/call-timings.dto';
+import { UpdateMonitorVoiceTemplateDto } from './dto/monitor-voice.dto';
 import { MonitorMediaService } from '../monitor/monitor-media.service';
 import { SettingsService } from '../settings/settings.service';
 
@@ -156,6 +157,18 @@ export class AdminController {
   @RequirePermissions('manage_ticket_types')
   updateCallTimings(@Body() dto: UpdateCallTimingsDto) {
     return this.settingsService.updateCallTimings(dto);
+  }
+
+  @Get('monitor-voice-template')
+  @RequirePermissions('manage_ticket_types')
+  getMonitorVoiceTemplate() {
+    return this.settingsService.getMonitorVoiceTemplate();
+  }
+
+  @Patch('monitor-voice-template')
+  @RequirePermissions('manage_ticket_types')
+  updateMonitorVoiceTemplate(@Body() dto: UpdateMonitorVoiceTemplateDto) {
+    return this.settingsService.updateMonitorVoiceTemplate(dto);
   }
 
   @Patch('patients/:id')

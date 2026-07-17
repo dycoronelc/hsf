@@ -430,7 +430,7 @@ server {
     ssl_certificate     /etc/ssl/certs/hospital-qa.crt;
     ssl_certificate_key /etc/ssl/private/hospital-qa.key;
 
-    client_max_body_size 20M;
+    client_max_body_size 100M;
 
     location / {
         proxy_pass http://127.0.0.1:3000;

@@ -105,6 +105,12 @@ export default function AdminMonitorMediaPage() {
       }
 
       if (!response.ok) {
+        if (response.status === 413) {
+          throw new Error(
+            'El archivo es demasiado grande para el servidor (límite del proxy, p. ej. nginx). ' +
+              'Pida aumentar client_max_body_size a al menos 100M, o use un video más liviano / una URL.',
+          )
+        }
         const data = await response.json().catch(() => ({}))
         throw new Error(apiErrorMessage(data, 'No se pudo crear el contenido'))
       }

@@ -111,7 +111,7 @@ Valores de partida para un hospital mediano (ajustar según concurrencia real):
 | **Producción** (FE y API separados) | 2 + 2 | 4 + 4 GB | 20 GB c/u | 100 GB SSD dedicado |
 | **QA / staging** | 2 | 4 GB | 30 GB | 50 GB |
 
-**Nota sobre adjuntos:** las preadmisiones envían imágenes/PDF por **multipart**; el API los guarda en disco (`uploads/preadmissions/{id}/` o `PREADMISSION_UPLOAD_DIR`) y en PostgreSQL solo guarda la **ruta relativa** (`varchar(512)`). Registros antiguos con base64 en `text` siguen legibles hasta migrarlos. Incluir el volumen de adjuntos en backup y retención (no solo la BD). Límite por archivo: **15 MB**; nginx/proxy: `client_max_body_size` ≥ 20M.
+**Nota sobre adjuntos:** las preadmisiones envían imágenes/PDF por **multipart**; el API los guarda en disco (`uploads/preadmissions/{id}/` o `PREADMISSION_UPLOAD_DIR`) y en PostgreSQL solo guarda la **ruta relativa** (`varchar(512)`). Registros antiguos con base64 en `text` siguen legibles hasta migrarlos. Incluir el volumen de adjuntos en backup y retención (no solo la BD). Límite por archivo preadmisión: **15 MB**; videos del monitor: hasta **80 MB**. nginx/proxy: `client_max_body_size` ≥ **100M**.
 
 ### 4.3 Red y puertos
 
@@ -361,7 +361,7 @@ server {
     ssl_certificate     /etc/ssl/certs/hospital.crt;
     ssl_certificate_key /etc/ssl/private/hospital.key;
 
-    client_max_body_size 20M;   # preadmisión multipart (adjuntos hasta 15 MB c/u)
+    client_max_body_size 100M;   # preadmisión (~15 MB) + videos del monitor (hasta 80 MB)
 
     location / {
         proxy_pass http://127.0.0.1:3000;

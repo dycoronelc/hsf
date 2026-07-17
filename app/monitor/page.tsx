@@ -6,11 +6,19 @@ import Image from 'next/image'
 import {
   buildCallAnnouncement,
   clearAnnouncementQueue,
+  DEFAULT_MONITOR_VOICE_TEMPLATE,
+  DEFAULT_SPEECH_PREFS,
   diffNewCalls,
   enqueueMonitorAnnouncement,
+  listMonitorVoices,
+  loadSpeechPrefs,
+  saveSpeechPrefs,
   snapshotCurrentTickets,
+  speakVoicePreview,
   unlockSpeechWithTestPhrase,
   warmupSpeechVoices,
+  type MonitorSpeechPrefs,
+  type MonitorVoiceOption,
 } from '@/lib/monitorVoice'
 
 const VOICE_STORAGE_KEY = 'hospital-sf-monitor-voice-enabled'
@@ -67,18 +75,42 @@ export default function MonitorPage() {
   const [loading, setLoading] = useState(true)
   const [voiceArmed, setVoiceArmed] = useState(false)
   const [lastAnnouncement, setLastAnnouncement] = useState<string | null>(null)
+  const [voiceTemplate, setVoiceTemplate] = useState(DEFAULT_MONITOR_VOICE_TEMPLATE)
+  const [speechPrefs, setSpeechPrefs] = useState<MonitorSpeechPrefs>(DEFAULT_SPEECH_PREFS)
+  const [availableVoices, setAvailableVoices] = useState<MonitorVoiceOption[]>([])
+  const [showVoiceSettings, setShowVoiceSettings] = useState(false)
 
   const prevSnapRef = useRef<Record<number, string | null>>({})
   const firstPollDoneRef = useRef(false)
 
+  const refreshVoices = useCallback(() => {
+    warmupSpeechVoices()
+    setAvailableVoices(listMonitorVoices())
+  }, [])
+
+  const updateSpeechPrefs = useCallback((patch: Partial<MonitorSpeechPrefs>) => {
+    setSpeechPrefs((prev) => {
+      const next = { ...prev, ...patch }
+      saveSpeechPrefs(next)
+      return next
+    })
+  }, [])
+
   const fetchAll = async () => {
     try {
-      const [queuesRes, mediaRes] = await Promise.all([
+      const [queuesRes, mediaRes, voiceRes] = await Promise.all([
         fetch('/api/monitor/all-queues'),
         fetch('/api/monitor/media'),
+        fetch('/api/monitor/voice-template'),
       ])
       if (queuesRes.ok) setQueues(await queuesRes.json())
       if (mediaRes.ok) setMedia(await mediaRes.json())
+      if (voiceRes.ok) {
+        const data = await voiceRes.json()
+        if (typeof data.template === 'string' && data.template.trim()) {
+          setVoiceTemplate(data.template)
+        }
+      }
     } catch (error) {
       console.error('Error fetching monitor data:', error)
     } finally {
@@ -101,14 +133,15 @@ export default function MonitorPage() {
   }, [media.length])
 
   useEffect(() => {
-    warmupSpeechVoices()
-    const load = () => warmupSpeechVoices()
+    setSpeechPrefs(loadSpeechPrefs())
+    refreshVoices()
     if (typeof window !== 'undefined' && window.speechSynthesis) {
-      window.speechSynthesis.addEventListener('voiceschanged', load)
-      return () => window.speechSynthesis.removeEventListener('voiceschanged', load)
+      const onVoices = () => refreshVoices()
+      window.speechSynthesis.addEventListener('voiceschanged', onVoices)
+      return () => window.speechSynthesis.removeEventListener('voiceschanged', onVoices)
     }
     return undefined
-  }, [])
+  }, [refreshVoices])
 
   useEffect(() => {
     if (loading) return
@@ -139,16 +172,17 @@ export default function MonitorPage() {
         serviceName: q.service_name,
         ticketNumber: cur.ticket_number,
         windowNumber: cur.window_number,
+        template: voiceTemplate,
       })
       setLastAnnouncement(text)
       enqueueMonitorAnnouncement(text)
     }
 
     prevSnapRef.current = next
-  }, [queues, loading, voiceArmed])
+  }, [queues, loading, voiceArmed, voiceTemplate])
 
   const enableVoiceClick = useCallback(() => {
-    unlockSpeechWithTestPhrase()
+    unlockSpeechWithTestPhrase(speechPrefs)
     setVoiceArmed(true)
     try {
       localStorage.setItem(VOICE_STORAGE_KEY, '1')
@@ -156,7 +190,7 @@ export default function MonitorPage() {
       /* ignore */
     }
     prevSnapRef.current = snapshotCurrentTickets(queues)
-  }, [queues])
+  }, [queues, speechPrefs])
 
   const disableVoiceClick = useCallback(() => {
     clearAnnouncementQueue()
@@ -202,7 +236,7 @@ export default function MonitorPage() {
               className="h-14 w-auto object-contain"
               unoptimized
             />
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               {!voiceArmed ? (
                 <button
                   type="button"
@@ -220,11 +254,101 @@ export default function MonitorPage() {
                   Silenciar
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => {
+                  refreshVoices()
+                  setShowVoiceSettings((v) => !v)
+                }}
+                className="px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-sm"
+              >
+                Ajustes de voz
+              </button>
               <Link href="/" className="text-sm text-slate-500 hover:text-slate-800">
                 Inicio
               </Link>
             </div>
           </header>
+
+          {showVoiceSettings && (
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+              <p className="text-sm font-medium text-slate-800">Voz de este monitor</p>
+              <p className="text-xs text-slate-500">
+                Las voces dependen del navegador y del equipo de esta pantalla. La preferencia queda
+                guardada aquí.
+              </p>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-medium text-slate-600 mb-1">Voz</label>
+                  <select
+                    value={speechPrefs.voiceURI}
+                    onChange={(e) => updateSpeechPrefs({ voiceURI: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                  >
+                    <option value="">Automática (español)</option>
+                    {availableVoices.map((v) => (
+                      <option key={v.voiceURI} value={v.voiceURI}>
+                        {v.name} ({v.lang}){v.isSpanish ? '' : ' · no español'}
+                      </option>
+                    ))}
+                  </select>
+                  {availableVoices.length === 0 && (
+                    <p className="text-xs text-amber-700 mt-1">
+                      No se detectaron voces aún. Pulse «Activar voz» o «Probar» y vuelva a abrir
+                      ajustes.
+                    </p>
+                  )}
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Velocidad ({speechPrefs.rate.toFixed(2)})
+                  </label>
+                  <input
+                    type="range"
+                    min={0.7}
+                    max={1.2}
+                    step={0.02}
+                    value={speechPrefs.rate}
+                    onChange={(e) => updateSpeechPrefs({ rate: Number(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-slate-600 mb-1">
+                    Tono ({speechPrefs.pitch.toFixed(2)})
+                  </label>
+                  <input
+                    type="range"
+                    min={0.7}
+                    max={1.3}
+                    step={0.05}
+                    value={speechPrefs.pitch}
+                    onChange={(e) => updateSpeechPrefs({ pitch: Number(e.target.value) })}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    refreshVoices()
+                    speakVoicePreview(loadSpeechPrefs())
+                  }}
+                  className="px-4 py-2 rounded-lg bg-[#00816D] text-white text-sm font-medium hover:bg-[#006b5a]"
+                >
+                  Probar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => updateSpeechPrefs({ ...DEFAULT_SPEECH_PREFS })}
+                  className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-sm hover:bg-slate-50"
+                >
+                  Restaurar
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="flex-1 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden min-h-[280px] flex flex-col">
             {currentMedia ? (

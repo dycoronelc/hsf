@@ -5,14 +5,23 @@ import { AppSetting } from './entities/app-setting.entity';
 
 export const SETTING_RECALL_WAIT_SECONDS = 'ticket_recall_wait_seconds';
 export const SETTING_NO_SHOW_WAIT_SECONDS = 'ticket_no_show_wait_seconds';
+export const SETTING_MONITOR_VOICE_TEMPLATE = 'monitor_voice_template';
+
+export const DEFAULT_MONITOR_VOICE_TEMPLATE =
+  'Atención. Paciente con turno {turno}. Por favor acercarse a Ventanilla {ventanilla}.';
 
 export type CallTimingSettings = {
   recallWaitSeconds: number;
   noShowWaitSeconds: number;
 };
 
+export type MonitorVoiceSettings = {
+  template: string;
+};
+
 const DEFAULT_RECALL = 60;
 const DEFAULT_NO_SHOW = 60;
+const MAX_TEMPLATE_LENGTH = 500;
 
 @Injectable()
 export class SettingsService {
@@ -66,6 +75,28 @@ export class SettingsService {
     await this.upsert(SETTING_RECALL_WAIT_SECONDS, String(recall));
     await this.upsert(SETTING_NO_SHOW_WAIT_SECONDS, String(noShow));
     return { recallWaitSeconds: recall, noShowWaitSeconds: noShow };
+  }
+
+  async getMonitorVoiceTemplate(): Promise<MonitorVoiceSettings> {
+    const row = await this.settingsRepository.findOne({
+      where: { key: SETTING_MONITOR_VOICE_TEMPLATE },
+    });
+    const template = row?.value?.trim() || DEFAULT_MONITOR_VOICE_TEMPLATE;
+    return { template };
+  }
+
+  async updateMonitorVoiceTemplate(input: { template?: string }): Promise<MonitorVoiceSettings> {
+    const raw = input.template?.trim() ?? '';
+    if (!raw) {
+      throw new BadRequestException('La plantilla del anuncio no puede estar vacía');
+    }
+    if (raw.length > MAX_TEMPLATE_LENGTH) {
+      throw new BadRequestException(
+        `La plantilla no puede superar ${MAX_TEMPLATE_LENGTH} caracteres`,
+      );
+    }
+    await this.upsert(SETTING_MONITOR_VOICE_TEMPLATE, raw);
+    return { template: raw };
   }
 
   private async upsert(key: string, value: string) {
