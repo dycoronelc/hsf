@@ -29,6 +29,7 @@ export default function AdminMonitorMediaPage() {
   const router = useRouter()
   const [items, setItems] = useState<MediaItem[]>([])
   const [form, setForm] = useState(emptyForm)
+  const [file, setFile] = useState<File | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -71,22 +72,44 @@ export default function AdminMonitorMediaPage() {
     setError('')
     setMessage('')
     try {
-      const response = await fetch('/api/admin/monitor-media', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...form,
-          body: form.body.trim() || null,
-        }),
-      })
+      const needsFile = form.kind === 'image' || form.kind === 'video'
+      if (needsFile && !file && !form.body.trim()) {
+        throw new Error('Suba un archivo o indique una URL')
+      }
+
+      let response: Response
+      if (needsFile && file) {
+        const data = new FormData()
+        data.append('kind', form.kind)
+        data.append('title', form.title)
+        data.append('isActive', String(form.isActive))
+        data.append('sortOrder', String(form.sortOrder))
+        data.append('file', file)
+        response = await fetch('/api/admin/monitor-media/upload', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: data,
+        })
+      } else {
+        response = await fetch('/api/admin/monitor-media', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...form,
+            body: form.body.trim() || null,
+          }),
+        })
+      }
+
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
         throw new Error(apiErrorMessage(data, 'No se pudo crear el contenido'))
       }
       setForm(emptyForm)
+      setFile(null)
       setMessage('Contenido agregado al monitor')
       await load()
     } catch (err: unknown) {
@@ -123,6 +146,8 @@ export default function AdminMonitorMediaPage() {
     return null
   }
 
+  const isMediaKind = form.kind === 'image' || form.kind === 'video'
+
   return (
     <SiteLayout>
       <div className="max-w-5xl mx-auto px-4 py-8">
@@ -130,8 +155,8 @@ export default function AdminMonitorMediaPage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Contenido del monitor</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Cargue mensajes institucionales, imágenes (URL) o videos (URL de YouTube o archivo) para la
-              pantalla de llamados.
+              Cargue mensajes institucionales, imágenes o videos (archivo o URL) para la pantalla de
+              llamados. Las imágenes y videos ocupan todo el panel multimedia del monitor.
             </p>
           </div>
           <Link href="/admin" className="text-hospital-blue hover:underline text-sm font-medium">
@@ -157,12 +182,15 @@ export default function AdminMonitorMediaPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
               <select
                 value={form.kind}
-                onChange={(e) => setForm({ ...form, kind: e.target.value as MediaItem['kind'] })}
+                onChange={(e) => {
+                  setForm({ ...form, kind: e.target.value as MediaItem['kind'], body: '' })
+                  setFile(null)
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="message">Mensaje de texto</option>
-                <option value="image">Imagen (URL)</option>
-                <option value="video">Video (URL YouTube o archivo)</option>
+                <option value="image">Imagen</option>
+                <option value="video">Video</option>
               </select>
             </div>
             <div>
@@ -184,24 +212,60 @@ export default function AdminMonitorMediaPage() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg"
             />
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {form.kind === 'message' ? 'Texto del mensaje' : 'URL'}
-            </label>
-            <textarea
-              value={form.body}
-              onChange={(e) => setForm({ ...form, body: e.target.value })}
-              rows={form.kind === 'message' ? 4 : 2}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-              placeholder={
-                form.kind === 'video'
-                  ? 'https://www.youtube.com/watch?v=...'
-                  : form.kind === 'image'
-                    ? 'https://.../imagen.jpg'
-                    : 'Lávate las manos con frecuencia...'
-              }
-            />
-          </div>
+
+          {form.kind === 'message' ? (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Texto del mensaje</label>
+              <textarea
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
+                rows={4}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                placeholder="Lávate las manos con frecuencia..."
+              />
+            </div>
+          ) : (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Subir archivo {form.kind === 'image' ? '(JPG, PNG, WEBP, GIF · máx. 15 MB)' : '(MP4, WEBM, OGG · máx. 80 MB)'}
+                </label>
+                <input
+                  type="file"
+                  accept={form.kind === 'image' ? 'image/jpeg,image/png,image/webp,image/gif' : 'video/mp4,video/webm,video/ogg'}
+                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                  className="w-full text-sm text-gray-700 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:bg-hospital-blue file:text-white"
+                />
+                {file && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Seleccionado: {file.name} ({Math.round(file.size / 1024)} KB)
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  O URL {form.kind === 'video' ? '(YouTube o archivo)' : 'de imagen'}
+                </label>
+                <input
+                  value={form.body}
+                  onChange={(e) => setForm({ ...form, body: e.target.value })}
+                  disabled={!!file}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg disabled:bg-gray-100"
+                  placeholder={
+                    form.kind === 'video'
+                      ? 'https://www.youtube.com/watch?v=...'
+                      : 'https://.../imagen.jpg'
+                  }
+                />
+                {isMediaKind && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Si sube un archivo, no necesita URL. Si indica URL, no necesita archivo.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
+
           <label className="flex items-center gap-2 text-sm">
             <input
               type="checkbox"

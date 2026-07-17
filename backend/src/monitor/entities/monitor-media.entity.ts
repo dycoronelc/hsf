@@ -19,7 +19,7 @@ export class MonitorMedia {
   @Column({ length: 200 })
   title: string;
 
-  /** Texto del mensaje, URL de video externo, o ruta relativa de imagen subida. */
+  /** Texto del mensaje, URL externa, o ruta `/api/monitor/media-file/...` de archivo subido. */
   @Column({ type: 'text', nullable: true })
   body: string | null;
 

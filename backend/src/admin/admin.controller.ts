@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -9,8 +10,12 @@ import {
   Put,
   Query,
   Request,
+  UploadedFile,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
@@ -169,6 +174,42 @@ export class AdminController {
   @RequirePermissions('manage_users')
   createMonitorMedia(@Body() dto: CreateMonitorMediaDto) {
     return this.monitorMediaService.create(dto);
+  }
+
+  @Post('monitor-media/upload')
+  @RequirePermissions('manage_users')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 80 * 1024 * 1024 },
+    }),
+  )
+  uploadMonitorMedia(
+    @UploadedFile()
+    file: { buffer: Buffer; mimetype?: string; originalname?: string; size: number } | undefined,
+    @Body('kind') kind: string,
+    @Body('title') title: string,
+    @Body('isActive') isActive?: string,
+    @Body('sortOrder') sortOrder?: string,
+  ) {
+    if (kind !== 'image' && kind !== 'video') {
+      throw new BadRequestException('La subida de archivos solo aplica a imagen o video');
+    }
+    if (!title?.trim()) {
+      throw new BadRequestException('El título es obligatorio');
+    }
+    if (!file) {
+      throw new BadRequestException('Debe seleccionar un archivo');
+    }
+    return this.monitorMediaService.createWithUpload(
+      {
+        kind,
+        title: title.trim(),
+        isActive: isActive === undefined ? true : isActive === 'true' || isActive === '1',
+        sortOrder: sortOrder !== undefined ? Number(sortOrder) || 0 : 0,
+      },
+      file,
+    );
   }
 
   @Patch('monitor-media/:id')

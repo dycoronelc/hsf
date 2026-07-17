@@ -52,18 +52,18 @@ function ventanillaToSpeech(windowNumber: string): string {
 }
 
 export function buildCallAnnouncement(params: {
-  serviceName: string
+  /** Conservado por compatibilidad; ya no se anuncia en voz. */
+  serviceName?: string
   ticketNumber: string
   windowNumber: string | null | undefined
 }): string {
   const ticket = ticketNumberToSpeechPhrase(params.ticketNumber)
   const windowLabel = params.windowNumber?.trim()
   const ventSpoken = windowLabel ? ventanillaToSpeech(windowLabel) : ''
-  const ventPhrase = ventSpoken ? `Ventanilla ${ventSpoken}.` : ''
   const approach = windowLabel
     ? `Por favor acercarse a Ventanilla ${ventSpoken}.`
     : 'Por favor acercarse.'
-  return `Atención. Paciente con turno ${ticket}. ${ventPhrase} Servicio ${params.serviceName}. ${approach}`
+  return `Atención. Paciente con turno ${ticket}. ${approach}`
     .replace(/\s+/g, ' ')
     .trim()
 }

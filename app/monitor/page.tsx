@@ -228,38 +228,51 @@ export default function MonitorPage() {
 
           <div className="flex-1 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden min-h-[280px] flex flex-col">
             {currentMedia ? (
-              <>
-                {currentMedia.kind === 'image' && currentMedia.body && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={currentMedia.body}
-                    alt={currentMedia.title}
-                    className="w-full flex-1 object-cover max-h-[420px]"
-                  />
-                )}
-                {currentMedia.kind === 'video' && (
-                  <div className="w-full aspect-video bg-black">
-                    {videoEmbed ? (
+              currentMedia.kind === 'message' ? (
+                <div className="p-6 flex-1 flex flex-col justify-center">
+                  <p className="text-sm uppercase tracking-wide text-slate-500 mb-1">Información</p>
+                  <h2 className="text-xl font-semibold text-slate-900 mb-2">{currentMedia.title}</h2>
+                  {currentMedia.body && (
+                    <p className="text-lg text-slate-700 leading-relaxed whitespace-pre-wrap">
+                      {currentMedia.body}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="relative flex-1 min-h-0 bg-black">
+                  {currentMedia.kind === 'image' && currentMedia.body && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentMedia.body}
+                      alt={currentMedia.title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                    />
+                  )}
+                  {currentMedia.kind === 'video' && (
+                    videoEmbed ? (
                       <iframe
                         title={currentMedia.title}
                         src={videoEmbed}
-                        className="w-full h-full border-0"
+                        className="absolute inset-0 w-full h-full border-0"
                         allow="autoplay; encrypted-media"
                         allowFullScreen
                       />
                     ) : currentMedia.body ? (
-                      <video src={currentMedia.body} className="w-full h-full object-contain" autoPlay muted loop playsInline />
-                    ) : null}
-                  </div>
-                )}
-                <div className="p-6">
-                  <p className="text-sm uppercase tracking-wide text-slate-500 mb-1">Información</p>
-                  <h2 className="text-xl font-semibold text-slate-900 mb-2">{currentMedia.title}</h2>
-                  {currentMedia.kind === 'message' && currentMedia.body && (
-                    <p className="text-lg text-slate-700 leading-relaxed whitespace-pre-wrap">{currentMedia.body}</p>
+                      <video
+                        src={currentMedia.body}
+                        className="absolute inset-0 w-full h-full object-cover"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                      />
+                    ) : null
                   )}
+                  <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-3">
+                    <p className="text-white text-sm font-medium truncate">{currentMedia.title}</p>
+                  </div>
                 </div>
-              </>
+              )
             ) : (
               <div className="p-8 flex flex-col justify-center flex-1">
                 <p className="text-sm uppercase tracking-wide text-slate-500 mb-2">Información</p>
@@ -273,7 +286,7 @@ export default function MonitorPage() {
               </div>
             )}
             {lastAnnouncement && (
-              <p className="px-6 pb-4 text-sm text-[#00816D]" aria-live="polite">
+              <p className="px-6 py-3 text-sm text-[#00816D] shrink-0" aria-live="polite">
                 {lastAnnouncement}
               </p>
             )}
@@ -314,7 +327,7 @@ export default function MonitorPage() {
         </section>
       </div>
 
-      <footer className="bg-[#00816D] text-white text-center py-3 px-4 text-sm sm:text-base font-medium">
+      <footer className="bg-[#00816D] text-white text-center py-4 px-4 text-lg sm:text-2xl font-semibold tracking-wide">
         Bienvenido al Hospital Santa Fe, por favor estar atento a su turno.
       </footer>
     </div>

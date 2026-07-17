@@ -548,89 +548,98 @@ export default function StaffConsolePage() {
 
           {/* Current Ticket */}
           {tickets.find(t => t.status === 'llamado' || t.status === 'en_atencion') && (
-            <div className="mb-6 p-4 bg-orange-50 border-2 border-orange-300 rounded-lg">
-              <h2 className="text-xl font-semibold mb-2">Turno Actual</h2>
-              {tickets
-                .filter(t => t.status === 'llamado' || t.status === 'en_atencion')
-                .map((ticket) => (
-                  <div key={ticket.id} className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                    <div>
-                      <span className="text-2xl font-bold">{ticket.ticket_number}</span>
-                      <span className="ml-3 text-sm text-gray-600">{ticket.service_name}</span>
-                      {ticket.window_number && (
-                        <span className="ml-4 text-gray-600">Ventanilla: {ticket.window_number}</span>
-                      )}
-                      {(ticket.call_count ?? 0) > 0 && (
-                        <span className="ml-4 text-xs text-gray-500">Llamados: {ticket.call_count}</span>
-                      )}
-                      <span className={`ml-4 px-2 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}>
-                        {getStatusLabel(ticket.status)}
-                      </span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {ticket.status === 'llamado' && (
-                        <>
+            <div className="mb-6 p-4 bg-orange-50 border-2 border-orange-300 rounded-xl">
+              <h2 className="text-xl font-semibold mb-4">Turno Actual</h2>
+              <div className="space-y-4">
+                {tickets
+                  .filter(t => t.status === 'llamado' || t.status === 'en_atencion')
+                  .map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-white border border-orange-200 rounded-lg shadow-sm"
+                    >
+                      <div className="min-w-0 space-y-2">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="text-2xl font-bold text-gray-900">{ticket.ticket_number}</span>
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(ticket.status)}`}
+                          >
+                            {getStatusLabel(ticket.status)}
+                          </span>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
+                          <span>{ticket.service_name}</span>
+                          {ticket.window_number && <span>Ventanilla: {ticket.window_number}</span>}
+                          {(ticket.call_count ?? 0) > 0 && (
+                            <span className="text-xs text-gray-500">Llamados: {ticket.call_count}</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 shrink-0">
+                        {ticket.status === 'llamado' && (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleStartTicket(ticket.id)}
+                              disabled={loading || !agentCanOperate}
+                              className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                            >
+                              Iniciar Atención
+                            </button>
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                const v = e.target.value
+                                if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
+                                e.target.value = ''
+                              }}
+                              disabled={transferringId === ticket.id || !agentCanOperate}
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            >
+                              <option value="">Transferir…</option>
+                              <option value="RAD">Radiología</option>
+                              <option value="LAB">Laboratorio</option>
+                              <option value="BOTH">Ambos</option>
+                            </select>
+                            {canRecallTicket(ticket) && (
+                              <button
+                                type="button"
+                                onClick={() => handleRecallTicket(ticket.id)}
+                                disabled={loading || !windowNumber || !agentCanOperate}
+                                className="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50"
+                              >
+                                Volver a llamar
+                              </button>
+                            )}
+                            {canMarkNoShow(ticket) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setNoShowTarget(ticket)
+                                  setNoShowReason('')
+                                }}
+                                disabled={loading || !agentCanOperate}
+                                className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+                              >
+                                No se presentó
+                              </button>
+                            )}
+                          </>
+                        )}
+                        {ticket.status === 'en_atencion' && (
                           <button
                             type="button"
-                            onClick={() => handleStartTicket(ticket.id)}
-                            disabled={loading || !agentCanOperate}
-                            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                            onClick={() => handleCompleteTicket(ticket.id)}
+                            disabled={loading}
+                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
                           >
-                            Iniciar Atención
+                            Finalizar
                           </button>
-                          <select
-                            value=""
-                            onChange={(e) => {
-                              const v = e.target.value
-                              if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
-                              e.target.value = ''
-                            }}
-                            disabled={transferringId === ticket.id || !agentCanOperate}
-                            className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                          >
-                            <option value="">Transferir…</option>
-                            <option value="RAD">Radiología</option>
-                            <option value="LAB">Laboratorio</option>
-                            <option value="BOTH">Ambos</option>
-                          </select>
-                          {canRecallTicket(ticket) && (
-                            <button
-                              type="button"
-                              onClick={() => handleRecallTicket(ticket.id)}
-                              disabled={loading || !windowNumber || !agentCanOperate}
-                              className="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50"
-                            >
-                              Volver a llamar
-                            </button>
-                          )}
-                          {canMarkNoShow(ticket) && (
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setNoShowTarget(ticket)
-                                setNoShowReason('')
-                              }}
-                              disabled={loading || !agentCanOperate}
-                              className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
-                            >
-                              No se presentó
-                            </button>
-                          )}
-                        </>
-                      )}
-                      {ticket.status === 'en_atencion' && (
-                        <button
-                          type="button"
-                          onClick={() => handleCompleteTicket(ticket.id)}
-                          disabled={loading}
-                          className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                          Finalizar
-                        </button>
-                      )}
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+              </div>
             </div>
           )}
 

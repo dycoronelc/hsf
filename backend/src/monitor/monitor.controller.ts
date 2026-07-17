@@ -1,4 +1,4 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Header, Param, StreamableFile } from '@nestjs/common';
 import { MonitorService } from './monitor.service';
 import { MonitorMediaService } from './monitor-media.service';
 
@@ -22,6 +22,12 @@ export class MonitorController {
   @Get('media')
   async getActiveMedia() {
     return this.monitorMediaService.listActive();
+  }
+
+  @Get('media-file/:filename')
+  @Header('Cache-Control', 'public, max-age=86400')
+  getMediaFile(@Param('filename') filename: string): StreamableFile {
+    return this.monitorMediaService.getFileStream(filename);
   }
 
   @Get('preadmissions')
