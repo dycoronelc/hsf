@@ -505,6 +505,11 @@ export default function StaffConsolePage() {
               placeholder="Ej: V1, C2"
               className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg"
             />
+            {!windowNumber.trim() && (
+              <p className="text-sm text-amber-700 mt-2">
+                Indique el número de ventanilla para habilitar el botón <strong>Llamar</strong>.
+              </p>
+            )}
           </div>
 
           {/* Current Ticket */}
