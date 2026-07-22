@@ -243,6 +243,40 @@ export function unlockSpeechWithTestPhrase(prefs?: MonitorSpeechPrefs): void {
   window.speechSynthesis.speak(u)
 }
 
+/**
+ * Desbloquea el motor de voz sin anuncio audible (para activación automática).
+ * En algunos navegadores aún requiere un gesto previo del usuario / modo kiosk.
+ */
+export function unlockSpeechEngine(prefs?: MonitorSpeechPrefs): void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return
+  warmupSpeechVoices()
+  try {
+    window.speechSynthesis.resume()
+  } catch {
+    /* ignore */
+  }
+  const u = new SpeechSynthesisUtterance(' ')
+  applyPrefsToUtterance(u, prefs)
+  u.volume = 0.01
+  u.rate = 2
+  window.speechSynthesis.speak(u)
+}
+
+/** Evita que Chrome pause speechSynthesis en pestañas “inactivas”. */
+export function startSpeechKeepAlive(): () => void {
+  if (typeof window === 'undefined' || !window.speechSynthesis) return () => undefined
+  const id = window.setInterval(() => {
+    try {
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume()
+      }
+    } catch {
+      /* ignore */
+    }
+  }, 4000)
+  return () => window.clearInterval(id)
+}
+
 /** Reproduce una frase de prueba con las preferencias indicadas. */
 export function speakVoicePreview(prefs?: MonitorSpeechPrefs): void {
   if (typeof window === 'undefined' || !window.speechSynthesis) return
@@ -255,27 +289,51 @@ export function speakVoicePreview(prefs?: MonitorSpeechPrefs): void {
   window.speechSynthesis.speak(u)
 }
 
+export type MonitorCallSnapshot = Record<number, string | null>
+
+/**
+ * Firma del llamado actual por servicio.
+ * Incluye call_count/called_at para que «Volver a llamar» dispare anuncio
+ * aunque el número de turno no cambie.
+ */
 export function snapshotCurrentTickets(
-  queues: Array<{ service_id: number; current?: { ticket_number: string } | null }>,
-): Record<number, string | null> {
-  const m: Record<number, string | null> = {}
+  queues: Array<{
+    service_id: number
+    current?: {
+      ticket_number: string
+      call_count?: number | null
+      called_at?: string | null
+    } | null
+  }>,
+): MonitorCallSnapshot {
+  const m: MonitorCallSnapshot = {}
   for (const q of queues) {
-    m[q.service_id] = q.current?.ticket_number ?? null
+    const cur = q.current
+    if (!cur?.ticket_number) {
+      m[q.service_id] = null
+      continue
+    }
+    const count = cur.call_count ?? 0
+    const calledAt = cur.called_at ?? ''
+    m[q.service_id] = `${cur.ticket_number}#${count}#${calledAt}`
   }
   return m
 }
 
 export function diffNewCalls(
-  prev: Record<number, string | null>,
-  next: Record<number, string | null>,
+  prev: MonitorCallSnapshot,
+  next: MonitorCallSnapshot,
 ): Array<{ service_id: number; ticket_number: string }> {
   const out: Array<{ service_id: number; ticket_number: string }> = []
   for (const sid of Object.keys(next)) {
     const id = Number(sid)
-    const newNum = next[id]
-    const oldNum = prev[id] ?? null
-    if (newNum !== null && newNum !== oldNum) {
-      out.push({ service_id: id, ticket_number: newNum })
+    const newSig = next[id]
+    const oldSig = prev[id] ?? null
+    if (newSig !== null && newSig !== oldSig) {
+      const ticket_number = newSig.split('#')[0]
+      if (ticket_number) {
+        out.push({ service_id: id, ticket_number })
+      }
     }
   }
   return out

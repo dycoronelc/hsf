@@ -162,7 +162,9 @@ export default function AdminMonitorMediaPage() {
             <h1 className="text-2xl font-bold text-gray-900">Contenido del monitor</h1>
             <p className="text-sm text-gray-600 mt-1">
               Cargue mensajes institucionales, imágenes o videos (archivo o URL) para la pantalla de
-              llamados. Las imágenes y videos ocupan todo el panel multimedia del monitor.
+              llamados. El panel multimedia es fijo en formato <strong>16:9</strong>; se recomienda
+              subir a <strong>1920×1080</strong> (Full HD) para que se vea completo sin recortes
+              raros.
             </p>
           </div>
           <Link href="/admin" className="text-hospital-blue hover:underline text-sm font-medium">

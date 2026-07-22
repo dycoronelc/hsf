@@ -53,6 +53,8 @@ export class MonitorService {
           service_name: service.name,
           priority: current.priority,
           window_number: current.windowNumber ?? null,
+          call_count: current.callCount ?? 0,
+          called_at: current.calledAt ? current.calledAt.toISOString() : null,
           wait_time: current.calledAt
             ? Math.floor(
                 (new Date().getTime() - new Date(current.calledAt).getTime()) /

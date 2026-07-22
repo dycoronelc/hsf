@@ -54,6 +54,7 @@ export default function StaffConsolePage() {
   const [showScanner, setShowScanner] = useState(false)
   const [agentState, setAgentState] = useState<string>(user?.agentState ?? '')
   const [transferringId, setTransferringId] = useState<number | null>(null)
+  const [transferNotice, setTransferNotice] = useState('')
   const [queueView, setQueueView] = useState<'all' | 'priority'>('all')
   const [apiError, setApiError] = useState('')
   const scannerContainerId = 'staff-qr-reader'
@@ -241,6 +242,7 @@ export default function StaffConsolePage() {
 
   const handleTransferTicket = async (ticketId: number, targetArea: 'RAD' | 'LAB' | 'BOTH') => {
     setTransferringId(ticketId)
+    setApiError('')
     try {
       const response = await fetch(`/api/tickets/${ticketId}/transfer`, {
         method: 'POST',
@@ -249,6 +251,15 @@ export default function StaffConsolePage() {
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
+        const data = await response.json().catch(() => ({}))
+        const created = Array.isArray(data.created_tickets)
+          ? data.created_tickets.map((t: { ticket_number?: string }) => t.ticket_number).filter(Boolean)
+          : []
+        if (created.length) {
+          setTransferNotice(`Transferido a cola: ${created.join(', ')}`)
+        } else {
+          setTransferNotice(data.message || 'Ticket transferido')
+        }
         fetchTickets()
       } else {
         const data = await response.json().catch(() => ({}))
@@ -437,6 +448,11 @@ export default function StaffConsolePage() {
           {apiError && (
             <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
               {apiError}
+            </div>
+          )}
+          {transferNotice && (
+            <div className="mb-6 bg-green-50 border border-green-200 text-green-800 px-4 py-3 rounded-lg text-sm">
+              {transferNotice}
             </div>
           )}
 

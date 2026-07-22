@@ -45,6 +45,80 @@ export class TicketsService {
     return `${prefix}-${randomSuffix}`;
   }
 
+  /** Extrae el sufijo numérico de un ticket (p. ej. OT-9379 → 9379). */
+  private extractTicketSuffix(ticketNumber: string): string {
+    const t = ticketNumber.trim();
+    const idx = t.indexOf('-');
+    if (idx >= 0) {
+      const suffix = t
+        .slice(idx + 1)
+        .replace(/\s+/g, '')
+        .replace(/[^\w]/g, '');
+      if (suffix) return suffix;
+    }
+    const digits = t.replace(/\D/g, '');
+    if (!digits) {
+      throw new BadRequestException(
+        'No se pudo obtener el número del ticket para transferir',
+      );
+    }
+    return digits;
+  }
+
+  /** Prefijos de transferencia según el área destino (ejemplos del hospital: LR / RD). */
+  private transferPrefixFor(service: Pick<Service, 'code' | 'area' | 'ticketPrefix'>): string {
+    const code = (service.code || '').toUpperCase();
+    const area = (service.area || '').toUpperCase();
+    if (code === 'LAB' || area === 'LAB') return 'LR';
+    if (code === 'RAD' || area === 'RAD') return 'RD';
+    return (service.ticketPrefix || service.code || 'TK').toUpperCase();
+  }
+
+  private async resolveLabRadServices(): Promise<{ lab: Service; rad: Service }> {
+    const lab =
+      (await this.serviceRepository.findOne({ where: { code: 'LAB', isActive: true } })) ||
+      (await this.serviceRepository.findOne({ where: { area: 'LAB', isActive: true } }));
+    const rad =
+      (await this.serviceRepository.findOne({ where: { code: 'RAD', isActive: true } })) ||
+      (await this.serviceRepository.findOne({ where: { area: 'RAD', isActive: true } }));
+    if (!lab) throw new NotFoundException('No se encontró el servicio de Laboratorio (LAB)');
+    if (!rad) throw new NotFoundException('No se encontró el servicio de Radiología (RAD)');
+    return { lab, rad };
+  }
+
+  private async createTransferredQueueTicket(params: {
+    source: Ticket;
+    targetService: Service;
+    suffix: string;
+  }): Promise<Ticket> {
+    const prefix = this.transferPrefixFor(params.targetService);
+    const ticketNumber = `${prefix}-${params.suffix}`;
+    const existing = await this.ticketRepository.findOne({ where: { ticketNumber } });
+    if (existing) {
+      throw new BadRequestException(
+        `Ya existe un ticket ${ticketNumber} en el sistema; no se puede transferir con el mismo número`,
+      );
+    }
+    const created = this.ticketRepository.create({
+      ticketNumber,
+      patientId: params.source.patientId,
+      serviceId: params.targetService.id,
+      status: TicketStatus.CREADO,
+      priority: params.source.priority,
+      qrCode: this.generateQrCode(),
+      preadmissionId: params.source.preadmissionId ?? null,
+      callCount: 0,
+      windowNumber: null,
+      calledAt: null,
+      calledBy: null,
+      startedAt: null,
+      completedAt: null,
+      checkInAt: null,
+      notes: `Transferido desde ${params.source.ticketNumber}`,
+    });
+    return this.ticketRepository.save(created);
+  }
+
   private assertAgentCanOperate(user: Pick<User, 'id' | 'agentState'> | null | undefined) {
     if (!user) return;
     if (!isAgentOperational(user.agentState)) {
@@ -575,55 +649,85 @@ export class TicketsService {
     };
   }
 
-  /** Transferir ticket a Radiología, Laboratorio o Ambos (documento Preadmision.md) */
+  /** Transferir ticket a Radiología, Laboratorio o Ambos (vuelve a cola con mismo número). */
   async transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    if (
+      ticket.status === TicketStatus.FINALIZADO ||
+      ticket.status === TicketStatus.CANCELADO ||
+      ticket.status === TicketStatus.NO_SHOW ||
+      ticket.status === TicketStatus.TRANSFERIDO
+    ) {
+      throw new BadRequestException('Este ticket ya no se puede transferir');
+    }
 
-    const radService = await this.serviceRepository.findOne({ where: { area: 'RAD', isActive: true } });
-    const labService = await this.serviceRepository.findOne({ where: { area: 'LAB', isActive: true } });
+    const { lab, rad } = await this.resolveLabRadServices();
+    const suffix = this.extractTicketSuffix(ticket.ticketNumber);
 
-    if (dto.targetArea === 'BOTH') {
-      const otherArea = ticket.service?.area === 'RAD' ? labService : radService;
-      if (!otherArea) {
-        throw new NotFoundException('No se encontró servicio para el área adicional');
+    const targets: Service[] =
+      dto.targetArea === 'BOTH'
+        ? [lab, rad]
+        : dto.targetArea === 'LAB'
+          ? [lab]
+          : [rad];
+
+    // Validar conflictos de número antes de crear (p. ej. Ambos → LR-n y RD-n).
+    for (const target of targets) {
+      const ticketNumber = `${this.transferPrefixFor(target)}-${suffix}`;
+      const existing = await this.ticketRepository.findOne({ where: { ticketNumber } });
+      if (existing) {
+        throw new BadRequestException(
+          `Ya existe un ticket ${ticketNumber} en el sistema; no se puede transferir con el mismo número`,
+        );
       }
-      const newTicket = this.ticketRepository.create({
-        ticketNumber: this.generateTicketNumber(otherArea),
-        patientId: ticket.patientId,
-        serviceId: otherArea.id,
-        status: TicketStatus.CREADO,
-        priority: ticket.priority,
-        qrCode: this.generateQrCode(),
-      });
-      await this.ticketRepository.save(newTicket);
-      await this.auditService.log('ticket_transferred', {
-        entityType: 'ticket',
-        entityId: ticket.id,
-        userId: agent?.id,
-        details: `targetArea=${dto.targetArea}`,
-      });
-      return { message: 'Ticket duplicado para ambos servicios', originalId: id, newTicketId: newTicket.id };
     }
 
-    const targetService = dto.targetArea === 'RAD' ? radService : labService;
-    if (!targetService) {
-      throw new NotFoundException(`No se encontró servicio de ${dto.targetArea === 'RAD' ? 'Radiología' : 'Laboratorio'}`);
+    const createdTickets: Ticket[] = [];
+    for (const target of targets) {
+      createdTickets.push(
+        await this.createTransferredQueueTicket({
+          source: ticket,
+          targetService: target,
+          suffix,
+        }),
+      );
     }
-    ticket.serviceId = targetService.id;
+
     ticket.status = TicketStatus.TRANSFERIDO;
     ticket.completedAt = new Date();
+    ticket.windowNumber = null;
     await this.ticketRepository.save(ticket);
+
+    const createdSummary = createdTickets.map((t) => ({
+      id: t.id,
+      ticket_number: t.ticketNumber,
+      service_id: t.serviceId,
+    }));
+
     await this.auditService.log('ticket_transferred', {
       entityType: 'ticket',
       entityId: ticket.id,
       userId: agent?.id,
-      details: `targetArea=${dto.targetArea}`,
+      details: `targetArea=${dto.targetArea}; created=${createdSummary
+        .map((c) => c.ticket_number)
+        .join(',')}`,
     });
-    return { message: 'Ticket transferido', service_id: targetService.id, service_name: targetService.name };
+
+    return {
+      message:
+        dto.targetArea === 'BOTH'
+          ? `Ticket transferido a ambos servicios: ${createdSummary
+              .map((c) => c.ticket_number)
+              .join(' y ')}`
+          : `Ticket transferido: ${createdSummary[0]?.ticket_number}`,
+      original_id: id,
+      original_ticket_number: ticket.ticketNumber,
+      created_tickets: createdSummary,
+    };
   }
 
   /** Cola de admisión (servicio ADM) desde preadmisión con paciente presente (PDF requisitos). */

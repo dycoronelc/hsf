@@ -140,17 +140,17 @@ async function bootstrap() {
     // Crear servicios
     const servicesData = [
       { name: 'Laboratorio Clínico', code: 'LAB', area: 'LAB', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2 },
-      { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45, ticketPrefix: 'LR', priorityLevel: 2 },
-      { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60, ticketPrefix: 'LR', priorityLevel: 2 },
+      { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45, ticketPrefix: 'RD', priorityLevel: 2 },
+      { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60, ticketPrefix: 'RD', priorityLevel: 2 },
       {
         name: 'Resonancia Magnética',
         code: 'RMN',
         area: 'RAD',
         estimatedTime: 90,
-        ticketPrefix: 'LR',
+        ticketPrefix: 'RD',
         priorityLevel: 2,
       },
-      { name: 'Ecografía', code: 'ECO', area: 'RAD', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2 },
+      { name: 'Ecografía', code: 'ECO', area: 'RAD', estimatedTime: 30, ticketPrefix: 'RD', priorityLevel: 2 },
       { name: 'Admisión', code: 'ADM', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'CTA', priorityLevel: 2 },
       { name: 'Hospitalización', code: 'HOSP', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'H', priorityLevel: 1 },
       { name: 'Copago / Ingreso PMSF', code: 'PMSF', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'PMSF', priorityLevel: 2 },
@@ -173,6 +173,18 @@ async function bootstrap() {
         });
         await serviceRepository.save(service);
         console.log(`✓ Servicio creado: ${serviceData.name}`);
+      } else if (
+        serviceData.ticketPrefix &&
+        existing.ticketPrefix !== serviceData.ticketPrefix &&
+        (serviceData.code === 'RAD' ||
+          serviceData.code === 'TOM' ||
+          serviceData.code === 'RMN' ||
+          serviceData.code === 'ECO')
+      ) {
+        // Alinear prefijo de Radiología a RD (transferencias y nuevos turnos).
+        existing.ticketPrefix = serviceData.ticketPrefix;
+        await serviceRepository.save(existing);
+        console.log(`✓ Prefijo actualizado ${serviceData.code}: ${serviceData.ticketPrefix}`);
       }
     }
 
