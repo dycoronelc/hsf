@@ -22,6 +22,7 @@ import { validatePhoneNumber } from '@/lib/phoneValidation'
 import { apiErrorMessage, fetchNetworkErrorMessage, parseJsonResponse } from '@/lib/apiErrorMessage'
 import { authHeaders, handleAuthFailure, resolveAuthToken } from '@/lib/authToken'
 import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
+import { compressImageForUpload } from '@/lib/compressImage'
 import { HospitalLogo } from '../components/HospitalLogo'
 import { HelpLauncher } from '../components/help/HelpLauncher'
 import { useHelp } from '../components/help/HelpProvider'
@@ -462,7 +463,7 @@ export default function PreadmissionPage() {
     }
   }, [step, formData.doblecobertura])
 
-  const handleFileSelect = (field: PreadmissionAttachmentField, file: File) => {
+  const handleFileSelect = async (field: PreadmissionAttachmentField, file: File) => {
     if (
       (field === 'carnetseguro' || field === 'certificadoSeguro') &&
       formData.doblecobertura !== 'SI'
@@ -471,18 +472,30 @@ export default function PreadmissionPage() {
       return
     }
     if (file.size > MAX_ATTACHMENT_BYTES) {
-      setError('El archivo supera el tamaño máximo de 15 MB')
+      setError('El archivo supera el tamaño máximo de 15 MB. Use una foto con menor resolución o comprímala.')
       return
     }
-    const extOk = /\.(jpe?g|png|pdf)$/i.test(file.name)
-    if (!ALLOWED_ATTACHMENT_TYPES.has(file.type) && !extOk) {
+    const extOk = /\.(jpe?g|png|pdf|heic|heif|webp)$/i.test(file.name)
+    if (!ALLOWED_ATTACHMENT_TYPES.has(file.type) && !extOk && !(file.type || '').startsWith('image/')) {
       setError('Formato no permitido. Use JPG, PNG o PDF.')
       return
     }
-    const next = { ...attachmentFilesRef.current, [field]: file }
-    attachmentFilesRef.current = next
-    setAttachmentFiles(next)
+
     setError('')
+    try {
+      const prepared = await compressImageForUpload(file)
+      if (prepared.size > MAX_ATTACHMENT_BYTES) {
+        setError(
+          'La foto sigue siendo demasiado grande tras comprimir. Intente acercar menos o elegir otra imagen.',
+        )
+        return
+      }
+      const next = { ...attachmentFilesRef.current, [field]: prepared }
+      attachmentFilesRef.current = next
+      setAttachmentFiles(next)
+    } catch {
+      setError('No se pudo procesar la imagen. Intente de nuevo o elija un archivo de la galería.')
+    }
   }
 
   const checkDuplicatePreadmission = async (): Promise<boolean> => {
@@ -787,6 +800,11 @@ export default function PreadmissionPage() {
       if (!response.ok) {
         if (handleAuthFailure(response.status, notifySessionExpired)) {
           return
+        }
+        if (response.status === 413) {
+          throw new Error(
+            'Las fotos son demasiado grandes para el servidor. Vuelva a tomarlas o use la galería; el sistema ahora comprime las imágenes automáticamente.',
+          )
         }
         const data = await response.json().catch(() => ({}))
         throw new Error(apiErrorMessage(data, 'Error al enviar preadmisión'))
@@ -1548,6 +1566,10 @@ export default function PreadmissionPage() {
           {step === 7 && (
             <div className="space-y-6">
               <h2 className="text-lg sm:text-xl font-semibold text-gray-900">Paso 7: Documentos Adjuntos</h2>
+              <p className="text-sm text-gray-600">
+                Puede tomar la foto con la cámara del teléfono. Las imágenes se comprimen
+                automáticamente a HD liviano antes de enviar (documento completo y legible).
+              </p>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
