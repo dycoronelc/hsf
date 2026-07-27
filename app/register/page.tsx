@@ -8,10 +8,13 @@ import {
   filterDocumentIdInput,
   filterPersonNameInput,
   isValidDocumentIdInput,
+  isValidEmail,
   isValidPersonName,
   PERSON_NAME_MESSAGE,
   DOCUMENT_ID_MESSAGE,
-} from '@/lib/validation/person-fields'
+  EMAIL_MESSAGE,
+  normalizeEmail,
+} from '@/lib/validation'
 import { normalizeDocumentId } from '@/lib/normalizeDocumentId'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { mapParsedToRegisterFields } from '@/lib/cedulaQr'
@@ -36,6 +39,10 @@ export default function RegisterPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+    if (!isValidEmail(formData.email)) {
+      setError(EMAIL_MESSAGE)
+      return
+    }
     if (!PASSWORD_RULE.test(formData.password)) {
       setError('La contraseña debe tener al menos 8 caracteres, ser alfanumérica e incluir una mayúscula')
       return
@@ -65,7 +72,7 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       const payload = {
-        email: formData.email,
+        email: normalizeEmail(formData.email),
         password: formData.password,
         fullName: formData.full_name || undefined,
         nationalId: normalizeDocumentId(formData.national_id, 'C') || undefined,

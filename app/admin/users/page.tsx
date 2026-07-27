@@ -7,7 +7,7 @@ import { SiteLayout } from '../../components/SiteLayout'
 import { RowActionsMenu } from '../../components/RowActionsMenu'
 import { useAuth } from '../../providers'
 import { roleLabel } from '@/lib/roleLabels'
-import { filterPersonNameInput, isValidPersonName, PERSON_NAME_MESSAGE } from '@/lib/validation/person-fields'
+import { filterPersonNameInput, isValidEmail, isValidPersonName, PERSON_NAME_MESSAGE, EMAIL_MESSAGE, normalizeEmail } from '@/lib/validation'
 
 interface StaffUser {
   id: number
@@ -113,6 +113,10 @@ export default function AdminUsersPage() {
       setError(PERSON_NAME_MESSAGE)
       return
     }
+    if (!isValidEmail(createForm.email)) {
+      setError(EMAIL_MESSAGE)
+      return
+    }
     setSaving(true)
     setMessage('')
     setError('')
@@ -124,7 +128,7 @@ export default function AdminUsersPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: createForm.email.trim(),
+          email: normalizeEmail(createForm.email),
           password: createForm.password,
           fullName: createForm.fullName.trim() || undefined,
           role: createForm.role,

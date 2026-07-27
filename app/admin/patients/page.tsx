@@ -7,7 +7,7 @@ import { SiteLayout } from '../../components/SiteLayout'
 import { useAuth } from '../../providers'
 import { formatDateToDdMmYyyy } from '@/lib/dateUtils'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
-import { filterPersonNameInput, isValidPersonName, PERSON_NAME_MESSAGE } from '@/lib/validation/person-fields'
+import { filterPersonNameInput, isValidEmail, isValidPersonName, PERSON_NAME_MESSAGE, EMAIL_MESSAGE, normalizeEmail } from '@/lib/validation'
 
 interface PatientRow {
   id: number
@@ -95,6 +95,10 @@ export default function AdminPatientsPage() {
       setError(`Nombre: ${PERSON_NAME_MESSAGE}`)
       return
     }
+    if (!isValidEmail(editForm.email)) {
+      setError(EMAIL_MESSAGE)
+      return
+    }
     const phone = editForm.phone.replace(/\D/g, '')
     if (phone && (phone.length > 8 || !/^\d+$/.test(phone))) {
       setError('El celular debe tener solo dígitos (máximo 8)')
@@ -111,7 +115,7 @@ export default function AdminPatientsPage() {
         },
         body: JSON.stringify({
           fullName: editForm.fullName || null,
-          email: editForm.email,
+          email: normalizeEmail(editForm.email),
           nationalId: editForm.nationalId || null,
           phone: phone || null,
           birthDate: editForm.birthDate || null,

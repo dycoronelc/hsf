@@ -4,6 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { HospitalLogo } from '../components/HospitalLogo'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
+import { EMAIL_MESSAGE, isValidEmail, normalizeEmail } from '@/lib/validation'
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('')
@@ -19,13 +20,17 @@ export default function ForgotPasswordPage() {
     setMessage('')
     setDebugHint('')
     setResetUrl('')
+    if (!isValidEmail(email)) {
+      setError(EMAIL_MESSAGE)
+      return
+    }
     setLoading(true)
 
     try {
       const response = await fetch('/api/auth/forgot-password', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+        body: JSON.stringify({ email: normalizeEmail(email) }),
       })
       const data = await response.json().catch(() => ({}))
       if (!response.ok) {

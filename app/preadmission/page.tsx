@@ -10,11 +10,14 @@ import {
   filterDocumentIdInput,
   filterPersonNameInput,
   isValidDocumentIdInput,
+  isValidEmail,
   isValidPersonName,
   MAX_PERSON_AGE_YEARS,
   PERSON_NAME_MESSAGE,
   DOCUMENT_ID_MESSAGE,
-} from '@/lib/validation/person-fields'
+  EMAIL_MESSAGE,
+  normalizeEmail,
+} from '@/lib/validation'
 import { CedulaQrCapture } from '../components/CedulaQrCapture'
 import { DdMmYyyyDateField } from '../components/DdMmYyyyDateField'
 import { mapParsedToPreadmissionFields } from '@/lib/cedulaQr'
@@ -90,6 +93,8 @@ function buildPreadmissionSubmitPayload(formData: Record<string, string>) {
     payload[key] = formData[key] ?? ''
   }
   payload.celularPrefix = formData.celularPrefix || '507'
+  if (payload.email) payload.email = normalizeEmail(payload.email)
+  if (payload.email3) payload.email3 = normalizeEmail(payload.email3)
   return payload
 }
 
@@ -197,13 +202,13 @@ export default function PreadmissionPage() {
     return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`
   }, [])
 
-  const isValidEmailAddress = (value: string) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+  const isValidEmailAddress = (value: string) => isValidEmail(value)
 
   const syncEmailFromInput = (value: string) => {
-    const normalized = value.trim()
+    const normalized = normalizeEmail(value)
     setError('')
     setFormData((prev) => {
-      if (prev.email.trim() === normalized) return prev
+      if (normalizeEmail(prev.email) === normalized) return prev
       setEmailVerified(false)
       setVerificationError('')
       setVerificationHint('')
@@ -212,7 +217,7 @@ export default function PreadmissionPage() {
   }
 
   const getEmailDestination = () =>
-    (emailInputRef.current?.value ?? formData.email).trim().toLowerCase()
+    normalizeEmail(emailInputRef.current?.value ?? formData.email)
 
   const syncCedulaFromInput = (value: string) => {
     setSearchNotice('')
@@ -572,7 +577,7 @@ export default function PreadmissionPage() {
     setVerificationHint('')
     const destination = getEmailDestination()
     if (!isValidEmailAddress(destination)) {
-      setVerificationError('Ingrese un correo electrónico válido antes de solicitar el código')
+      setVerificationError(EMAIL_MESSAGE)
       return
     }
     if (destination !== formData.email.trim().toLowerCase()) {
@@ -609,7 +614,7 @@ export default function PreadmissionPage() {
     setError('')
     const destination = getEmailDestination()
     if (!isValidEmailAddress(destination)) {
-      setVerificationError('Ingrese un correo electrónico válido')
+      setVerificationError(EMAIL_MESSAGE)
       return
     }
     if (!emailCode.trim()) {
@@ -679,9 +684,9 @@ export default function PreadmissionPage() {
         }
         return null
       case 4: {
-        const email = getEmailDestination() || formData.email.trim()
+        const email = getEmailDestination() || normalizeEmail(formData.email)
         if (!email) return 'Ingrese su correo electrónico'
-        if (!isValidEmailAddress(email)) return 'Ingrese un correo electrónico válido'
+        if (!isValidEmail(email)) return EMAIL_MESSAGE
         if (!emailVerified) return 'Debe verificar su correo electrónico antes de continuar'
         if (!formData.celular.trim()) return 'Ingrese su número de celular'
         if (!formData.provincia1 || !formData.distrito1 || !formData.corregimiento1) {
@@ -691,11 +696,14 @@ export default function PreadmissionPage() {
         return null
       }
       case 5:
-        if (!formData.encasourgencia || !formData.relacion || !formData.email3 || !formData.celular3) {
+        if (!formData.encasourgencia || !formData.relacion || !formData.email3.trim() || !formData.celular3) {
           return 'Complete los datos del contacto de emergencia'
         }
         if (!isValidPersonName(formData.encasourgencia)) {
           return `Contacto de emergencia: ${PERSON_NAME_MESSAGE}`
+        }
+        if (!isValidEmail(formData.email3)) {
+          return `Email del contacto de emergencia: ${EMAIL_MESSAGE}`
         }
         return null
       case 6:
@@ -738,6 +746,14 @@ export default function PreadmissionPage() {
     const stepError = getStepValidationError(7)
     if (stepError) {
       setError(stepError)
+      return
+    }
+    if (!isValidEmail(formData.email)) {
+      setError(`Correo del paciente: ${EMAIL_MESSAGE}`)
+      return
+    }
+    if (!isValidEmail(formData.email3)) {
+      setError(`Email del contacto de emergencia: ${EMAIL_MESSAGE}`)
       return
     }
     if (!isValidDdMmYyyy(formData.fechaprobableatencion) || !isValidBirthDateDdMmYyyy(formData.fechanac)) {
@@ -1266,7 +1282,7 @@ export default function PreadmissionPage() {
                   {!canSendEmailCode && !emailVerified && !verificationSending && (
                     <p className="text-xs text-amber-700">
                       {formData.email.trim()
-                        ? 'El correo ingresado no tiene un formato válido.'
+                        ? EMAIL_MESSAGE
                         : 'Escriba su correo en el campo de arriba para habilitar el envío del código.'}
                     </p>
                   )}
@@ -1441,10 +1457,21 @@ export default function PreadmissionPage() {
                   <input
                     type="email"
                     value={formData.email3}
-                    onChange={(e) => setFormData({ ...formData, email3: e.target.value })}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email3: e.target.value.replace(/\s/g, '') })
+                    }
+                    onBlur={(e) =>
+                      setFormData((prev) => ({ ...prev, email3: normalizeEmail(e.target.value) }))
+                    }
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                    placeholder="nombre@dominio.com"
+                    autoComplete="email"
+                    inputMode="email"
                     required
                   />
+                  {formData.email3.trim() && !isValidEmail(formData.email3) && (
+                    <p className="mt-1 text-xs text-red-600">{EMAIL_MESSAGE}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
