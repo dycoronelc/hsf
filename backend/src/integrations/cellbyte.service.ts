@@ -77,15 +77,17 @@ export class CellbyteService {
 
   private readAttachments(p: Preadmission) {
     const withInsurance = p.doblecobertura === 'SI';
+    const certificadoSeguro = withInsurance
+      ? this.storageService.readAsBase64(p.certificadoSeguro)
+      : '';
     return {
       cedulaimagen: this.storageService.readAsBase64(p.cedulaimagen),
       ordenimagen: this.storageService.readAsBase64(p.ordenimagen),
       preautorizacion: this.storageService.readAsBase64(p.preautorizacion),
       carnetseguro: withInsurance ? this.storageService.readAsBase64(p.carnetseguro) : '',
-      certificadoSeguro: withInsurance
-        ? this.storageService.readAsBase64(p.certificadoSeguro)
-        : '',
-      ssimagen: this.storageService.readAsBase64(p.ssimagen),
+      // Cellbyte espera el certificado de seguro en `ssimagen` (no en certificadoSeguro).
+      certificadoSeguro: '',
+      ssimagen: certificadoSeguro || this.storageService.readAsBase64(p.ssimagen),
     };
   }
 

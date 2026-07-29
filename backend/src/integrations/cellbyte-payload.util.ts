@@ -68,7 +68,8 @@ export function buildCellbytePayload(
     ordenimagen: attachments.ordenimagen,
     preautorizacion: attachments.preautorizacion,
     carnetseguro: attachments.carnetseguro,
-    certificadoSeguro: attachments.certificadoSeguro,
+    /** Cellbyte no usa este campo; el certificado va en `ssimagen`. */
+    certificadoSeguro: '',
     ssimagen: attachments.ssimagen,
     fechapreadmision: formatDdMmYyyy(p.fechapreadmision),
   };
@@ -79,23 +80,27 @@ export function buildCellbyteAttachmentWarnings(
   attachments: CellbyteAttachmentBase64,
 ): string[] {
   const warnings: string[] = [];
-  const checks: Array<{ field: keyof CellbyteAttachmentBase64; label: string }> = [
+  const checks: Array<{ field: keyof CellbyteAttachmentBase64; label: string; sourceField?: string }> = [
     { field: 'cedulaimagen', label: 'Imagen de cédula (cedulaimagen)' },
     { field: 'ordenimagen', label: 'Orden médica (ordenimagen)' },
     { field: 'preautorizacion', label: 'Preautorización (preautorizacion)' },
     { field: 'carnetseguro', label: 'Carné de seguro (carnetseguro)' },
-    { field: 'certificadoSeguro', label: 'Certificado de seguro (certificadoSeguro)' },
-    { field: 'ssimagen', label: 'Imagen SS (ssimagen)' },
+    {
+      field: 'ssimagen',
+      label: 'Certificado de seguro → ssimagen',
+      sourceField: 'certificadoSeguro',
+    },
   ];
 
-  for (const { field, label } of checks) {
-    if (
-      (field === 'carnetseguro' || field === 'certificadoSeguro') &&
-      preadmission.doblecobertura !== 'SI'
-    ) {
+  for (const { field, label, sourceField } of checks) {
+    if (field === 'carnetseguro' && preadmission.doblecobertura !== 'SI') {
       continue;
     }
-    const stored = preadmission[field as keyof Preadmission] as string | null | undefined;
+    if (field === 'ssimagen' && preadmission.doblecobertura !== 'SI') {
+      continue;
+    }
+    const storedKey = (sourceField ?? field) as keyof Preadmission;
+    const stored = preadmission[storedKey] as string | null | undefined;
     if (stored && !attachments[field]) {
       warnings.push(
         `${label}: hay ruta en BD (${stored}) pero el archivo no está en disco. En Railway configure un volumen persistente en PREADMISSION_UPLOAD_DIR o vuelva a registrar la preadmisión con adjuntos.`,
