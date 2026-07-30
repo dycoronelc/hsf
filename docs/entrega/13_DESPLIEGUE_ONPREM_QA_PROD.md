@@ -232,7 +232,8 @@ Igual estructura, con **valores distintos**:
 - `FRONTEND_URL` / `APP_BASE_URL` → URL pública real de producción
 - `JWT_SECRET` → **otro** distinto al de QA
 - `SMTP_FROM` → sin "QA" en el nombre
-- `CELLBYTE_*` → credenciales **producción** Cellbyte
+- `CELLBYTE_*` → URL y credenciales **producción** Cellbyte  
+  (`CELLBYTE_BASE_URL=http://144.1.0.9:8080/cellbyte`)
 
 ```bash
 cp .env backend/.env

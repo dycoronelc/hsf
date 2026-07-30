@@ -111,7 +111,7 @@ SMTP_USER=correo@hospitalsantafepanama.com
 SMTP_PASS=CONTRASEÑA_APLICACION
 SMTP_FROM="Hospital Santa Fe <correo@hospitalsantafepanama.com>"
 
-CELLBYTE_BASE_URL=<URL prod>
+CELLBYTE_BASE_URL=http://144.1.0.9:8080/cellbyte
 CELLBYTE_USERNAME=<usuario prod>
 CELLBYTE_PASSWORD=<password prod>
 ```

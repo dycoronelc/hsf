@@ -15,10 +15,15 @@ Enviar datos de preadmisión desde la plataforma hacia el API **Cellbyte** del h
 
 | Variable | Ejemplo | Descripción |
 |----------|---------|-------------|
-| `CELLBYTE_BASE_URL` | `http://192.168.30.41:8080/cbUat` | URL base **sin** `/api/v1/...` |
+| `CELLBYTE_BASE_URL` | `http://192.168.30.41:8080/cbUat` (QA) · `http://144.1.0.9:8080/cellbyte` (Prod) | URL base **sin** `/api/v1/...` |
 | `CELLBYTE_USERNAME` | `preadm@hospitalsantafepanama.com` | Usuario auth |
 | `CELLBYTE_PASSWORD` | *(secreto)* | Contraseña auth |
 | `CELLBYTE_URL` | *(legado)* | URL completa antigua; se deriva base si falta `CELLBYTE_BASE_URL` |
+
+| Ambiente | `CELLBYTE_BASE_URL` |
+|----------|---------------------|
+| QA / UAT | `http://192.168.30.41:8080/cbUat` |
+| Producción | `http://144.1.0.9:8080/cellbyte` |
 
 Si `CELLBYTE_BASE_URL` no está definida, el envío se **omite** (skipped) sin error fatal.
 
