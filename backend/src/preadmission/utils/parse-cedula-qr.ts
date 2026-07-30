@@ -22,8 +22,14 @@
  *
  * Si el formato cambia, ajustar índices aquí o ampliar variantes; se mantienen JSON y heurísticas legacy.
  *
+ * Fechas aceptadas: DD/MM/YYYY, DD-MM-YYYY, YYYY-MM-DD, YYYY/MM/DD y compacto YYYYMMDD
+ * (cédula panameña TE, p. ej. 19750826 → 26/08/1975).
+ *
  * Ejemplo sintético (12 campos, solo ilustrativo):
  *   8-123-456|GARCIA|LOPEZ|JUAN CARLOS|M|PANAMA|15/03/1990|PANAMEÑO|NO|01/01/2020|01/01/2030|VERIFHASH
+ *
+ * Ejemplo cédula panameña (fechas compactas):
+ *   8-520-382|Jose Luis|Rodriguez Tuñon||M|PANAMÁ|19750826|PANAMEÑA|20251015|20351015|A11264119
  */
 
 /** Cédula completa alfanumérica TE (merlos/cedula-panama, forma normalizada con guiones). */
@@ -34,6 +40,85 @@ const MRZ_LINE_RE = /^[A-Z0-9<]{25,}$/;
 
 const DATE_DMY_RE = /^(\d{2})[/-](\d{2})[/-](\d{4})$/;
 const DATE_YMD_RE = /^(\d{4})[/-](\d{2})[/-](\d{2})$/;
+/** Compacto cédula panameña TE: 19750826 */
+const DATE_YMD_COMPACT_RE = /^(\d{4})(\d{2})(\d{2})$/;
+/** Compacto DDMMYYYY (menos frecuente) */
+const DATE_DMY_COMPACT_RE = /^(\d{2})(\d{2})(\d{4})$/;
+
+function isValidCalendarParts(day: number, month: number, year: number): boolean {
+  if (year < 1900 || year > 2100) return false;
+  if (month < 1 || month > 12) return false;
+  if (day < 1 || day > 31) return false;
+  const date = new Date(year, month - 1, day);
+  return (
+    date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+  );
+}
+
+function formatPartsDdMmYyyy(day: string, month: string, year: string): string {
+  const d = parseInt(day, 10);
+  const m = parseInt(month, 10);
+  const y = parseInt(year, 10);
+  if (!isValidCalendarParts(d, m, y)) return '';
+  return `${String(d).padStart(2, '0')}/${String(m).padStart(2, '0')}/${String(y).padStart(4, '0')}`;
+}
+
+function normalizeDateToDdMmYyyy(s: string): string {
+  const t = s.trim();
+  if (!t) return '';
+
+  let m = t.match(DATE_DMY_RE);
+  if (m) {
+    const formatted = formatPartsDdMmYyyy(m[1], m[2], m[3]);
+    return formatted || t;
+  }
+
+  m = t.match(DATE_YMD_RE);
+  if (m) {
+    const formatted = formatPartsDdMmYyyy(m[3], m[2], m[1]);
+    return formatted || t;
+  }
+
+  // Cédula panameña: YYYYMMDD (ej. 19750826 → 26/08/1975)
+  m = t.match(DATE_YMD_COMPACT_RE);
+  if (m) {
+    const year = parseInt(m[1], 10);
+    if (year >= 1900 && year <= 2100) {
+      const formatted = formatPartsDdMmYyyy(m[3], m[2], m[1]);
+      if (formatted) return formatted;
+    }
+  }
+
+  // Compacto DDMMYYYY solo si el año luce válido y el día/mes también
+  m = t.match(DATE_DMY_COMPACT_RE);
+  if (m) {
+    const year = parseInt(m[3], 10);
+    if (year >= 1900 && year <= 2100) {
+      const formatted = formatPartsDdMmYyyy(m[1], m[2], m[3]);
+      if (formatted) return formatted;
+    }
+  }
+
+  return t;
+}
+
+function isDateLike(s: string): boolean {
+  const t = s.trim();
+  if (DATE_DMY_RE.test(t) || DATE_YMD_RE.test(t)) return true;
+  if (DATE_YMD_COMPACT_RE.test(t)) {
+    const m = t.match(DATE_YMD_COMPACT_RE);
+    if (!m) return false;
+    const year = parseInt(m[1], 10);
+    return year >= 1900 && year <= 2100 && Boolean(formatPartsDdMmYyyy(m[3], m[2], m[1]));
+  }
+  if (DATE_DMY_COMPACT_RE.test(t)) {
+    const m = t.match(DATE_DMY_COMPACT_RE);
+    if (!m) return false;
+    const year = parseInt(m[3], 10);
+    return year >= 1900 && year <= 2100 && Boolean(formatPartsDdMmYyyy(m[1], m[2], m[3]));
+  }
+  return false;
+}
 
 function normalizeCedulaToken(s: string): string {
   return s.replace(/\s+/g, '').trim();
@@ -136,15 +221,6 @@ export function looksLikePanamaCedula(s: string): boolean {
   return /^(?:AE|E|PE|N)\d{5,}$/i.test(token) || /^\d{7,13}$/.test(token);
 }
 
-function normalizeDateToDdMmYyyy(s: string): string {
-  const t = s.trim();
-  let m = t.match(DATE_DMY_RE);
-  if (m) return `${m[1]}/${m[2]}/${m[3]}`;
-  m = t.match(DATE_YMD_RE);
-  if (m) return `${m[3]}/${m[2]}/${m[1]}`;
-  return t;
-}
-
 function normalizeSexo(s: string): string {
   const u = s.trim().toUpperCase();
   if (u === 'M' || u === 'MASCULINO' || u === 'MASC' || u === 'H' || u === 'HOMBRE') return 'M';
@@ -175,11 +251,6 @@ function isSexToken(s: string): boolean {
 
 function isBlankField(s: string): boolean {
   return !s.trim();
-}
-
-function isDateLike(s: string): boolean {
-  const t = s.trim();
-  return DATE_DMY_RE.test(t) || DATE_YMD_RE.test(t);
 }
 
 function findCombinedLayoutSexIdx(f: string[]): number {
@@ -328,32 +399,14 @@ function tryTeTableLayout(fields: string[]): Record<string, string> | null {
   let formatSuffix = '';
   const tailStart = sexIdx + 4;
 
-  if (layout === 'nombres_first_combined' && n > 11) {
+  if (layout === 'nombres_first_combined') {
+    // Cola variable: con/sin donante y fechas DD-MM-YYYY o YYYYMMDD
     const tail = extractTeTailFields(f, tailStart);
     donante = tail.donante;
     fechaExp = tail.fechaExp;
     fechaVenc = tail.fechaVenc;
     verificacion = tail.verificacion;
     formatSuffix = `${n}_nombres_combined`;
-  } else if (layout === 'nombres_first_combined') {
-    if (n >= 12) {
-      donante = f[sexIdx + 4] ?? '';
-      fechaExp = f[sexIdx + 5] ?? '';
-      fechaVenc = f[sexIdx + 6] ?? '';
-      verificacion = f.slice(sexIdx + 7).join('|');
-      formatSuffix = '12_nombres_combined';
-    } else if (n === 11) {
-      donante = f[sexIdx + 4] ?? '';
-      fechaExp = f[sexIdx + 5] ?? '';
-      fechaVenc = f[sexIdx + 6] ?? '';
-      verificacion = (f[sexIdx + 7] ?? '').trim();
-      formatSuffix = '11_nombres_combined';
-    } else if (n === 10) {
-      fechaExp = f[sexIdx + 4] ?? '';
-      fechaVenc = f[sexIdx + 5] ?? '';
-      verificacion = (f[sexIdx + 6] ?? '').trim();
-      formatSuffix = '10_nombres_combined';
-    }
   } else if (n > 11) {
     const tail = extractTeTailFields(f, tailStart);
     donante = tail.donante;
