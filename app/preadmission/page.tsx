@@ -336,7 +336,11 @@ export default function PreadmissionPage() {
     }
   }
 
-  const loadCorregimientos = async (distritoCodigo: string, clearValues = true) => {
+  const loadCorregimientos = async (
+    distritoCodigo: string,
+    clearValues = true,
+    provinciaCodigo?: string,
+  ) => {
     if (!distritoCodigo) {
       setCorregimientos([])
       return
@@ -345,7 +349,11 @@ export default function PreadmissionPage() {
       const authToken = isAuthenticated ? (token || localStorage.getItem('token')) : null
       const headers: HeadersInit = {}
       if (authToken) headers['Authorization'] = `Bearer ${authToken}`
-      const response = await fetch(`/api/catalogs/corregimientos?distrito=${distritoCodigo}`, { headers })
+      const prov =
+        provinciaCodigo || formData.provincia1 || ''
+      const qs = new URLSearchParams({ distrito: distritoCodigo })
+      if (prov) qs.set('provincia', prov)
+      const response = await fetch(`/api/catalogs/corregimientos?${qs.toString()}`, { headers })
       if (response.ok) {
         const corregs = await response.json()
         setCorregimientos(corregs)
@@ -434,7 +442,11 @@ export default function PreadmissionPage() {
         if (updatedFormData.provincia1) {
           await loadDistritos(updatedFormData.provincia1, false)
           if (updatedFormData.distrito1) {
-            await loadCorregimientos(updatedFormData.distrito1, false)
+            await loadCorregimientos(
+              updatedFormData.distrito1,
+              false,
+              updatedFormData.provincia1,
+            )
           }
         }
 
@@ -1369,7 +1381,7 @@ export default function PreadmissionPage() {
                     onChange={async (e) => {
                       const nuevoDistrito = e.target.value
                       setFormData({ ...formData, distrito1: nuevoDistrito, corregimiento1: '' })
-                      await loadCorregimientos(nuevoDistrito, true)
+                      await loadCorregimientos(nuevoDistrito, true, formData.provincia1)
                     }}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                     disabled={!formData.provincia1}

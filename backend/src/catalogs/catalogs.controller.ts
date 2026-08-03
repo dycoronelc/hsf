@@ -24,10 +24,16 @@ export class CatalogsController {
   }
 
   @Get('corregimientos')
-  async getCorregimientos(@Query('distrito') distritoCodigo: string) {
+  async getCorregimientos(
+    @Query('distrito') distritoCodigo: string,
+    @Query('provincia') provinciaCodigo?: string,
+  ) {
     if (!distritoCodigo) {
       return [];
     }
-    return this.catalogsService.findCorregimientosByDistrito(distritoCodigo);
+    return this.catalogsService.findCorregimientosByDistrito(
+      distritoCodigo,
+      provinciaCodigo,
+    );
   }
 }

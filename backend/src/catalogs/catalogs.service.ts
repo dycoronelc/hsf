@@ -38,7 +38,17 @@ export class CatalogsService {
     });
   }
 
-  async findCorregimientosByDistrito(distritoCodigo: string): Promise<Corregimiento[]> {
+  async findCorregimientosByDistrito(
+    distritoCodigo: string,
+    provinciaCodigo?: string,
+  ): Promise<Corregimiento[]> {
+    if (provinciaCodigo) {
+      return this.corregimientoRepository.find({
+        where: { distritoCodigo, provinciaCodigo },
+        order: { nombre: 'ASC' },
+      });
+    }
+    // Sin provincia: solo correcto si el código de distrito es único globalmente
     return this.corregimientoRepository.find({
       where: { distritoCodigo },
       order: { nombre: 'ASC' },

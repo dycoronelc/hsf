@@ -280,16 +280,27 @@ npm run backend:sync
 npm run backend:init
 ```
 
-`backend:init` y `backend:sync-geo` cargan el **catálogo geográfico operativo** desde `ubicacion_geo.csv` (mismos códigos que QA / Cellbyte: p. ej. Panamá Oeste `13`, Arraiján `1`, corregimiento `4`).  
-Para **producción existente** con códigos TE (`1301`, `130102`, …), aplicar:
+`backend:init` y `backend:sync-geo` cargan el catálogo **Cellbyte** desde `ubicacion_geo.csv`
+(exportado de `docs/ubicacion_geo.xlsx` con `python scripts/export-ubicacion-geo-from-xlsx.py`).
+
+Códigos jerárquicos (mismo formato que Cellbyte), p. ej. Panamá Oeste `13` / Arraiján `1` / Juan Demóstenes `4`.
+
+Esquema con **PK compuestas** (`distritos` por provincia+código, `corregimientos` por provincia+distrito+código).
+
+Para recrear en un entorno ya desplegado:
 
 ```bash
-psql "$DATABASE_URL" -f db/migrations/20260803_replace_geo_ops_from_ubicacion_csv.sql
-# o desde el servidor de la app:
+# Actualizar código y CSV
+git pull
+# O regenerar CSV desde el xlsx de Cellbyte:
+python scripts/export-ubicacion-geo-from-xlsx.py
+
 npm run backend:sync-geo
+# o:
+psql "$DATABASE_URL" -f db/migrations/20260803_replace_geo_from_cellbyte_xlsx.sql
 ```
 
-(El script hace `TRUNCATE` de `provincias`/`distritos`/`corregimientos` y las recarga. Preadmisiones antiguas con códigos TE quedan huérfanas.)
+(El sync hace `DROP` de `distritos`/`corregimientos` y recarga. La API de corregimientos requiere `?distrito=&provincia=`.)
 
 Usuarios creados si no existen:
 
