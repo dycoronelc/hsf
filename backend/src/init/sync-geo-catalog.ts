@@ -2,9 +2,6 @@ import { DataSource } from 'typeorm';
 import * as fs from 'fs';
 import * as path from 'path';
 
-/** Parches puntuales históricos (idempotentes si el CSV ya los trae). */
-const GEO_GAPS_SQL = 'db/migrations/20260525_geo_catalog_gaps.sql';
-
 export function repoRootFromBackend(): string {
   return path.join(process.cwd(), '..');
 }
@@ -149,12 +146,8 @@ export async function syncGeoCatalog(dataSource: DataSource): Promise<void> {
     await queryRunner.release();
   }
 
-  // Parches residuales (no-op si ya están en el CSV)
-  const gapsPath = path.join(root, GEO_GAPS_SQL);
-  if (fs.existsSync(gapsPath)) {
-    console.log(`→ Aplicando parches: ${GEO_GAPS_SQL}`);
-    await dataSource.query(fs.readFileSync(gapsPath, 'utf-8'));
-  }
+  // Nota: db/migrations/20260525_geo_catalog_gaps.sql ya está absorbido en ubicacion_geo.csv.
+  // No se re-aplica: chocaba con PK (ej. distrito 35 CHEPIGANA vs OMAR TORRIJOS HERRERA).
 
   const [counts] = await dataSource.query(`
     SELECT
