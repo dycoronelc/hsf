@@ -113,8 +113,15 @@ run_app "npm run backend:build"
 log "npm run build ..."
 run_app "npm run build"
 
-# Schema geo Cellbyte (PK compuestas) ANTES de reiniciar Nest.
-# TypeORM synchronize no puede migrar solo PK simples → compuestas y cae el arranque de la API.
+log "Ajustando permisos ..."
+chown -R "$APP_USER:$APP_USER" "$APP_DIR"
+
+# Parar la API antes del SQL: TypeORM synchronize no puede añadir provinciaCodigo
+# NOT NULL a filas existentes (error: "contains null values") y reiniciaría en bucle.
+log "Deteniendo $API_SERVICE (para migrar schema geo) ..."
+systemctl stop "$API_SERVICE" || true
+
+# Schema geo Cellbyte (PK compuestas) ANTES de arrancar Nest.
 if [[ "${SKIP_GEO_SQL:-0}" != "1" ]]; then
   log "Aplicando catálogo geo Cellbyte (SQL) ..."
   if ! run_app "npm run backend:apply-geo-sql"; then
@@ -124,12 +131,9 @@ else
   log "Omitiendo geo SQL (SKIP_GEO_SQL=1)"
 fi
 
-log "Ajustando permisos ..."
-chown -R "$APP_USER:$APP_USER" "$APP_DIR"
-
 log "Reiniciando servicios systemd ..."
 systemctl daemon-reload
-systemctl restart "$API_SERVICE"
+systemctl start "$API_SERVICE"
 systemctl restart "$WEB_SERVICE"
 
 log "Estado de servicios:"
