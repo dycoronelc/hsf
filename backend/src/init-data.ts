@@ -217,8 +217,8 @@ async function bootstrap() {
       console.log('⚠ Archivo nacionalidades.csv no encontrado');
     }
 
-    // Catálogo geo completo desde referencia TE (db/datosgeograficos_postgres.sql + migraciones).
-    // Idempotente: puede re-ejecutarse con npm run backend:sync-geo en QA/prod existentes.
+    // Catálogo geo operativo = ubicacion_geo.csv (códigos QA/Cellbyte, no TE).
+    // Re-ejecutar en un entorno existente: npm run backend:sync-geo
     await syncGeoCatalog(dataSource);
 
     console.log('\n✓ Datos inicializados correctamente');

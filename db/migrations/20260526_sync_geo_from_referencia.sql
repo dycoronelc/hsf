@@ -1,3 +1,10 @@
+-- LEGACY (ya no se usa en backend:sync-geo).
+-- Antes operativas se cargan desde ubicacion_geo.csv (códigos QA/Cellbyte).
+-- Este script insertaba códigos TE (0104, 1301, 130102…) y provocaba mismatch con Cellbyte prod.
+-- Conservado solo como referencia histórica. Ver:
+--   db/migrations/20260803_replace_geo_ops_from_ubicacion_csv.sql
+--   backend/src/init/sync-geo-catalog.ts
+--
 -- Sincroniza provincias, distritos y corregimientos operativos desde las tablas ref_* (datosgeograficos).
 --
 -- Prerequisitos:

@@ -280,7 +280,16 @@ npm run backend:sync
 npm run backend:init
 ```
 
-`backend:init` carga nacionalidades desde CSV y el **catálogo geográfico completo** desde `db/datosgeograficos_postgres.sql` + migraciones geo (no depende solo de `ubicacion_geo.csv`). Para re-sincronizar geo en un entorno existente: `npm run backend:sync-geo`.
+`backend:init` y `backend:sync-geo` cargan el **catálogo geográfico operativo** desde `ubicacion_geo.csv` (mismos códigos que QA / Cellbyte: p. ej. Panamá Oeste `13`, Arraiján `1`, corregimiento `4`).  
+Para **producción existente** con códigos TE (`1301`, `130102`, …), aplicar:
+
+```bash
+psql "$DATABASE_URL" -f db/migrations/20260803_replace_geo_ops_from_ubicacion_csv.sql
+# o desde el servidor de la app:
+npm run backend:sync-geo
+```
+
+(El script hace `TRUNCATE` de `provincias`/`distritos`/`corregimientos` y las recarga. Preadmisiones antiguas con códigos TE quedan huérfanas.)
 
 Usuarios creados si no existen:
 
