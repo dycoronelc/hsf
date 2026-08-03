@@ -113,6 +113,17 @@ run_app "npm run backend:build"
 log "npm run build ..."
 run_app "npm run build"
 
+# Schema geo Cellbyte (PK compuestas) ANTES de reiniciar Nest.
+# TypeORM synchronize no puede migrar solo PK simples → compuestas y cae el arranque de la API.
+if [[ "${SKIP_GEO_SQL:-0}" != "1" ]]; then
+  log "Aplicando catálogo geo Cellbyte (SQL) ..."
+  if ! run_app "npm run backend:apply-geo-sql"; then
+    die "Fallo al aplicar geo SQL. Revise DATABASE_URL en $APP_DIR/.env y que Postgres esté arriba."
+  fi
+else
+  log "Omitiendo geo SQL (SKIP_GEO_SQL=1)"
+fi
+
 log "Ajustando permisos ..."
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
@@ -126,7 +137,9 @@ systemctl --no-pager --full status "$API_SERVICE" "$WEB_SERVICE" || true
 
 log "Comprobaciones locales (con reintentos) ..."
 if ! wait_for_http "http://127.0.0.1:8000/api/health" "API health" 30 2; then
-  die "API no responde en http://127.0.0.1:8000/api/health — revise: journalctl -u $API_SERVICE -n 50"
+  echo "[deploy] --- últimas líneas de journalctl -u $API_SERVICE ---" >&2
+  journalctl -u "$API_SERVICE" -n 80 --no-pager >&2 || true
+  die "API no responde en http://127.0.0.1:8000/api/health — revise journal arriba o: journalctl -u $API_SERVICE -n 50"
 fi
 
 if ! wait_for_http_code "http://127.0.0.1:3000/" "200" "Web" 30 2; then

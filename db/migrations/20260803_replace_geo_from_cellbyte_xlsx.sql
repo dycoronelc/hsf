@@ -6,6 +6,11 @@ BEGIN;
 
 DROP TABLE IF EXISTS corregimientos CASCADE;
 DROP TABLE IF EXISTS distritos CASCADE;
+CREATE TABLE IF NOT EXISTS provincias (
+  codigo character varying NOT NULL,
+  nombre character varying NOT NULL,
+  CONSTRAINT "PK_provincias" PRIMARY KEY (codigo)
+);
 TRUNCATE TABLE provincias RESTART IDENTITY CASCADE;
 
 CREATE TABLE distritos (

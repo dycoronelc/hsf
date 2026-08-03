@@ -45,9 +45,11 @@ import { SettingsModule } from './settings/settings.module';
     TypeOrmModule.forRoot({
       type: 'postgres',
       url: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/hospital_santa_fe',
-      ssl: process.env.DATABASE_SSL === 'true' || process.env.NODE_ENV === 'production'
-        ? { rejectUnauthorized: false }
-        : false,
+      // Solo SSL si DATABASE_SSL=true (on-prem local no usa SSL; forzar por NODE_ENV rompe el arranque)
+      ssl:
+        process.env.DATABASE_SSL === 'true'
+          ? { rejectUnauthorized: false }
+          : false,
       entities: [
         User,
         Service,

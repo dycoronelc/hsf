@@ -599,6 +599,7 @@ Cree `/var/backups` y restrinja permisos.
 | Síntoma | Acción |
 |---------|--------|
 | 502 Bad Gateway | `systemctl status hospitalsantafe-web`; logs journal |
+| API no responde tras deploy (health fallido) | Ver `journalctl -u hospitalsantafe-api -n 80`. Si hay error TypeORM en `distritos`/`corregimientos` o SSL Postgres: aplicar geo SQL **antes** de reiniciar: `sudo -u hospitalsantafe bash -lc 'cd /opt/hospitalsantafe && npm run backend:apply-geo-sql'` y comprobar `DATABASE_SSL=false` (on-prem local). Luego `sudo systemctl restart hospitalsantafe-api`. El script `deploy-onprem.sh` ya ejecuta el SQL automáticamente. |
 | API no responde | `curl localhost:8000/api/health`; revisar `.env` y Postgres |
 | CORS | `FRONTEND_URL` debe coincidir con URL del navegador |
 | Adjunto 404 | Verificar `PREADMISSION_UPLOAD_DIR` y permisos |
