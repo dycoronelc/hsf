@@ -82,6 +82,8 @@ export default function MonitorPage() {
   const prevSnapRef = useRef<Record<number, string | null>>({})
   const firstPollDoneRef = useRef(false)
   const speechUnlockedRef = useRef(false)
+  const [callFlashKey, setCallFlashKey] = useState<string | null>(null)
+  const callFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refreshVoices = useCallback(() => {
     warmupSpeechVoices()
@@ -206,10 +208,23 @@ export default function MonitorPage() {
       })
       setLastAnnouncement(text)
       enqueueMonitorAnnouncement(text)
+
+      const flashKey = `${ch.service_id}-${cur.ticket_number}-${cur.call_count ?? 0}-${cur.called_at ?? ''}`
+      setCallFlashKey(flashKey)
+      if (callFlashTimerRef.current) clearTimeout(callFlashTimerRef.current)
+      callFlashTimerRef.current = setTimeout(() => {
+        setCallFlashKey((k) => (k === flashKey ? null : k))
+      }, 4500)
     }
 
     prevSnapRef.current = next
   }, [queues, loading, voiceTemplate, speechPrefs, ensureSpeechReady])
+
+  useEffect(() => {
+    return () => {
+      if (callFlashTimerRef.current) clearTimeout(callFlashTimerRef.current)
+    }
+  }, [])
 
   if (loading) {
     return (
@@ -226,6 +241,19 @@ export default function MonitorPage() {
       service_name: q.service_name,
       current: q.current!,
     }))
+    // Más reciente primero (el llamado que el personal acaba de anunciar)
+    .sort((a, b) => {
+      const ta = a.current.called_at ? Date.parse(a.current.called_at) : 0
+      const tb = b.current.called_at ? Date.parse(b.current.called_at) : 0
+      return tb - ta
+    })
+
+  const featuredCall = activeCalls[0] ?? null
+  const otherCalls = activeCalls.slice(1)
+  const featuredKey = featuredCall
+    ? `${featuredCall.service_id}-${featuredCall.current.ticket_number}-${featuredCall.current.call_count ?? 0}-${featuredCall.current.called_at ?? ''}`
+    : null
+  const isFreshCall = !!featuredKey && featuredKey === callFlashKey
 
   const currentMedia = media[mediaIndex] ?? null
   const videoEmbed = currentMedia?.kind === 'video' && currentMedia.body
@@ -234,8 +262,8 @@ export default function MonitorPage() {
 
   return (
     <div className="h-screen max-h-screen overflow-hidden bg-slate-100 text-slate-900 flex flex-col">
-      {/* Multimedia ~78% / Turnos ~22% — columna de turnos más estrecha */}
-      <div className="flex-1 grid min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(240px,22vw)]">
+      {/* Multimedia + franja del llamado principal / Columna de turnos */}
+      <div className="flex-1 grid min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(280px,28vw)]">
         <section className="p-4 sm:p-5 flex flex-col gap-3 bg-white border-r border-slate-200 min-h-0 min-w-0">
           <header className="flex flex-wrap items-center justify-between gap-3 shrink-0">
             <Image
@@ -349,6 +377,51 @@ export default function MonitorPage() {
             </div>
           )}
 
+          {/* Banner grande del turno llamado (visible desde la sala) */}
+          {featuredCall && (
+            <div
+              key={featuredKey}
+              className={`shrink-0 rounded-2xl border-2 px-4 py-4 sm:px-6 sm:py-5 flex flex-wrap items-center justify-between gap-4 ${
+                isFreshCall
+                  ? 'bg-[#00816D] border-[#006b5a] text-white monitor-call-flash'
+                  : 'bg-[#00816D] border-[#006b5a] text-white'
+              }`}
+              aria-live="assertive"
+              role="status"
+            >
+              <div className="min-w-0">
+                <p className="text-sm sm:text-base font-semibold uppercase tracking-[0.18em] text-white/90 flex items-center gap-2">
+                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-300 animate-pulse" aria-hidden />
+                  Llamando ahora
+                </p>
+                <p
+                  className={`mt-1 font-black tracking-tight leading-none break-all ${
+                    isTriageService(featuredCall.service_name) ? 'text-sky-100' : 'text-white'
+                  } text-5xl sm:text-6xl lg:text-7xl`}
+                >
+                  {featuredCall.current.ticket_number}
+                </p>
+                <p className="mt-2 text-base sm:text-lg text-white/90 font-medium truncate">
+                  {featuredCall.service_name}
+                </p>
+              </div>
+              <div className="shrink-0 text-right">
+                {featuredCall.current.window_number ? (
+                  <div className="inline-flex flex-col items-end rounded-xl bg-white text-slate-900 px-5 py-3 shadow-sm">
+                    <span className="text-xs sm:text-sm font-semibold uppercase tracking-wide text-slate-500">
+                      Ventanilla
+                    </span>
+                    <span className="text-3xl sm:text-4xl font-black leading-none">
+                      {featuredCall.current.window_number}
+                    </span>
+                  </div>
+                ) : (
+                  <p className="text-sm text-white/80">Diríjase a la ventanilla indicada</p>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Panel multimedia fijo 16:9 (recomendado 1920×1080) */}
           <div className="flex-1 min-h-0 flex flex-col justify-center">
             <div className="relative w-full mx-auto aspect-video max-h-full rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden flex flex-col">
@@ -420,31 +493,75 @@ export default function MonitorPage() {
         </section>
 
         <section className="bg-[#00816D] text-white px-3 py-4 sm:px-4 sm:py-5 flex flex-col min-h-0">
-          <h2 className="text-xl sm:text-2xl font-bold tracking-wide mb-3 shrink-0">TURNO</h2>
-          <div className="flex-1 space-y-2 overflow-y-auto min-h-0 pr-0.5">
+          <h2 className="text-lg sm:text-xl font-bold tracking-wide mb-3 shrink-0 uppercase">
+            Turnos llamados
+          </h2>
+          <div className="flex-1 space-y-3 overflow-y-auto min-h-0 pr-0.5">
             {activeCalls.length === 0 ? (
               <p className="text-white/80 text-base">En espera de llamados</p>
             ) : (
-              activeCalls.map(({ service_id, service_name, current }) => (
-                <div
-                  key={`${service_id}-${current.ticket_number}`}
-                  className="rounded-lg bg-white/10 border border-white/20 px-3 py-2.5"
-                >
+              <>
+                {featuredCall && (
                   <div
-                    className={`inline-block px-2.5 py-1 rounded-md text-xl sm:text-2xl font-bold mb-1 ${
-                      isTriageService(service_name) ? 'bg-[#0B4F6C]' : 'bg-transparent'
+                    key={`side-${featuredKey}`}
+                    className={`rounded-xl border-2 px-3 py-4 sm:px-4 ${
+                      isFreshCall
+                        ? 'bg-white text-slate-900 border-amber-300 monitor-call-flash'
+                        : 'bg-white text-slate-900 border-white'
                     }`}
                   >
-                    {current.ticket_number}
+                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#00816D] mb-1 flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-[#00816D] animate-pulse" aria-hidden />
+                      Llamando
+                    </p>
+                    <p
+                      className={`font-black tracking-tight leading-none break-all ${
+                        isTriageService(featuredCall.service_name) ? 'text-[#0B4F6C]' : 'text-slate-900'
+                      } text-4xl sm:text-5xl`}
+                    >
+                      {featuredCall.current.ticket_number}
+                    </p>
+                    <p className="mt-2 text-sm font-medium text-slate-600 leading-snug">
+                      {featuredCall.service_name}
+                    </p>
+                    {featuredCall.current.window_number ? (
+                      <div className="mt-3 inline-block rounded-lg bg-[#00816D] text-white px-3 py-1.5 text-sm font-bold">
+                        Ventanilla {featuredCall.current.window_number}
+                      </div>
+                    ) : null}
                   </div>
-                  <div className="text-xs text-white/80 mb-1.5 leading-snug">{service_name}</div>
-                  {current.window_number ? (
-                    <div className="inline-block bg-white text-slate-900 rounded-md px-2.5 py-1 text-xs font-semibold leading-snug">
-                      Ventanilla {current.window_number}
+                )}
+
+                {otherCalls.length > 0 && (
+                  <div className="pt-1">
+                    <p className="text-[11px] uppercase tracking-wide text-white/70 mb-2">
+                      También llamados
+                    </p>
+                    <div className="space-y-2">
+                      {otherCalls.map(({ service_id, service_name, current }) => (
+                        <div
+                          key={`${service_id}-${current.ticket_number}`}
+                          className="rounded-lg bg-white/10 border border-white/25 px-3 py-2.5"
+                        >
+                          <div
+                            className={`font-bold text-2xl sm:text-3xl leading-none mb-1 break-all ${
+                              isTriageService(service_name) ? 'text-sky-100' : 'text-white'
+                            }`}
+                          >
+                            {current.ticket_number}
+                          </div>
+                          <div className="text-xs text-white/80 mb-1.5 leading-snug">{service_name}</div>
+                          {current.window_number ? (
+                            <div className="inline-block bg-white text-slate-900 rounded-md px-2.5 py-1 text-xs font-semibold leading-snug">
+                              Ventanilla {current.window_number}
+                            </div>
+                          ) : null}
+                        </div>
+                      ))}
                     </div>
-                  ) : null}
-                </div>
-              ))
+                  </div>
+                )}
+              </>
             )}
           </div>
           <p className="text-[10px] text-white/60 mt-2 shrink-0">
@@ -456,6 +573,23 @@ export default function MonitorPage() {
       <footer className="bg-[#00816D] text-white text-center py-3 px-4 text-base sm:text-xl font-semibold tracking-wide shrink-0">
         Bienvenido al Hospital Santa Fe, por favor estar atento a su turno.
       </footer>
+
+      <style jsx global>{`
+        @keyframes monitor-call-pulse {
+          0% {
+            box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
+          }
+          70% {
+            box-shadow: 0 0 0 16px rgba(251, 191, 36, 0);
+          }
+          100% {
+            box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+          }
+        }
+        .monitor-call-flash {
+          animation: monitor-call-pulse 1.1s ease-out 3;
+        }
+      `}</style>
     </div>
   )
 }

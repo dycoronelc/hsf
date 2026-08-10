@@ -19,6 +19,7 @@ interface User {
   role: string
   agentState?: string | null
   sessionNeverExpires?: boolean
+  permissions?: string[]
 }
 
 interface AuthContextType {

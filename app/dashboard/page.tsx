@@ -22,7 +22,7 @@ export default function DashboardPage() {
   }
 
   const patientView = isPatientRole(user?.role)
-  const staffView = isStaffRole(user?.role)
+  const staffView = isStaffRole(user)
 
   return (
     <SiteLayout>
@@ -51,7 +51,7 @@ export default function DashboardPage() {
 
           {staffView && (
             <>
-              {canAccessHost(user?.role) && (
+              {canAccessHost(user) && (
                 <Link
                   href="/host"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
@@ -66,7 +66,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {canAccessHost(user?.role) && (
+              {canAccessHost(user) && (
                 <Link
                   href="/host/turnos"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
@@ -81,7 +81,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {canAccessStaffConsole(user?.role) && (
+              {canAccessStaffConsole(user) && (
                 <Link
                   href="/staff"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
@@ -112,7 +112,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {canAccessReports(user?.role) && (
+              {canAccessReports(user) && (
                 <Link
                   href="/reports"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
@@ -127,7 +127,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {isStaffRole(user?.role) && (
+              {isStaffRole(user) && (
                 <Link
                   href="/monitor"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"

@@ -230,7 +230,7 @@ export default function ReportsPage() {
       router.replace('/login')
       return
     }
-    if (!canAccessReports(user?.role)) {
+    if (!canAccessReports(user)) {
       router.replace('/dashboard')
       return
     }
@@ -240,7 +240,7 @@ export default function ReportsPage() {
   }, [authHydrated, isAuthenticated, user?.role, router])
 
   useEffect(() => {
-    if (!authHydrated || !isAuthenticated || !canAccessReports(user?.role)) return
+    if (!authHydrated || !isAuthenticated || !canAccessReports(user)) return
     if (activeTab === 'summary') {
       loadSummary()
     } else if (activeTab === 'realtime') {
@@ -250,7 +250,7 @@ export default function ReportsPage() {
     }
   }, [authHydrated, isAuthenticated, user?.role, activeTab, startDate, endDate, preTipo, preDocumento, preArrivalState, token])
 
-  if (!authHydrated || !isAuthenticated || !canAccessReports(user?.role)) {
+  if (!authHydrated || !isAuthenticated || !canAccessReports(user)) {
     return null
   }
 

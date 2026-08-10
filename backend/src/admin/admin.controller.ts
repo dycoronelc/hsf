@@ -30,6 +30,7 @@ import {
   UpdateStaffUserDto,
   UpdateTicketTypeDto,
 } from './dto/admin.dto';
+import { UserRole } from '../common/enums';
 import { CreateMonitorMediaDto, UpdateMonitorMediaDto } from './dto/monitor-media.dto';
 import { UpdateCallTimingsDto } from './dto/call-timings.dto';
 import { UpdateMonitorVoiceTemplateDto } from './dto/monitor-voice.dto';
@@ -61,6 +62,21 @@ export class AdminController {
   @RequirePermissions('manage_role_permissions')
   updateRolePermissions(@Body() dto: UpdateRolePermissionsDto, @Request() req) {
     return this.adminService.updateRolePermissions(dto, req.user.id);
+  }
+
+  @Post('role-permissions/apply-recommended')
+  @RequirePermissions('manage_role_permissions')
+  applyRecommendedRolePermissions(
+    @Body() body: { role?: string; all?: boolean },
+    @Request() req,
+  ) {
+    if (body?.all) {
+      return this.adminService.applyRecommendedAllRolePermissions(req.user.id);
+    }
+    if (!body?.role) {
+      throw new BadRequestException('Indique role o all=true');
+    }
+    return this.adminService.applyRecommendedRolePermissions(body.role as UserRole, req.user.id);
   }
 
   @Post('role-matrix/roles')

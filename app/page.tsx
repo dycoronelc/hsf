@@ -12,11 +12,11 @@ export default function Home() {
   useEffect(() => {
     if (!authHydrated) return
     if (isAuthenticated) {
-      router.replace(getPostLoginPath(user?.role))
+      router.replace(getPostLoginPath(user ?? undefined))
       return
     }
     router.replace('/login')
-  }, [authHydrated, isAuthenticated, router, user?.role])
+  }, [authHydrated, isAuthenticated, router, user])
 
   return null
 }

@@ -1,19 +1,18 @@
-export function getPostLoginPath(role?: string | null): string {
-  switch (role) {
-    case 'admin':
-      return '/admin'
-    case 'anfitrion':
-    case 'oficial_admision':
-      return '/host'
-    case 'reception':
-    case 'technician':
-    case 'supervisor':
-    case 'laboratorio':
-    case 'radiologia':
-      return '/staff'
-    case 'auditor':
-      return '/reports'
-    default:
-      return '/dashboard'
-  }
+import type { AccessUser } from './authRoles'
+import { canAccessHost, canAccessReports, canAccessStaffConsole } from './authRoles'
+
+/**
+ * Destino tras login según permisos efectivos (o fallback por rol).
+ * No redirige a Llegadas si el usuario perdió `view_host_work_list`.
+ */
+export function getPostLoginPath(roleOrUser?: AccessUser | string | null): string {
+  if (!roleOrUser) return '/dashboard'
+  const role = typeof roleOrUser === 'string' ? roleOrUser : roleOrUser.role
+  if (role === 'admin') return '/admin'
+  if (role === 'patient') return '/dashboard'
+
+  if (canAccessHost(roleOrUser)) return '/host'
+  if (canAccessStaffConsole(roleOrUser)) return '/staff'
+  if (canAccessReports(roleOrUser)) return '/reports'
+  return '/dashboard'
 }

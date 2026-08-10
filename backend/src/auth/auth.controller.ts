@@ -12,6 +12,7 @@ import {
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AgentState } from '../common/enums';
 import { AuditService } from '../audit/audit.service';
+import { PermissionsService } from '../permissions/permissions.service';
 
 @Controller('auth')
 export class AuthController {
@@ -19,6 +20,7 @@ export class AuthController {
     private authService: AuthService,
     private usersService: UsersService,
     private auditService: AuditService,
+    private permissionsService: PermissionsService,
   ) {}
 
   @Post('register')
@@ -56,7 +58,11 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   async getProfile(@Request() req): Promise<UserResponseDto> {
-    return req.user;
+    const permissions = await this.permissionsService.listAllowedPermissionKeys(req.user.role);
+    return {
+      ...req.user,
+      permissions,
+    };
   }
 
   @UseGuards(JwtAuthGuard)

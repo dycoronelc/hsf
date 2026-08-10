@@ -68,7 +68,7 @@ export default function HostPage() {
       router.replace('/login')
       return
     }
-    if (!user || !canAccessHost(user.role)) {
+    if (!user || !canAccessHost(user)) {
       router.replace('/dashboard')
       return
     }
@@ -118,7 +118,7 @@ export default function HostPage() {
     }
   }
 
-  if (!authHydrated || !isAuthenticated || !user || !canAccessHost(user.role)) {
+  if (!authHydrated || !isAuthenticated || !user || !canAccessHost(user)) {
     return null
   }
 

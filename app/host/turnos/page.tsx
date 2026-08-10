@@ -76,7 +76,7 @@ export default function HostTurnosPage() {
       router.replace('/login')
       return
     }
-    if (!user || !canAccessHost(user.role)) {
+    if (!user || !canAccessHost(user)) {
       router.replace('/dashboard')
       return
     }
@@ -120,7 +120,7 @@ export default function HostTurnosPage() {
     }
   }
 
-  if (!authHydrated || !isAuthenticated || !user || !canAccessHost(user.role)) {
+  if (!authHydrated || !isAuthenticated || !user || !canAccessHost(user)) {
     return null
   }
 

@@ -29,10 +29,10 @@ export default function LoginPageContent() {
     try {
       await login(email, password)
       const storedUser = localStorage.getItem('user')
-      const role = storedUser ? (JSON.parse(storedUser).role as string | undefined) : undefined
+      const userData = storedUser ? JSON.parse(storedUser) : null
       const safeNext =
         nextPath && nextPath.startsWith('/') && !nextPath.startsWith('//') ? nextPath : null
-      router.push(safeNext ?? getPostLoginPath(role))
+      router.push(safeNext ?? getPostLoginPath(userData))
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Credenciales incorrectas')
     } finally {

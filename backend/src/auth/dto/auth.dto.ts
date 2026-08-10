@@ -120,6 +120,8 @@ export class UserResponseDto {
   sessionNeverExpires?: boolean;
   sessionExpiresMinutes?: number | null;
   agentState?: string | null;
+  /** Permisos efectivos del rol (vacío para paciente; todos para admin). */
+  permissions?: string[];
 }
 
 export class TokenResponseDto {

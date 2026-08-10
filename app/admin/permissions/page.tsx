@@ -127,7 +127,59 @@ export default function AdminPermissionsPage() {
       setRoleSummaries(data.roleSummaries ?? [])
       setAddableRoles(data.addableRoles ?? [])
       setActiveRoles(data.roles ?? [])
-      setMessage(`Permisos actualizados para ${roleLabel(selectedRole)}.`)
+      setMessage(`Permisos actualizados para ${roleLabel(selectedRole)}. Los usuarios del rol deben volver a iniciar sesión para ver el menú actualizado.`)
+    } catch (err: any) {
+      setError(err.message)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const applyRecommended = async (all: boolean) => {
+    if (!token) return
+    if (all) {
+      if (
+        !window.confirm(
+          '¿Aplicar la matriz recomendada del hospital a TODOS los roles? Se sobrescribirán los permisos actuales de cada rol.',
+        )
+      ) {
+        return
+      }
+    } else if (!selectedRole) {
+      return
+    } else if (
+      !window.confirm(
+        `¿Restaurar permisos recomendados para ${roleLabel(selectedRole)}? (Llegadas / Staff / Reportes según el rol)`,
+      )
+    ) {
+      return
+    }
+    setSaving(true)
+    setMessage('')
+    setError('')
+    try {
+      const response = await fetch('/api/admin/role-permissions/apply-recommended', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(all ? { all: true } : { role: selectedRole }),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.message || 'No se pudo aplicar la matriz recomendada')
+      }
+      const data = await response.json()
+      setMatrix(data.matrix ?? matrix)
+      setRoleSummaries(data.roleSummaries ?? [])
+      setAddableRoles(data.addableRoles ?? [])
+      setActiveRoles(data.roles ?? [])
+      setMessage(
+        all
+          ? 'Matriz recomendada del hospital aplicada a todos los roles. Los usuarios deben volver a iniciar sesión.'
+          : `Matriz recomendada aplicada a ${roleLabel(selectedRole)}. El usuario debe volver a iniciar sesión.`,
+      )
     } catch (err: any) {
       setError(err.message)
     } finally {
@@ -325,6 +377,26 @@ export default function AdminPermissionsPage() {
               >
                 {saving ? 'Guardando...' : 'Guardar permisos del rol'}
               </button>
+              <button
+                type="button"
+                onClick={() => applyRecommended(false)}
+                disabled={saving || !selectedRole}
+                className="w-full border border-hospital-blue text-hospital-blue py-2.5 rounded-lg font-medium disabled:opacity-50"
+              >
+                Restaurar recomendados de este rol
+              </button>
+              <button
+                type="button"
+                onClick={() => applyRecommended(true)}
+                disabled={saving}
+                className="w-full border border-gray-300 text-gray-800 py-2.5 rounded-lg font-medium disabled:opacity-50 text-sm"
+              >
+                Aplicar matriz recomendada a todos
+              </button>
+              <p className="text-xs text-gray-500 leading-relaxed">
+                Recomendado hospital: Oficial de admisión y Anfitrión → Llegadas + Staff; Supervisor →
+                Llegadas + Staff + Reportes; Recepción, Laboratorio y Radiología → solo Staff.
+              </p>
             </div>
           </div>
 

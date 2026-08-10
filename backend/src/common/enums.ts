@@ -1,6 +1,6 @@
 export enum UserRole {
   PATIENT = 'patient',
-  RECEPTION = 'reception', // Oficial de Admisión
+  RECEPTION = 'reception',
   TECHNICIAN = 'technician',
   ANFITRION = 'anfitrion',
   OFICIAL_ADMISION = 'oficial_admision',

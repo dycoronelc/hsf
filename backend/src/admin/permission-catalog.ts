@@ -32,64 +32,46 @@ export const CONFIGURABLE_ROLES: UserRole[] = [
 
 const ALL_KEYS = ADMIN_PERMISSION_CATALOG.map((p) => p.key);
 
+/** Llegadas (anfitrión): lista, confirmar y activar ticket. */
+const HOST_PERMS: AdminPermissionKey[] = [
+  'view_host_work_list',
+  'confirm_arrival',
+  'activate_ticket',
+];
+
+/** Consola staff: check-in, llamar, transferir, finalizar. */
+const STAFF_PERMS: AdminPermissionKey[] = [
+  'staff_check_in',
+  'staff_call_ticket',
+  'staff_transfer_ticket',
+  'staff_complete_ticket',
+];
+
+const REPORT_PERMS: AdminPermissionKey[] = ['view_reports', 'export_reports'];
+
+/**
+ * Matriz recomendada Hospital Santa Fe:
+ * - Oficial de Admisión y Anfitriones → Llegadas + Consola Staff
+ * - Supervisor → Llegadas + Consola Staff + Reportes
+ * - Radiología, Laboratorio y Recepción → solo Consola Staff
+ */
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, AdminPermissionKey[]> = {
-  [UserRole.ANFITRION]: ['view_host_work_list', 'confirm_arrival', 'activate_ticket', 'view_monitor'],
-  [UserRole.OFICIAL_ADMISION]: [
-    'view_host_work_list',
-    'confirm_arrival',
-    'activate_ticket',
-    'staff_check_in',
-    'staff_call_ticket',
-    'staff_transfer_ticket',
-    'staff_complete_ticket',
-    'view_monitor',
-    'review_preadmissions',
-  ],
-  [UserRole.RECEPTION]: [
-    'view_host_work_list',
-    'confirm_arrival',
-    'activate_ticket',
-    'staff_check_in',
-    'staff_call_ticket',
-    'staff_transfer_ticket',
-    'staff_complete_ticket',
-    'view_monitor',
-    'review_preadmissions',
-  ],
-  [UserRole.SUPERVISOR]: [
-    'view_host_work_list',
-    'confirm_arrival',
-    'activate_ticket',
-    'staff_check_in',
-    'staff_call_ticket',
-    'staff_transfer_ticket',
-    'staff_complete_ticket',
-    'view_monitor',
-    'view_reports',
-    'export_reports',
-    'review_preadmissions',
-  ],
-  [UserRole.LABORATORIO]: [
-    'staff_check_in',
-    'staff_call_ticket',
-    'staff_transfer_ticket',
-    'staff_complete_ticket',
-    'view_monitor',
-  ],
-  [UserRole.RADIOLOGIA]: [
-    'staff_check_in',
-    'staff_call_ticket',
-    'staff_transfer_ticket',
-    'staff_complete_ticket',
-    'view_monitor',
-  ],
-  [UserRole.AUDITOR]: ['view_reports', 'export_reports', 'view_monitor'],
-  [UserRole.TECHNICIAN]: [
-    'staff_check_in',
-    'staff_call_ticket',
-    'staff_transfer_ticket',
-    'staff_complete_ticket',
-    'view_monitor',
-  ],
+  [UserRole.ANFITRION]: [...HOST_PERMS, ...STAFF_PERMS, 'view_monitor'],
+  [UserRole.OFICIAL_ADMISION]: [...HOST_PERMS, ...STAFF_PERMS, 'view_monitor'],
+  [UserRole.RECEPTION]: [...STAFF_PERMS, 'view_monitor'],
+  [UserRole.SUPERVISOR]: [...HOST_PERMS, ...STAFF_PERMS, ...REPORT_PERMS, 'view_monitor'],
+  [UserRole.LABORATORIO]: [...STAFF_PERMS, 'view_monitor'],
+  [UserRole.RADIOLOGIA]: [...STAFF_PERMS, 'view_monitor'],
+  [UserRole.AUDITOR]: [...REPORT_PERMS, 'view_monitor'],
+  [UserRole.TECHNICIAN]: [...STAFF_PERMS, 'view_monitor'],
   [UserRole.ADMIN]: ALL_KEYS,
 };
+
+export function recommendedPermissionsMap(role: string): Record<string, boolean> {
+  const allowed = new Set(DEFAULT_ROLE_PERMISSIONS[role] ?? []);
+  const map: Record<string, boolean> = {};
+  for (const p of ADMIN_PERMISSION_CATALOG) {
+    map[p.key] = allowed.has(p.key);
+  }
+  return map;
+}

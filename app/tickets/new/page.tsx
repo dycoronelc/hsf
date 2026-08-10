@@ -16,7 +16,7 @@ export default function NewTicketPage() {
       router.replace('/login')
       return
     }
-    if (canAccessHost(user?.role)) {
+    if (canAccessHost(user)) {
       router.replace('/host/turnos')
       return
     }

@@ -19,6 +19,7 @@ import {
   CONFIGURABLE_ROLES,
   DEFAULT_ROLE_PERMISSIONS,
   AdminPermissionKey,
+  recommendedPermissionsMap,
 } from './permission-catalog';
 import { UserRole } from '../common/enums';
 import {
@@ -162,7 +163,8 @@ export class AdminService {
     await this.ensureRolePermissionCells();
 
     for (const permission of ADMIN_PERMISSION_CATALOG) {
-      const allowed = !!dto.permissions[permission.key];
+      // Explicitamente false cuando la clave falta o está desmarcada (antes caía en default true)
+      const allowed = dto.permissions[permission.key] === true;
       const existing = await this.rolePermissionRepository.findOne({
         where: { role: dto.role, permissionKey: permission.key },
       });
@@ -186,6 +188,26 @@ export class AdminService {
       details: dto.role,
     });
 
+    return this.getRolePermissionsMatrix();
+  }
+
+  /** Restaura la matriz del rol a los valores recomendados del hospital (catálogo). */
+  async applyRecommendedRolePermissions(role: UserRole, adminUserId: number) {
+    return this.updateRolePermissions(
+      { role, permissions: recommendedPermissionsMap(role) },
+      adminUserId,
+    );
+  }
+
+  /** Aplica la matriz recomendada a todos los roles configurables presentes en la matriz. */
+  async applyRecommendedAllRolePermissions(adminUserId: number) {
+    const rows = await this.matrixRowRepository.find();
+    for (const row of rows) {
+      await this.updateRolePermissions(
+        { role: row.role as UserRole, permissions: recommendedPermissionsMap(row.role) },
+        adminUserId,
+      );
+    }
     return this.getRolePermissionsMatrix();
   }
 
@@ -214,14 +236,19 @@ export class AdminService {
       const existing = await this.rolePermissionRepository.findOne({
         where: { role: dto.role, permissionKey: permission.key },
       });
+      const recommended = this.isAllowedByDefault(dto.role, permission.key);
       if (!existing) {
         await this.rolePermissionRepository.save(
           this.rolePermissionRepository.create({
             role: dto.role,
             permissionKey: permission.key,
-            allowed: this.isAllowedByDefault(dto.role, permission.key),
+            allowed: recommended,
           }),
         );
+      } else {
+        // Al reactivar un rol, alinear con catálogo recomendado actual
+        existing.allowed = recommended;
+        await this.rolePermissionRepository.save(existing);
       }
     }
 

@@ -53,12 +53,12 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                       Preadmisión
                     </Link>
                   )}
-                  {canAccessHost(user?.role) && (
+                  {canAccessHost(user) && (
                     <Link href="/host" className="text-white/90 hover:text-white font-medium">
                       Llegadas (Anfitrión)
                     </Link>
                   )}
-                  {canAccessStaffConsole(user?.role) && (
+                  {canAccessStaffConsole(user) && (
                     <Link href="/staff" className="text-white/90 hover:text-white font-medium">
                       Consola Staff
                     </Link>
@@ -68,7 +68,7 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                       Administración
                     </Link>
                   )}
-                  {canAccessReports(user?.role) && (
+                  {canAccessReports(user) && (
                     <Link href="/reports" className="text-white/90 hover:text-white font-medium">
                       Reportes
                     </Link>

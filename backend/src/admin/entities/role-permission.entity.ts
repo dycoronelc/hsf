@@ -12,6 +12,7 @@ export class RolePermission {
   @Column()
   permissionKey: string;
 
-  @Column({ default: true })
+  /** false debe persistirse; sin type boolean TypeORM a veces no actualiza denegaciones. */
+  @Column({ type: 'boolean', default: true })
   allowed: boolean;
 }

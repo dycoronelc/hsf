@@ -9,11 +9,13 @@ import { UsersModule } from '../users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { PasswordResetToken } from './entities/password-reset-token.entity';
 import { NotificationsModule } from '../notifications/notifications.module';
+import { PermissionsModule } from '../permissions/permissions.module';
 
 @Module({
   imports: [
     UsersModule,
     NotificationsModule,
+    PermissionsModule,
     TypeOrmModule.forFeature([PasswordResetToken]),
     PassportModule,
     JwtModule.registerAsync({

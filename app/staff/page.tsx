@@ -69,7 +69,7 @@ export default function StaffConsolePage() {
   ]
 
   const canUseStaff =
-    authHydrated && isAuthenticated && user != null && canAccessStaffConsole(user.role)
+    authHydrated && isAuthenticated && user != null && canAccessStaffConsole(user)
 
   const fetchServices = async () => {
     try {
@@ -111,7 +111,7 @@ export default function StaffConsolePage() {
       router.replace('/login')
       return
     }
-    if (user && !canAccessStaffConsole(user.role)) {
+    if (user && !canAccessStaffConsole(user)) {
       router.replace('/dashboard')
       return
     }
@@ -168,7 +168,7 @@ export default function StaffConsolePage() {
     )
   }
 
-  if (!isAuthenticated || !user || !canAccessStaffConsole(user.role)) {
+  if (!isAuthenticated || !user || !canAccessStaffConsole(user)) {
     return null
   }
 
