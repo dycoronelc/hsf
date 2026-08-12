@@ -15,14 +15,18 @@
 --   - app_settings / monitor_media
 --   - audit_logs
 --
--- Cómo ejecutar (en el servidor, con DATABASE_URL):
+-- Cómo ejecutar (recomendado — backup + SQL + adjuntos):
+--   sudo bash /opt/hospitalsantafe/scripts/reset-preadmissions-for-retest.sh
+--
+-- Manual (solo SQL, con DATABASE_URL):
 --   set -a; source /opt/hospitalsantafe/.env; set +a
 --   pg_dump "$DATABASE_URL" -Fc -f /tmp/hsf_backup_$(date +%Y%m%d).dump
 --   psql "$DATABASE_URL" -f db/scripts/reset_preadmissions_for_retest.sql
 --
 -- IMPORTANTE:
---   - Haga backup antes (comando arriba).
---   - Los adjuntos en disco NO se borran con SQL; limpie PREADMISSION_UPLOAD_DIR.
+--   - Haga backup antes (el .sh lo hace automáticamente).
+--   - Los adjuntos en disco NO se borran con SQL; el .sh limpia
+--     PREADMISSION_UPLOAD_DIR.
 --   - Los números de ticket (CTA-0338, etc.) se generan aleatorios; no hay
 --     consecutivo de ticket en BD. Sí se reinicia el id interno (1, 2, 3…).
 -- =============================================================================
