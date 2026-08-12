@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
+import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 
 export interface TicketPrintData {
@@ -9,6 +10,8 @@ export interface TicketPrintData {
   serviceName: string
   qrCode: string
   queuePosition?: number
+  /** ISO o Date de creación del ticket */
+  createdAt?: string | Date | null
 }
 
 const PRINT_BODY_CLASS = 'ticket-print-active'
@@ -19,26 +22,72 @@ interface TicketPrintSlipProps {
   footerNote?: string
 }
 
+/** Fecha DD-MM-YYYY y hora 12:38 P.M. (como en la propuesta del hospital). */
+export function formatTicketGeneratedAt(value?: string | Date | null): {
+  date: string
+  time: string
+} {
+  const d = value ? new Date(value) : new Date()
+  const valid = !Number.isNaN(d.getTime()) ? d : new Date()
+
+  const dd = String(valid.getDate()).padStart(2, '0')
+  const mm = String(valid.getMonth() + 1).padStart(2, '0')
+  const yyyy = valid.getFullYear()
+
+  let hours = valid.getHours()
+  const minutes = String(valid.getMinutes()).padStart(2, '0')
+  const period = hours >= 12 ? 'P.M.' : 'A.M.'
+  hours = hours % 12
+  if (hours === 0) hours = 12
+
+  return {
+    date: `${dd}-${mm}-${yyyy}`,
+    time: `${hours}:${minutes} ${period}`,
+  }
+}
+
 export function TicketPrintSlip({
   ticket,
   footerNote = 'Presente este ticket en la ventanilla cuando sea llamado.',
 }: TicketPrintSlipProps) {
+  const { date, time } = formatTicketGeneratedAt(ticket.createdAt)
+
   return (
     <div className="ticket-print-slip mx-auto max-w-xs text-center text-gray-900">
-      <p className="text-base font-bold text-hospital-blue">Hospital Santa Fe</p>
-      <p className="text-xs uppercase tracking-wide text-gray-500">Panamá</p>
-      <p className="mt-1 text-sm font-medium text-gray-700">{ticket.serviceName}</p>
-      <p className="mt-4 text-xs text-gray-500">Número de turno</p>
-      <p className="text-4xl font-bold text-hospital-blue">{ticket.ticketNumber}</p>
+      <div className="flex justify-center">
+        <Image
+          src="/logo-hospital-santa-fe.png"
+          alt="Hospital Santa Fe"
+          width={120}
+          height={120}
+          className="h-24 w-24 object-contain"
+          unoptimized
+          priority
+        />
+      </div>
+
+      <p className="mt-4 text-base text-gray-900">Número de turno</p>
+      <p className="mt-1 text-4xl font-bold tracking-tight text-gray-800">{ticket.ticketNumber}</p>
+
       {typeof ticket.queuePosition === 'number' && ticket.queuePosition > 0 && (
         <p className="mt-2 text-sm text-gray-600">Posición en cola: {ticket.queuePosition}</p>
       )}
-      <div className="my-4 flex justify-center">
+
+      <div className="my-5 flex justify-center">
         <div className="rounded-lg bg-white p-3 ring-1 ring-gray-200">
-          <QRCodeSVG value={ticket.qrCode} size={128} level="M" />
+          <QRCodeSVG value={ticket.qrCode} size={148} level="M" />
         </div>
       </div>
-      <p className="text-xs text-gray-500">{footerNote}</p>
+
+      <p className="text-sm text-gray-800">{footerNote}</p>
+
+      <div className="mt-5 inline-flex items-center justify-center gap-3 rounded-full border-2 border-slate-700 px-5 py-2 text-sm font-semibold text-gray-900">
+        <span>{date}</span>
+        <span className="text-slate-400" aria-hidden>
+          |
+        </span>
+        <span>{time}</span>
+      </div>
     </div>
   )
 }

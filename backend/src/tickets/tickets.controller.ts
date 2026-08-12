@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
-import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto, SetTriageColorDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RequirePermissions } from '../permissions/require-permissions.decorator';
@@ -124,6 +124,17 @@ export class TicketsController {
     @Request() req,
   ) {
     return this.ticketsService.transfer(+id, dto, req.user);
+  }
+
+  @Patch(':id/triage-color')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
+  async setTriageColor(
+    @Param('id') id: number,
+    @Body() dto: SetTriageColorDto,
+    @Request() req,
+  ) {
+    return this.ticketsService.setTriageColor(+id, dto.triageColor, req.user);
   }
 
   @Patch(':id')

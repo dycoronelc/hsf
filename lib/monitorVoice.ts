@@ -68,7 +68,7 @@ function ventanillaToSpeech(windowNumber: string): string {
 
 /** Plantilla por defecto (misma que backend `DEFAULT_MONITOR_VOICE_TEMPLATE`). */
 export const DEFAULT_MONITOR_VOICE_TEMPLATE =
-  'Atención. Paciente con turno {turno}. Por favor acercarse a Ventanilla {ventanilla}.'
+  'Atención. Paciente con turno {turno}. Por favor acercarse a {ventanilla}.'
 
 /**
  * Construye el anuncio de voz a partir de una plantilla con variables:

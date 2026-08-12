@@ -52,6 +52,17 @@ export enum Priority {
   EMERGENCIA = 'emergencia',
 }
 
+/** Color de triage (Manchester / ESI) asignado por enfermería tras evaluación. */
+export enum TriageColor {
+  ROJO = 'rojo',
+  NARANJA = 'naranja',
+  AMARILLO = 'amarillo',
+  VERDE = 'verde',
+  AZUL = 'azul',
+}
+
+export const TRIAGE_COLOR_VALUES = Object.values(TriageColor);
+
 /** Nivel de prioridad configurable por tipo de ticket (PDF preadmisiones). */
 export enum ServicePriorityLevel {
   PRIORIDAD_1 = 1,

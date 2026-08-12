@@ -108,6 +108,7 @@ export default function HostPage() {
         serviceName: data.service_name ?? 'Admisión',
         qrCode: data.qr_code,
         queuePosition: data.queue_position,
+        createdAt: data.created_at ?? new Date().toISOString(),
       })
       await load()
     } else if (handleAuthFailure(res.status, notifySessionExpired)) {

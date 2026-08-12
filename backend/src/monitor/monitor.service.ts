@@ -51,7 +51,9 @@ export class MonitorService {
       ? {
           ticket_number: current.ticketNumber,
           service_name: service.name,
+          service_code: service.code ?? null,
           priority: current.priority,
+          triage_color: current.triageColor ?? null,
           window_number: current.windowNumber ?? null,
           call_count: current.callCount ?? 0,
           called_at: current.calledAt ? current.calledAt.toISOString() : null,

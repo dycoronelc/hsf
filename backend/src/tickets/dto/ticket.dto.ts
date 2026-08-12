@@ -1,5 +1,5 @@
 import { IsOptional, IsEnum, IsString, IsNumber, IsIn } from 'class-validator';
-import { TicketStatus, Priority } from '../../common/enums';
+import { TicketStatus, Priority, TriageColor } from '../../common/enums';
 
 export class CreateTicketDto {
   @IsNumber()
@@ -22,6 +22,10 @@ export class UpdateTicketDto {
   @IsOptional()
   @IsString()
   notes?: string;
+
+  @IsOptional()
+  @IsEnum(TriageColor)
+  triageColor?: TriageColor | null;
 }
 
 export class CallTicketDto {
@@ -35,11 +39,17 @@ export class CheckInByCodeDto {
 }
 
 export class TransferTicketDto {
-  @IsIn(['RAD', 'LAB', 'BOTH'])
-  targetArea: 'RAD' | 'LAB' | 'BOTH';
+  /** RAD/LAB/BOTH (estudios) o ADM/URG (post-triage hacia ventanilla de admisión/urgencias). */
+  @IsIn(['RAD', 'LAB', 'BOTH', 'ADM', 'URG'])
+  targetArea: 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG';
 }
 
 export class NoShowTicketDto {
   @IsString()
   reason: string;
+}
+
+export class SetTriageColorDto {
+  @IsEnum(TriageColor)
+  triageColor: TriageColor;
 }

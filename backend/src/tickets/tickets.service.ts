@@ -11,7 +11,7 @@ import { Ticket } from './entities/ticket.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { CreateTicketDto, UpdateTicketDto, TransferTicketDto } from './dto/ticket.dto';
-import { TicketStatus, Priority, PreadmissionArrivalState } from '../common/enums';
+import { TicketStatus, Priority, PreadmissionArrivalState, TriageColor } from '../common/enums';
 import { User } from '../users/entities/user.entity';
 import * as crypto from 'crypto';
 import { NotificationsService } from '../notifications/notifications.service';
@@ -86,6 +86,33 @@ export class TicketsService {
     return { lab, rad };
   }
 
+  private async resolveServiceByCodes(codes: string[], label: string): Promise<Service> {
+    for (const code of codes) {
+      const found = await this.serviceRepository.findOne({
+        where: { code, isActive: true },
+      });
+      if (found) return found;
+    }
+    throw new BadRequestException(
+      `Servicio de ${label} no configurado (códigos: ${codes.join(', ')})`,
+    );
+  }
+
+  private async resolveTransferTargets(
+    targetArea: TransferTicketDto['targetArea'],
+  ): Promise<Service[]> {
+    if (targetArea === 'ADM') {
+      return [await this.resolveServiceByCodes(['ADM', 'CTA'], 'Admisión / Consulta')];
+    }
+    if (targetArea === 'URG') {
+      return [await this.resolveServiceByCodes(['URG'], 'Urgencias')];
+    }
+    const { lab, rad } = await this.resolveLabRadServices();
+    if (targetArea === 'BOTH') return [lab, rad];
+    if (targetArea === 'LAB') return [lab];
+    return [rad];
+  }
+
   private async createTransferredQueueTicket(params: {
     source: Ticket;
     targetService: Service;
@@ -105,6 +132,7 @@ export class TicketsService {
       serviceId: params.targetService.id,
       status: TicketStatus.CREADO,
       priority: params.source.priority,
+      triageColor: params.source.triageColor ?? null,
       qrCode: this.generateQrCode(),
       preadmissionId: params.source.preadmissionId ?? null,
       callCount: 0,
@@ -386,9 +414,11 @@ export class TicketsService {
         ticket_number: ticket.ticketNumber,
         service_id: ticket.serviceId,
         service_name: ticket.service?.name,
+        service_code: ticket.service?.code ?? null,
         status: ticket.status,
         priority: ticket.priority,
         priority_level: ticket.service?.priorityLevel ?? 2,
+        triage_color: ticket.triageColor ?? null,
         created_at: ticket.createdAt,
         qr_code: ticket.qrCode,
         window_number: ticket.windowNumber ?? null,
@@ -649,7 +679,7 @@ export class TicketsService {
     };
   }
 
-  /** Transferir ticket a Radiología, Laboratorio o Ambos (vuelve a cola con mismo número). */
+  /** Transferir ticket a Radiología, Laboratorio, Admisión u Urgencias (post-triage). */
   async transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
@@ -665,15 +695,17 @@ export class TicketsService {
       throw new BadRequestException('Este ticket ya no se puede transferir');
     }
 
-    const { lab, rad } = await this.resolveLabRadServices();
-    const suffix = this.extractTicketSuffix(ticket.ticketNumber);
+    const isTriageSource =
+      (ticket.service?.code || '').toUpperCase() === 'TRIAGE' ||
+      /triage/i.test(ticket.service?.name || '');
+    if (isTriageSource && (dto.targetArea === 'ADM' || dto.targetArea === 'URG') && !ticket.triageColor) {
+      throw new BadRequestException(
+        'Asigne el color de triage antes de transferir a Admisión u Urgencias',
+      );
+    }
 
-    const targets: Service[] =
-      dto.targetArea === 'BOTH'
-        ? [lab, rad]
-        : dto.targetArea === 'LAB'
-          ? [lab]
-          : [rad];
+    const targets = await this.resolveTransferTargets(dto.targetArea);
+    const suffix = this.extractTicketSuffix(ticket.ticketNumber);
 
     // Validar conflictos de número antes de crear (p. ej. Ambos → LR-n y RD-n).
     for (const target of targets) {
@@ -712,7 +744,7 @@ export class TicketsService {
       entityType: 'ticket',
       entityId: ticket.id,
       userId: agent?.id,
-      details: `targetArea=${dto.targetArea}; created=${createdSummary
+      details: `targetArea=${dto.targetArea}; color=${ticket.triageColor ?? ''}; created=${createdSummary
         .map((c) => c.ticket_number)
         .join(',')}`,
     });
@@ -727,6 +759,49 @@ export class TicketsService {
       original_id: id,
       original_ticket_number: ticket.ticketNumber,
       created_tickets: createdSummary,
+    };
+  }
+
+  /** Asigna color de triage (enfermería) tras evaluación. */
+  async setTriageColor(
+    id: number,
+    triageColor: TriageColor,
+    agent?: Pick<User, 'id' | 'agentState'>,
+  ) {
+    this.assertAgentCanOperate(agent);
+    const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
+    if (!ticket) {
+      throw new NotFoundException('Ticket no encontrado');
+    }
+    const isTriage =
+      (ticket.service?.code || '').toUpperCase() === 'TRIAGE' ||
+      /triage/i.test(ticket.service?.name || '');
+    if (!isTriage) {
+      throw new BadRequestException('Solo se asigna color a tickets del servicio Triage');
+    }
+    if (
+      ticket.status !== TicketStatus.LLAMADO &&
+      ticket.status !== TicketStatus.EN_ATENCION
+    ) {
+      throw new BadRequestException(
+        'El color se asigna cuando el paciente está llamado o en atención de Triage',
+      );
+    }
+
+    ticket.triageColor = triageColor;
+    await this.ticketRepository.save(ticket);
+    await this.auditService.log('ticket_triage_color_set', {
+      entityType: 'ticket',
+      entityId: ticket.id,
+      userId: agent?.id,
+      details: `color=${triageColor}`,
+    });
+
+    return {
+      id: ticket.id,
+      ticket_number: ticket.ticketNumber,
+      triage_color: ticket.triageColor,
+      message: `Color de triage asignado: ${triageColor}`,
     };
   }
 

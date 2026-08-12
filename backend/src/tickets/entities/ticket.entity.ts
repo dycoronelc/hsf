@@ -8,7 +8,7 @@ import {
 } from 'typeorm';
 import { User } from '../../users/entities/user.entity';
 import { Service } from '../../services/entities/service.entity';
-import { TicketStatus, Priority } from '../../common/enums';
+import { TicketStatus, Priority, TriageColor } from '../../common/enums';
 
 @Entity('tickets')
 export class Ticket {
@@ -43,6 +43,13 @@ export class Ticket {
     default: Priority.NORMAL,
   })
   priority: Priority;
+
+  /**
+   * Color de triage asignado por enfermería.
+   * En monitor solo se muestra al llamar fuera del servicio Triage (tras transferir).
+   */
+  @Column({ type: 'text', nullable: true })
+  triageColor: TriageColor | null;
 
   @CreateDateColumn()
   createdAt: Date;

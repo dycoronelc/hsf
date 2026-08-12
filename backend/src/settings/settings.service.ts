@@ -8,7 +8,7 @@ export const SETTING_NO_SHOW_WAIT_SECONDS = 'ticket_no_show_wait_seconds';
 export const SETTING_MONITOR_VOICE_TEMPLATE = 'monitor_voice_template';
 
 export const DEFAULT_MONITOR_VOICE_TEMPLATE =
-  'Atención. Paciente con turno {turno}. Por favor acercarse a Ventanilla {ventanilla}.';
+  'Atención. Paciente con turno {turno}. Por favor acercarse a {ventanilla}.';
 
 export type CallTimingSettings = {
   recallWaitSeconds: number;

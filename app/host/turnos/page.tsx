@@ -112,6 +112,7 @@ export default function HostTurnosPage() {
         serviceName: data.service_name,
         qrCode: data.qr_code,
         queuePosition: data.queue_position,
+        createdAt: data.created_at ?? new Date().toISOString(),
       })
       setSelectedService(null)
       setMsg(`Turno ${data.ticket_number} creado. Imprimiendo ticket…`)

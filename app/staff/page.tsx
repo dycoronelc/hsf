@@ -15,9 +15,11 @@ interface Ticket {
   ticket_number: string
   service_id: number
   service_name: string | null
+  service_code?: string | null
   status: string
   priority: string
   priority_level?: number
+  triage_color?: string | null
   created_at: string
   window_number: string | null
   estimated_wait_label?: string
@@ -27,6 +29,19 @@ interface Ticket {
 
 const DEFAULT_RECALL_WAIT_SECONDS = 60
 const DEFAULT_NO_SHOW_WAIT_SECONDS = 60
+
+const TRIAGE_COLOR_OPTIONS = [
+  { value: 'rojo', label: 'Rojo', className: 'bg-red-600' },
+  { value: 'naranja', label: 'Naranja', className: 'bg-orange-500' },
+  { value: 'amarillo', label: 'Amarillo', className: 'bg-yellow-400 text-slate-900' },
+  { value: 'verde', label: 'Verde', className: 'bg-green-600' },
+  { value: 'azul', label: 'Azul', className: 'bg-blue-600' },
+] as const
+
+function isTriageTicket(ticket: { service_code?: string | null; service_name?: string | null }): boolean {
+  if (ticket.service_code?.toUpperCase() === 'TRIAGE') return true
+  return /triage/i.test(ticket.service_name || '')
+}
 
 interface Service {
   id: number
@@ -177,8 +192,8 @@ export default function StaffConsolePage() {
       alert('No puede llamar tickets mientras está en un estado no operativo')
       return
     }
-    if (!windowNumber) {
-      alert('Por favor ingresa un número de ventanilla')
+    if (!windowNumber.trim()) {
+      alert('Indique el destino (ej. Ventanilla 5, Laboratorio, Triage)')
       return
     }
 
@@ -189,7 +204,7 @@ export default function StaffConsolePage() {
         {
           method: 'POST',
           headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-          body: JSON.stringify({ windowNumber }),
+          body: JSON.stringify({ windowNumber: windowNumber.trim() }),
         }
       )
       if (handleAuthFailure(response.status, notifySessionExpired)) return
@@ -240,7 +255,10 @@ export default function StaffConsolePage() {
     }
   }
 
-  const handleTransferTicket = async (ticketId: number, targetArea: 'RAD' | 'LAB' | 'BOTH') => {
+  const handleTransferTicket = async (
+    ticketId: number,
+    targetArea: 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG',
+  ) => {
     setTransferringId(ticketId)
     setApiError('')
     try {
@@ -272,6 +290,30 @@ export default function StaffConsolePage() {
     }
   }
 
+  const handleSetTriageColor = async (ticketId: number, triageColor: string) => {
+    setLoading(true)
+    setApiError('')
+    try {
+      const response = await fetch(`/api/tickets/${ticketId}/triage-color`, {
+        method: 'PATCH',
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ triageColor }),
+      })
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
+      if (response.ok) {
+        setTransferNotice(`Color de triage asignado: ${triageColor}`)
+        fetchTickets()
+      } else {
+        const data = await response.json().catch(() => ({}))
+        setApiError(apiErrorMessage(data, 'No se pudo asignar el color de triage'))
+      }
+    } catch (err) {
+      console.error('Error setting triage color:', err)
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleCompleteTicket = async (ticketId: number) => {
     setLoading(true)
     try {
@@ -294,8 +336,8 @@ export default function StaffConsolePage() {
   }
 
   const handleRecallTicket = async (ticketId: number) => {
-    if (!windowNumber) {
-      alert('Por favor ingresa un número de ventanilla')
+    if (!windowNumber.trim()) {
+      alert('Indique el destino (ej. Ventanilla 5, Laboratorio, Triage)')
       return
     }
     setLoading(true)
@@ -303,7 +345,7 @@ export default function StaffConsolePage() {
       const response = await fetch(`/api/tickets/${ticketId}/recall`, {
         method: 'POST',
         headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ windowNumber }),
+        body: JSON.stringify({ windowNumber: windowNumber.trim() }),
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
@@ -543,21 +585,22 @@ export default function StaffConsolePage() {
             <p className="text-xs text-gray-500 mt-1">En estados no operativos no se asignan tickets ni llamados.</p>
           </div>
 
-          {/* Window Number */}
+          {/* Destino de llamado (texto libre: Ventanilla 5, Laboratorio, Triage, etc.) */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Número de Ventanilla/Consultorio
+              Destino del llamado
             </label>
             <input
               type="text"
               value={windowNumber}
               onChange={(e) => setWindowNumber(e.target.value)}
-              placeholder="Ej: V1, C2"
-              className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg"
+              placeholder="Ej: Ventanilla 5, Laboratorio, Triage"
+              className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg"
             />
             {!windowNumber.trim() && (
               <p className="text-sm text-amber-700 mt-2">
-                Indique el número de ventanilla para habilitar el botón <strong>Llamar</strong>.
+                Escriba el destino completo (incluido “Ventanilla” si aplica) para habilitar{' '}
+                <strong>Llamar</strong>.
               </p>
             )}
           </div>
@@ -585,7 +628,19 @@ export default function StaffConsolePage() {
                         </div>
                         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-600">
                           <span>{ticket.service_name}</span>
-                          {ticket.window_number && <span>Ventanilla: {ticket.window_number}</span>}
+                          {ticket.window_number && <span>{ticket.window_number}</span>}
+                          {ticket.triage_color && (
+                            <span className="inline-flex items-center gap-1.5 capitalize">
+                              Color:{' '}
+                              <span
+                                className={`inline-block h-3 w-3 rounded-full ${
+                                  TRIAGE_COLOR_OPTIONS.find((c) => c.value === ticket.triage_color)?.className ||
+                                  'bg-gray-400'
+                                }`}
+                              />
+                              {ticket.triage_color}
+                            </span>
+                          )}
                           {(ticket.call_count ?? 0) > 0 && (
                             <span className="text-xs text-gray-500">Llamados: {ticket.call_count}</span>
                           )}
@@ -602,20 +657,45 @@ export default function StaffConsolePage() {
                             >
                               Iniciar Atención
                             </button>
+                            {isTriageTicket(ticket) && (
+                              <select
+                                value={ticket.triage_color || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  if (v) handleSetTriageColor(ticket.id, v)
+                                }}
+                                disabled={loading || !agentCanOperate}
+                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                              >
+                                <option value="">Asignar color…</option>
+                                {TRIAGE_COLOR_OPTIONS.map((c) => (
+                                  <option key={c.value} value={c.value}>
+                                    {c.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
                             <select
                               value=""
                               onChange={(e) => {
                                 const v = e.target.value
-                                if (v) handleTransferTicket(ticket.id, v as 'RAD' | 'LAB' | 'BOTH')
+                                if (v) {
+                                  handleTransferTicket(
+                                    ticket.id,
+                                    v as 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG',
+                                  )
+                                }
                                 e.target.value = ''
                               }}
                               disabled={transferringId === ticket.id || !agentCanOperate}
                               className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
                             >
                               <option value="">Transferir…</option>
+                              <option value="ADM">Admisión / Ventanilla</option>
+                              <option value="URG">Urgencias</option>
                               <option value="RAD">Radiología</option>
                               <option value="LAB">Laboratorio</option>
-                              <option value="BOTH">Ambos</option>
+                              <option value="BOTH">Lab + Rad</option>
                             </select>
                             {canRecallTicket(ticket) && (
                               <button
@@ -643,14 +723,56 @@ export default function StaffConsolePage() {
                           </>
                         )}
                         {ticket.status === 'en_atencion' && (
-                          <button
-                            type="button"
-                            onClick={() => handleCompleteTicket(ticket.id)}
-                            disabled={loading}
-                            className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                          >
-                            Finalizar
-                          </button>
+                          <>
+                            {isTriageTicket(ticket) && (
+                              <select
+                                value={ticket.triage_color || ''}
+                                onChange={(e) => {
+                                  const v = e.target.value
+                                  if (v) handleSetTriageColor(ticket.id, v)
+                                }}
+                                disabled={loading || !agentCanOperate}
+                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                              >
+                                <option value="">Asignar color…</option>
+                                {TRIAGE_COLOR_OPTIONS.map((c) => (
+                                  <option key={c.value} value={c.value}>
+                                    {c.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                            <select
+                              value=""
+                              onChange={(e) => {
+                                const v = e.target.value
+                                if (v) {
+                                  handleTransferTicket(
+                                    ticket.id,
+                                    v as 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG',
+                                  )
+                                }
+                                e.target.value = ''
+                              }}
+                              disabled={transferringId === ticket.id || !agentCanOperate}
+                              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+                            >
+                              <option value="">Transferir…</option>
+                              <option value="ADM">Admisión / Ventanilla</option>
+                              <option value="URG">Urgencias</option>
+                              <option value="RAD">Radiología</option>
+                              <option value="LAB">Laboratorio</option>
+                              <option value="BOTH">Lab + Rad</option>
+                            </select>
+                            <button
+                              type="button"
+                              onClick={() => handleCompleteTicket(ticket.id)}
+                              disabled={loading}
+                              className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                            >
+                              Finalizar
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>

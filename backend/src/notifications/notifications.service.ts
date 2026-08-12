@@ -332,17 +332,17 @@ export class NotificationsService {
   ): Promise<void> {
     const content = buildEmailHtml({
       title: 'Su turno ha sido llamado',
-      preheader: `Diríjase a la ventanilla ${windowNumber}`,
+      preheader: `Diríjase a ${windowNumber}`,
       bodyHtml: [
         emailParagraph(
-          `Su turno <strong>${escapeHtml(ticketNumber)}</strong> ha sido llamado. Por favor diríjase a la ventanilla indicada.`,
+          `Su turno <strong>${escapeHtml(ticketNumber)}</strong> ha sido llamado. Por favor diríjase al área indicada.`,
         ),
         emailHighlightBox(
-          `<p style="margin:0;font-size:28px;font-weight:700;color:#00816D;text-align:center;">Ventanilla ${escapeHtml(windowNumber)}</p>`,
+          `<p style="margin:0;font-size:28px;font-weight:700;color:#00816D;text-align:center;">${escapeHtml(windowNumber)}</p>`,
         ),
         emailDataTable([
           { label: 'Número de turno', value: `<strong>${escapeHtml(ticketNumber)}</strong>` },
-          { label: 'Ventanilla', value: escapeHtml(windowNumber) },
+          { label: 'Destino', value: escapeHtml(windowNumber) },
         ]),
         emailMutedNote('Le recomendamos acercarse de inmediato para no perder su turno.'),
       ].join(''),
