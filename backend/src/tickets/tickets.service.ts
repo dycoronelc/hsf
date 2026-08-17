@@ -19,6 +19,7 @@ import { SurveysService } from '../surveys/surveys.service';
 import { isAgentOperational } from '../common/agent-utils';
 import { AuditService } from '../audit/audit.service';
 import { SettingsService } from '../settings/settings.service';
+import { toIsoUtc } from '../common/timezone';
 
 @Injectable()
 export class TicketsService {
@@ -261,7 +262,7 @@ export class TicketsService {
       service_name: service.name,
       status: savedTicket.status,
       priority: savedTicket.priority,
-      created_at: savedTicket.createdAt,
+      created_at: toIsoUtc(savedTicket.createdAt) ?? new Date().toISOString(),
       qr_code: savedTicket.qrCode,
       ...qi,
     };
@@ -322,7 +323,7 @@ export class TicketsService {
       service_name: service.name,
       status: savedTicket.status,
       priority: savedTicket.priority,
-      created_at: savedTicket.createdAt,
+      created_at: toIsoUtc(savedTicket.createdAt) ?? new Date().toISOString(),
       qr_code: savedTicket.qrCode,
       ...qi,
     };
@@ -374,7 +375,7 @@ export class TicketsService {
       service_name: service.name,
       status: savedTicket.status,
       priority: savedTicket.priority,
-      created_at: savedTicket.createdAt,
+      created_at: toIsoUtc(savedTicket.createdAt) ?? new Date().toISOString(),
       qr_code: savedTicket.qrCode,
       ...qi,
     };
@@ -419,7 +420,7 @@ export class TicketsService {
         priority: ticket.priority,
         priority_level: ticket.service?.priorityLevel ?? 2,
         triage_color: ticket.triageColor ?? null,
-        created_at: ticket.createdAt,
+        created_at: toIsoUtc(ticket.createdAt) ?? new Date().toISOString(),
         qr_code: ticket.qrCode,
         window_number: ticket.windowNumber ?? null,
         call_count: ticket.callCount ?? 0,
@@ -674,7 +675,7 @@ export class TicketsService {
       service_name: service?.name,
       status: savedTicket.status,
       priority: savedTicket.priority,
-      created_at: savedTicket.createdAt,
+      created_at: toIsoUtc(savedTicket.createdAt) ?? new Date().toISOString(),
       qr_code: savedTicket.qrCode,
     };
   }
@@ -856,7 +857,7 @@ export class TicketsService {
       service_name: admService.name,
       status: savedTicket.status,
       priority: savedTicket.priority,
-      created_at: savedTicket.createdAt,
+      created_at: toIsoUtc(savedTicket.createdAt) ?? new Date().toISOString(),
       qr_code: savedTicket.qrCode,
       preadmission_id: pre.id,
       ...qi,

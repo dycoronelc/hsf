@@ -6,6 +6,7 @@ import { Survey } from '../surveys/entities/survey.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { TicketStatus, PreadmissionArrivalState } from '../common/enums';
+import { getHourInAppTimezone } from '../common/timezone';
 
 @Injectable()
 export class ReportsService {
@@ -243,7 +244,7 @@ export class ReportsService {
     // Agrupar por hora del día
     const byHour: { [key: number]: number } = {};
     tickets.forEach((ticket) => {
-      const hour = ticket.createdAt.getHours();
+      const hour = getHourInAppTimezone(ticket.createdAt);
       byHour[hour] = (byHour[hour] || 0) + 1;
     });
 

@@ -264,6 +264,7 @@ export class NotificationsService {
           ? 'Laboratorio'
           : data.departamento;
     const fechaRegistro = data.fechapreadmision.toLocaleDateString('es-PA', {
+      timeZone: 'America/Panama',
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',

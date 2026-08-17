@@ -8,6 +8,7 @@ import { SiteLayout } from '../components/SiteLayout'
 import { formatDateInput, ddMmYyyyToIso } from '@/lib/dateUtils'
 import { canAccessReports } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
+import { formatPreadmissionDate } from '@/lib/preadmissionLabels'
 
 interface SummaryReport {
   period: { start: string; end: string }
@@ -615,7 +616,7 @@ export default function ReportsPage() {
                             <td className="px-4 py-2">{row.ticketId ?? '—'}</td>
                             <td className="px-4 py-2 whitespace-nowrap">
                               {row.fechapreadmision
-                                ? new Date(row.fechapreadmision).toLocaleString()
+                                ? formatPreadmissionDate(row.fechapreadmision)
                                 : '—'}
                             </td>
                           </tr>

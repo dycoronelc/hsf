@@ -4,6 +4,7 @@ import { useEffect } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
+import { formatTicketGeneratedAt } from '@/lib/timezone'
 
 export interface TicketPrintData {
   ticketNumber: string
@@ -22,29 +23,7 @@ interface TicketPrintSlipProps {
   footerNote?: string
 }
 
-/** Fecha DD-MM-YYYY y hora 12:38 P.M. (como en la propuesta del hospital). */
-export function formatTicketGeneratedAt(value?: string | Date | null): {
-  date: string
-  time: string
-} {
-  const d = value ? new Date(value) : new Date()
-  const valid = !Number.isNaN(d.getTime()) ? d : new Date()
-
-  const dd = String(valid.getDate()).padStart(2, '0')
-  const mm = String(valid.getMonth() + 1).padStart(2, '0')
-  const yyyy = valid.getFullYear()
-
-  let hours = valid.getHours()
-  const minutes = String(valid.getMinutes()).padStart(2, '0')
-  const period = hours >= 12 ? 'P.M.' : 'A.M.'
-  hours = hours % 12
-  if (hours === 0) hours = 12
-
-  return {
-    date: `${dd}-${mm}-${yyyy}`,
-    time: `${hours}:${minutes} ${period}`,
-  }
-}
+export { formatTicketGeneratedAt }
 
 export function TicketPrintSlip({
   ticket,

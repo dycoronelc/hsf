@@ -1,3 +1,5 @@
+import { formatInAppTimezone } from '@/lib/timezone'
+
 export const ARRIVAL_STATE_LABELS: Record<string, string> = {
   registrado: 'Registrado',
   espera_llegada: 'En espera de llegada',
@@ -29,10 +31,7 @@ export const ATTACHMENT_FIELD_LABELS: Record<string, string> = {
 }
 
 export function formatPreadmissionDate(value: string | Date | null | undefined): string {
-  if (!value) return '—'
-  const d = value instanceof Date ? value : new Date(value)
-  if (Number.isNaN(d.getTime())) return String(value)
-  return d.toLocaleString('es-PA', {
+  return formatInAppTimezone(value, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

@@ -116,6 +116,20 @@ run_app "npm run build"
 log "Ajustando permisos ..."
 chown -R "$APP_USER:$APP_USER" "$APP_DIR"
 
+# Hora de Panamá en API/Web (el ticket no debe usar UTC del proceso Node).
+ensure_tz_dropin() {
+  local service="$1"
+  local dir="/etc/systemd/system/${service}.service.d"
+  mkdir -p "$dir"
+  cat > "$dir/timezone.conf" <<'EOF'
+[Service]
+Environment=TZ=America/Panama
+EOF
+  log "TZ=America/Panama en ${service}.service.d/timezone.conf"
+}
+ensure_tz_dropin "$API_SERVICE"
+ensure_tz_dropin "$WEB_SERVICE"
+
 # Parar la API antes del SQL: TypeORM synchronize no puede añadir provinciaCodigo
 # NOT NULL a filas existentes (error: "contains null values") y reiniciaría en bucle.
 log "Deteniendo $API_SERVICE (para migrar schema geo) ..."
