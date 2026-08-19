@@ -5,7 +5,15 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import Link from 'next/link'
 import { SiteLayout } from '../components/SiteLayout'
-import { isPatientRole, isStaffRole, canAccessHost, canAccessStaffConsole, canAccessReports } from '@/lib/authRoles'
+import {
+  isPatientRole,
+  isStaffRole,
+  canAccessHost,
+  canAccessStaffConsole,
+  canAccessReports,
+  canAccessMonitor,
+  canActivateTicket,
+} from '@/lib/authRoles'
 
 export default function DashboardPage() {
   const { isAuthenticated, user } = useAuth()
@@ -66,7 +74,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {canAccessHost(user) && (
+              {canActivateTicket(user) && (
                 <Link
                   href="/host/turnos"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"
@@ -127,7 +135,7 @@ export default function DashboardPage() {
                 </Link>
               )}
 
-              {isStaffRole(user) && (
+              {canAccessMonitor(user) && (
                 <Link
                   href="/monitor"
                   className="bg-white rounded-lg shadow-lg p-6 hover:shadow-xl transition-shadow"

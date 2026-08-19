@@ -76,10 +76,37 @@ export function canAccessReports(roleOrUser?: AccessUser | string | null): boole
   return !!user.role && (REPORTS_ROLES as readonly string[]).includes(user.role)
 }
 
+/** Enlace/tarjeta Monitor. La pantalla /monitor sigue siendo pública para TVs. */
+export function canAccessMonitor(roleOrUser?: AccessUser | string | null): boolean {
+  const user = asAccessUser(roleOrUser)
+  const granted = permissionGranted(user, 'view_monitor')
+  if (granted !== null) return granted
+  return (
+    canAccessHost(user) ||
+    canAccessStaffConsole(user) ||
+    canAccessReports(user)
+  )
+}
+
+export function canActivateTicket(roleOrUser?: AccessUser | string | null): boolean {
+  const user = asAccessUser(roleOrUser)
+  const granted = permissionGranted(user, 'activate_ticket')
+  if (granted !== null) return granted
+  return canAccessHost(user)
+}
+
+export function canExportReports(roleOrUser?: AccessUser | string | null): boolean {
+  const user = asAccessUser(roleOrUser)
+  const granted = permissionGranted(user, 'export_reports')
+  if (granted !== null) return granted
+  return canAccessReports(user)
+}
+
 export function isStaffRole(roleOrUser?: AccessUser | string | null): boolean {
   return (
     canAccessHost(roleOrUser) ||
     canAccessStaffConsole(roleOrUser) ||
-    canAccessReports(roleOrUser)
+    canAccessReports(roleOrUser) ||
+    canAccessMonitor(roleOrUser)
   )
 }

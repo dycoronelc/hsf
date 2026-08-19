@@ -6,7 +6,7 @@ import { useAuth } from '../providers'
 import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../components/SiteLayout'
 import { formatDateInput, ddMmYyyyToIso } from '@/lib/dateUtils'
-import { canAccessReports } from '@/lib/authRoles'
+import { canAccessReports, canExportReports } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { formatPreadmissionDate } from '@/lib/preadmissionLabels'
 
@@ -557,6 +557,8 @@ export default function ReportsPage() {
                       <option value="ticket_generado">Ticket generado</option>
                     </select>
                   </div>
+                  {canExportReports(user) && (
+                    <>
                   <button
                     type="button"
                     onClick={() => exportPreadmissionsCsv()}
@@ -571,6 +573,8 @@ export default function ReportsPage() {
                   >
                     Exportar Excel
                   </button>
+                    </>
+                  )}
                 </div>
 
                 {loadingPre ? (

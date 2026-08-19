@@ -30,6 +30,16 @@ export class UpdateTicketDto {
 
 export class CallTicketDto {
   @IsString()
+  @IsIn([
+    'Ventanilla 1',
+    'Ventanilla 2',
+    'Ventanilla 3',
+    'Ventanilla 4',
+    'Ventanilla 5',
+    'Triage',
+    'Laboratorio',
+    'Radiología',
+  ])
   windowNumber: string;
 }
 

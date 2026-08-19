@@ -94,6 +94,10 @@ function youtubeEmbedUrl(url: string): string | null {
   return null
 }
 
+/** Imágenes y mensajes rotan cada 12s; los videos esperan a terminar. */
+const STILL_MEDIA_MS = 12_000
+const YOUTUBE_MEDIA_MS = 90_000
+
 export default function MonitorPage() {
   const [queues, setQueues] = useState<MonitorData[]>([])
   const [media, setMedia] = useState<MonitorMediaItem[]>([])
@@ -104,6 +108,8 @@ export default function MonitorPage() {
   const [speechPrefs, setSpeechPrefs] = useState<MonitorSpeechPrefs>(DEFAULT_SPEECH_PREFS)
   const [availableVoices, setAvailableVoices] = useState<MonitorVoiceOption[]>([])
   const [showVoiceSettings, setShowVoiceSettings] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const prevSnapRef = useRef<Record<number, string | null>>({})
   const firstPollDoneRef = useRef(false)
@@ -165,13 +171,46 @@ export default function MonitorPage() {
     return () => clearInterval(interval)
   }, [])
 
+  const goNextMedia = useCallback(() => {
+    setMediaIndex((i) => {
+      if (media.length <= 1) return 0
+      return (i + 1) % media.length
+    })
+  }, [media.length])
+
+  useEffect(() => {
+    if (mediaIndex >= media.length && media.length > 0) {
+      setMediaIndex(0)
+    }
+  }, [media.length, mediaIndex])
+
   useEffect(() => {
     if (media.length <= 1) return
-    const t = setInterval(() => {
-      setMediaIndex((i) => (i + 1) % media.length)
-    }, 12000)
-    return () => clearInterval(t)
-  }, [media.length])
+    const item = media[mediaIndex]
+    if (!item) return
+    if (item.kind === 'video') {
+      const isYoutube = !!(item.body && youtubeEmbedUrl(item.body))
+      if (isYoutube) {
+        const t = window.setTimeout(goNextMedia, YOUTUBE_MEDIA_MS)
+        return () => window.clearTimeout(t)
+      }
+      const t = window.setTimeout(goNextMedia, 15 * 60 * 1000)
+      return () => window.clearTimeout(t)
+    }
+    const t = window.setTimeout(goNextMedia, STILL_MEDIA_MS)
+    return () => window.clearTimeout(t)
+  }, [media, mediaIndex, goNextMedia])
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onDown)
+    return () => document.removeEventListener('mousedown', onDown)
+  }, [menuOpen])
 
   useEffect(() => {
     setSpeechPrefs(loadSpeechPrefs())
@@ -292,169 +331,159 @@ export default function MonitorPage() {
       {/* Multimedia + columna de turnos (máx. 4, más reciente arriba) */}
       <div className="flex-1 grid min-h-0 lg:grid-cols-[minmax(0,1fr)_minmax(300px,30vw)]">
         <section className="p-4 sm:p-5 flex flex-col gap-3 bg-white border-r border-slate-200 min-h-0 min-w-0">
-          <header className="flex flex-wrap items-center justify-between gap-3 shrink-0">
+          <header className="flex items-center justify-between gap-3 shrink-0">
             <Image
               src="/logo-hospital-santa-fe.png"
               alt="Hospital Santa Fe"
               width={360}
               height={120}
-              className="h-20 sm:h-24 lg:h-28 w-auto object-contain"
+              className="h-16 sm:h-20 lg:h-24 w-auto object-contain"
               unoptimized
               priority
             />
-            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-800 text-sm font-medium border border-emerald-200">
-                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
-                Voz activa
-              </span>
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                onClick={() => {
-                  refreshVoices()
-                  ensureSpeechReady(speechPrefs)
-                  setShowVoiceSettings((v) => !v)
-                }}
-                className="px-4 py-2 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-sm"
+                onClick={() => setMenuOpen((open) => !open)}
+                className="inline-flex h-11 w-11 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+                aria-label="Abrir menú del monitor"
+                aria-expanded={menuOpen}
+                aria-haspopup="menu"
               >
-                Ajustes de voz
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
               </button>
-              <Link href="/" className="text-sm text-slate-500 hover:text-slate-800">
-                Inicio
-              </Link>
+              {menuOpen && (
+                <div
+                  role="menu"
+                  className="absolute right-0 mt-2 w-56 rounded-xl border border-slate-200 bg-white py-2 shadow-lg z-30"
+                >
+                  <div className="px-4 py-2 text-sm text-emerald-800 flex items-center gap-2">
+                    <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" aria-hidden />
+                    Voz activa
+                  </div>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    onClick={() => {
+                      refreshVoices()
+                      ensureSpeechReady(speechPrefs)
+                      setShowVoiceSettings(true)
+                      setMenuOpen(false)
+                    }}
+                  >
+                    Ajustes de voz
+                  </button>
+                  <Link
+                    href="/"
+                    role="menuitem"
+                    className="block px-4 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                    onClick={() => setMenuOpen(false)}
+                  >
+                    Inicio
+                  </Link>
+                </div>
+              )}
             </div>
           </header>
 
           {showVoiceSettings && (
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 shrink-0">
-              <p className="text-sm font-medium text-slate-800">Voz de este monitor</p>
-              <p className="text-xs text-slate-500">
-                La voz queda activa automáticamente. Las voces dependen del navegador y del equipo
-                de esta pantalla; la preferencia se guarda aquí. Si el navegador bloquea el audio al
-                iniciar, use «Probar» una vez o abra Chrome en modo kiosk con autoplay permitido.
-              </p>
-              <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-medium text-slate-600 mb-1">Voz</label>
-                  <select
-                    value={speechPrefs.voiceURI}
-                    onChange={(e) => updateSpeechPrefs({ voiceURI: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+            <div className="fixed inset-0 z-40 flex items-start justify-center bg-black/40 p-4 pt-20">
+              <div className="w-full max-w-2xl rounded-xl border border-slate-200 bg-white p-4 space-y-3 shadow-xl">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-medium text-slate-800">Voz de este monitor</p>
+                  <button
+                    type="button"
+                    onClick={() => setShowVoiceSettings(false)}
+                    className="text-sm text-slate-500 hover:text-slate-800"
                   >
-                    <option value="">Automática (español)</option>
-                    {availableVoices.map((v) => (
-                      <option key={v.voiceURI} value={v.voiceURI}>
-                        {v.name} ({v.lang}){v.isSpanish ? '' : ' · no español'}
-                      </option>
-                    ))}
-                  </select>
-                  {availableVoices.length === 0 && (
-                    <p className="text-xs text-amber-700 mt-1">
-                      No se detectaron voces aún. Pulse «Probar» y vuelva a abrir ajustes.
-                    </p>
-                  )}
+                    Cerrar
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Velocidad ({speechPrefs.rate.toFixed(2)})
-                  </label>
-                  <input
-                    type="range"
-                    min={0.7}
-                    max={1.2}
-                    step={0.02}
-                    value={speechPrefs.rate}
-                    onChange={(e) => updateSpeechPrefs({ rate: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-slate-600 mb-1">
-                    Tono ({speechPrefs.pitch.toFixed(2)})
-                  </label>
-                  <input
-                    type="range"
-                    min={0.7}
-                    max={1.3}
-                    step={0.05}
-                    value={speechPrefs.pitch}
-                    onChange={(e) => updateSpeechPrefs({ pitch: Number(e.target.value) })}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={() => {
-                    refreshVoices()
-                    speechUnlockedRef.current = true
-                    speakVoicePreview(loadSpeechPrefs())
-                  }}
-                  className="px-4 py-2 rounded-lg bg-[#00816D] text-white text-sm font-medium hover:bg-[#006b5a]"
-                >
-                  Probar
-                </button>
-                <button
-                  type="button"
-                  onClick={() => updateSpeechPrefs({ ...DEFAULT_SPEECH_PREFS })}
-                  className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-sm hover:bg-slate-50"
-                >
-                  Restaurar
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Banner grande del turno llamado (visible desde la sala) */}
-          {featuredCall && (
-            <div
-              key={featuredKey}
-              className={`shrink-0 rounded-2xl border-2 px-4 py-4 sm:px-6 sm:py-5 flex flex-wrap items-center justify-between gap-4 ${
-                isFreshCall
-                  ? 'bg-[#00816D] border-[#006b5a] text-white monitor-call-flash'
-                  : 'bg-[#00816D] border-[#006b5a] text-white'
-              }`}
-              aria-live="assertive"
-              role="status"
-            >
-              <div className="min-w-0">
-                <p className="text-sm sm:text-base font-semibold uppercase tracking-[0.18em] text-white/90 flex items-center gap-2">
-                  <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-300 animate-pulse" aria-hidden />
-                  Llamando ahora
+                <p className="text-xs text-slate-500">
+                  La voz queda activa automáticamente. Las voces dependen del navegador y del equipo
+                  de esta pantalla; la preferencia se guarda aquí. Si el navegador bloquea el audio al
+                  iniciar, use «Probar» una vez o abra Chrome en modo kiosk con autoplay permitido.
                 </p>
-                <p
-                  className={ticketNumberClassName(
-                    monitorDisplayColor(
-                      featuredCall.service_name,
-                      featuredCall.current.service_code,
-                      featuredCall.current.triage_color,
-                    ),
-                    'mt-1 font-black tracking-tight leading-none break-all text-white text-6xl sm:text-7xl lg:text-8xl',
-                  )}
-                >
-                  {featuredCall.current.ticket_number}
-                </p>
-                <p className="mt-2 text-base sm:text-lg text-white/90 font-medium truncate">
-                  {featuredCall.service_name}
-                </p>
-              </div>
-              <div className="shrink-0 text-right">
-                {featuredCall.current.window_number ? (
-                  <div className="inline-flex flex-col items-end rounded-xl bg-white text-slate-900 px-5 py-3 shadow-sm">
-                    <span className="text-3xl sm:text-4xl font-black leading-none">
-                      {featuredCall.current.window_number}
-                    </span>
+                <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+                  <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-slate-600 mb-1">Voz</label>
+                    <select
+                      value={speechPrefs.voiceURI}
+                      onChange={(e) => updateSpeechPrefs({ voiceURI: e.target.value })}
+                      className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm bg-white"
+                    >
+                      <option value="">Automática (español)</option>
+                      {availableVoices.map((v) => (
+                        <option key={v.voiceURI} value={v.voiceURI}>
+                          {v.name} ({v.lang}){v.isSpanish ? '' : ' · no español'}
+                        </option>
+                      ))}
+                    </select>
+                    {availableVoices.length === 0 && (
+                      <p className="text-xs text-amber-700 mt-1">
+                        No se detectaron voces aún. Pulse «Probar» y vuelva a abrir ajustes.
+                      </p>
+                    )}
                   </div>
-                ) : (
-                  <p className="text-sm text-white/80">Diríjase al área indicada</p>
-                )}
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      Velocidad ({speechPrefs.rate.toFixed(2)})
+                    </label>
+                    <input
+                      type="range"
+                      min={0.7}
+                      max={1.2}
+                      step={0.02}
+                      value={speechPrefs.rate}
+                      onChange={(e) => updateSpeechPrefs({ rate: Number(e.target.value) })}
+                      className="w-full"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">
+                      Tono ({speechPrefs.pitch.toFixed(2)})
+                    </label>
+                    <input
+                      type="range"
+                      min={0.7}
+                      max={1.3}
+                      step={0.05}
+                      value={speechPrefs.pitch}
+                      onChange={(e) => updateSpeechPrefs({ pitch: Number(e.target.value) })}
+                      className="w-full"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      refreshVoices()
+                      speechUnlockedRef.current = true
+                      speakVoicePreview(loadSpeechPrefs())
+                    }}
+                    className="px-4 py-2 rounded-lg bg-[#00816D] text-white text-sm font-medium hover:bg-[#006b5a]"
+                  >
+                    Probar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => updateSpeechPrefs({ ...DEFAULT_SPEECH_PREFS })}
+                    className="px-4 py-2 rounded-lg border border-slate-300 bg-white text-sm hover:bg-slate-50"
+                  >
+                    Restaurar
+                  </button>
+                </div>
               </div>
             </div>
           )}
 
-          {/* Panel multimedia fijo 16:9 (recomendado 1920×1080) */}
-          <div className="flex-1 min-h-0 flex flex-col justify-center">
-            <div className="relative w-full mx-auto aspect-video max-h-full rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden flex flex-col">
+          {/* Panel multimedia: ocupa todo el espacio izquierdo (el llamado se resalta en TURNO) */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            <div className="relative w-full h-full min-h-0 rounded-2xl bg-slate-50 border border-slate-200 overflow-hidden flex flex-col">
               {currentMedia ? (
                 currentMedia.kind === 'message' ? (
                   <div className="p-6 flex-1 flex flex-col justify-center overflow-auto">
@@ -487,12 +516,19 @@ export default function MonitorPage() {
                         />
                       ) : currentMedia.body ? (
                         <video
+                          key={currentMedia.id}
                           src={currentMedia.body}
-                          className="absolute inset-0 w-full h-full object-cover"
+                          className="absolute inset-0 w-full h-full object-contain bg-black"
                           autoPlay
                           muted
-                          loop
+                          loop={media.length <= 1}
                           playsInline
+                          onEnded={() => {
+                            if (media.length > 1) goNextMedia()
+                          }}
+                          onError={() => {
+                            if (media.length > 1) goNextMedia()
+                          }}
                         />
                       ) : null)}
                     <div className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-2">
@@ -515,7 +551,7 @@ export default function MonitorPage() {
               )}
             </div>
             {lastAnnouncement && (
-              <p className="mt-2 px-1 text-sm text-[#00816D] shrink-0 truncate" aria-live="polite">
+              <p className="sr-only" aria-live="polite">
                 {lastAnnouncement}
               </p>
             )}

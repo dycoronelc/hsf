@@ -2,14 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-
-const links = [
-  { href: '/host', label: 'Llegadas (preadmisión)' },
-  { href: '/host/turnos', label: 'Crear turnos Adm/Lab/Rad' },
-]
+import { useAuth } from '../providers'
+import { canAccessHost, canActivateTicket } from '@/lib/authRoles'
 
 export function HostNav() {
   const pathname = usePathname()
+  const { user } = useAuth()
+
+  const links = [
+    ...(canAccessHost(user) ? [{ href: '/host', label: 'Llegadas (preadmisión)' }] : []),
+    ...(canActivateTicket(user) ? [{ href: '/host/turnos', label: 'Crear turnos Adm/Lab/Rad' }] : []),
+  ]
+
+  if (links.length === 0) return null
 
   return (
     <nav className="mb-6 flex flex-wrap gap-2 border-b border-gray-200 pb-4">

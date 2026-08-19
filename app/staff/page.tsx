@@ -8,7 +8,7 @@ import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
 import { isAgentOperational } from '@/lib/agentState'
 import { canAccessStaffConsole } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
-import { apiErrorMessage } from '@/lib/apiErrorMessage'
+import { CALL_DESTINATIONS } from '@/lib/callDestinations'
 
 interface Ticket {
   id: number
@@ -193,7 +193,7 @@ export default function StaffConsolePage() {
       return
     }
     if (!windowNumber.trim()) {
-      alert('Indique el destino (ej. Ventanilla 5, Laboratorio, Triage)')
+      alert('Seleccione el destino del llamado')
       return
     }
 
@@ -337,7 +337,7 @@ export default function StaffConsolePage() {
 
   const handleRecallTicket = async (ticketId: number) => {
     if (!windowNumber.trim()) {
-      alert('Indique el destino (ej. Ventanilla 5, Laboratorio, Triage)')
+      alert('Seleccione el destino del llamado')
       return
     }
     setLoading(true)
@@ -485,7 +485,7 @@ export default function StaffConsolePage() {
     <SiteLayout>
       <div className="max-w-7xl mx-auto px-4 py-8">
         <div className="bg-white rounded-lg shadow-lg p-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-6">Consola Operativa</h1>
+          <h1 className="text-3xl font-bold text-gray-900 mb-6">Consola Staff</h1>
 
           {apiError && (
             <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
@@ -585,22 +585,26 @@ export default function StaffConsolePage() {
             <p className="text-xs text-gray-500 mt-1">En estados no operativos no se asignan tickets ni llamados.</p>
           </div>
 
-          {/* Destino de llamado (texto libre: Ventanilla 5, Laboratorio, Triage, etc.) */}
+          {/* Destino de llamado */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Destino del llamado
             </label>
-            <input
-              type="text"
+            <select
               value={windowNumber}
               onChange={(e) => setWindowNumber(e.target.value)}
-              placeholder="Ej: Ventanilla 5, Laboratorio, Triage"
-              className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg"
-            />
+              className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg bg-white"
+            >
+              <option value="">Seleccione un destino</option>
+              {CALL_DESTINATIONS.map((dest) => (
+                <option key={dest} value={dest}>
+                  {dest}
+                </option>
+              ))}
+            </select>
             {!windowNumber.trim() && (
               <p className="text-sm text-amber-700 mt-2">
-                Escriba el destino completo (incluido “Ventanilla” si aplica) para habilitar{' '}
-                <strong>Llamar</strong>.
+                Seleccione el destino para habilitar <strong>Llamar</strong>.
               </p>
             )}
           </div>

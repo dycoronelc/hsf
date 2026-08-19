@@ -6,7 +6,13 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import { HospitalLogo } from './HospitalLogo'
 import { HelpLauncher } from './help/HelpLauncher'
-import { isPatientRole, canAccessHost, canAccessStaffConsole, canAccessReports } from '@/lib/authRoles'
+import {
+  isPatientRole,
+  canAccessHost,
+  canAccessStaffConsole,
+  canAccessReports,
+  canAccessMonitor,
+} from '@/lib/authRoles'
 
 export function SiteLayout({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, user, logout } = useAuth()
@@ -71,6 +77,11 @@ export function SiteLayout({ children }: { children: React.ReactNode }) {
                   {canAccessReports(user) && (
                     <Link href="/reports" className="text-white/90 hover:text-white font-medium">
                       Reportes
+                    </Link>
+                  )}
+                  {canAccessMonitor(user) && (
+                    <Link href="/monitor" className="text-white/90 hover:text-white font-medium">
+                      Monitor
                     </Link>
                   )}
                   <HelpLauncher variant="header" />

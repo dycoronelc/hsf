@@ -7,7 +7,7 @@ import { useAuth } from '../../providers'
 import { SiteLayout } from '../../components/SiteLayout'
 import { HostNav } from '../../components/HostNav'
 import { TicketPrintOverlay, type TicketPrintData } from '../../components/TicketPrintSlip'
-import { canAccessHost } from '@/lib/authRoles'
+import { canActivateTicket } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
 
@@ -76,7 +76,7 @@ export default function HostTurnosPage() {
       router.replace('/login')
       return
     }
-    if (!user || !canAccessHost(user)) {
+    if (!user || !canActivateTicket(user)) {
       router.replace('/dashboard')
       return
     }
@@ -121,7 +121,7 @@ export default function HostTurnosPage() {
     }
   }
 
-  if (!authHydrated || !isAuthenticated || !user || !canAccessHost(user)) {
+  if (!authHydrated || !isAuthenticated || !user || !canActivateTicket(user)) {
     return null
   }
 
