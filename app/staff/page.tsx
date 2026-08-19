@@ -8,6 +8,7 @@ import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
 import { isAgentOperational } from '@/lib/agentState'
 import { canAccessStaffConsole } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
+import { apiErrorMessage } from '@/lib/apiErrorMessage'
 import { CALL_DESTINATIONS } from '@/lib/callDestinations'
 
 interface Ticket {
