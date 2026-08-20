@@ -37,6 +37,7 @@ import { assertValidPhoneNumber } from '../common/phone.util';
 import {
   toPreadmissionResponse,
   toPreadmissionSummary,
+  toPatientUserSearchSummary,
   toHostWorkListItem,
   HostWorkListItem,
   PreadmissionResponse,
@@ -66,6 +67,8 @@ export class PreadmissionService {
     private preadmissionRepository: Repository<Preadmission>,
     @InjectRepository(VerificationCode)
     private verificationRepository: Repository<VerificationCode>,
+    @InjectRepository(User)
+    private userRepository: Repository<User>,
     private readonly cellbyteService: CellbyteService,
     private readonly ticketsService: TicketsService,
     private readonly auditService: AuditService,
@@ -616,7 +619,54 @@ export class PreadmissionService {
       }
     }
 
-    return row ? toPreadmissionSummary(row) : null;
+    if (row) {
+      return toPreadmissionSummary(row);
+    }
+
+    const user = await this.findPatientUserByDocument(cedula, tipo);
+    if (!user) {
+      return null;
+    }
+    return toPatientUserSearchSummary(user, normalized || cedula.trim(), tipo);
+  }
+
+  /** Busca en catálogo de usuarios/pacientes por nationalId (misma cédula, con o sin guiones). */
+  private async findPatientUserByDocument(
+    cedula: string,
+    tipoIdentificacion: string,
+  ): Promise<User | null> {
+    const normalized = normalizeDocumentId(cedula, tipoIdentificacion);
+    const lookupCompacts = documentIdLookupCompacts(cedula, tipoIdentificacion);
+
+    if (normalized) {
+      const byExact = await this.userRepository.findOne({
+        where: { nationalId: normalized, isActive: true },
+      });
+      if (byExact) return byExact;
+    }
+
+    if (lookupCompacts.length > 0) {
+      const byCompact = await this.userRepository
+        .createQueryBuilder('u')
+        .where('u.isActive = true')
+        .andWhere('u.nationalId IS NOT NULL')
+        .andWhere(
+          "REPLACE(REPLACE(UPPER(TRIM(u.nationalId)), '-', ''), ' ', '') IN (:...lookupCompacts)",
+          { lookupCompacts },
+        )
+        .orderBy('u.role', 'ASC')
+        .addOrderBy('u.id', 'DESC')
+        .getOne();
+      if (byCompact) return byCompact;
+    }
+
+    const raw = cedula.replace(/\s+/g, '').trim();
+    if (raw && raw !== normalized) {
+      return this.userRepository.findOne({
+        where: { nationalId: raw, isActive: true },
+      });
+    }
+    return null;
   }
 
   async review(

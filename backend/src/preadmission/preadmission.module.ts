@@ -4,6 +4,7 @@ import { PreadmissionController } from './preadmission.controller';
 import { PreadmissionService } from './preadmission.service';
 import { Preadmission } from './entities/preadmission.entity';
 import { VerificationCode } from '../auth/entities/verification-code.entity';
+import { User } from '../users/entities/user.entity';
 import { IntegrationsModule } from '../integrations/integrations.module';
 import { TicketsModule } from '../tickets/tickets.module';
 import { PermissionsModule } from '../permissions/permissions.module';
@@ -13,7 +14,7 @@ import { PreadmissionSchemaBootstrap } from './preadmission-schema.bootstrap';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Preadmission, VerificationCode]),
+    TypeOrmModule.forFeature([Preadmission, VerificationCode, User]),
     PermissionsModule,
     IntegrationsModule,
     TicketsModule,

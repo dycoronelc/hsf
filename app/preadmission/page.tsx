@@ -451,10 +451,15 @@ export default function PreadmissionPage() {
         }
 
         setPatientFound(true)
+        if (patient.source === 'user') {
+          setSearchNotice(
+            'Se cargaron datos del catálogo de pacientes. Complete el resto del formulario.',
+          )
+        }
       } else {
         setPatientFound(false)
         setSearchNotice(
-          'No se encontraron datos previos para este documento. Puede continuar completando el formulario.',
+          'No se encontraron datos en preadmisiones ni en el catálogo de pacientes. Puede continuar completando el formulario.',
         )
       }
     } catch (err) {
