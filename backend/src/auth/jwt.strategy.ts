@@ -30,6 +30,9 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       agentState: user.agentState ?? null,
       sessionNeverExpires: user.sessionNeverExpires ?? false,
       sessionExpiresMinutes: user.sessionExpiresMinutes ?? null,
+      nationalId: user.nationalId ?? null,
+      phone: user.phone ?? null,
+      birthDate: user.birthDate ?? null,
     };
   }
 }

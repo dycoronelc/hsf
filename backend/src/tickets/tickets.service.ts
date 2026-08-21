@@ -46,35 +46,6 @@ export class TicketsService {
     return `${prefix}-${randomSuffix}`;
   }
 
-  /** Extrae el sufijo numérico de un ticket (p. ej. OT-9379 → 9379). */
-  private extractTicketSuffix(ticketNumber: string): string {
-    const t = ticketNumber.trim();
-    const idx = t.indexOf('-');
-    if (idx >= 0) {
-      const suffix = t
-        .slice(idx + 1)
-        .replace(/\s+/g, '')
-        .replace(/[^\w]/g, '');
-      if (suffix) return suffix;
-    }
-    const digits = t.replace(/\D/g, '');
-    if (!digits) {
-      throw new BadRequestException(
-        'No se pudo obtener el número del ticket para transferir',
-      );
-    }
-    return digits;
-  }
-
-  /** Prefijos de transferencia según el área destino (ejemplos del hospital: LR / RD). */
-  private transferPrefixFor(service: Pick<Service, 'code' | 'area' | 'ticketPrefix'>): string {
-    const code = (service.code || '').toUpperCase();
-    const area = (service.area || '').toUpperCase();
-    if (code === 'LAB' || area === 'LAB') return 'LR';
-    if (code === 'RAD' || area === 'RAD') return 'RD';
-    return (service.ticketPrefix || service.code || 'TK').toUpperCase();
-  }
-
   private async resolveLabRadServices(): Promise<{ lab: Service; rad: Service }> {
     const lab =
       (await this.serviceRepository.findOne({ where: { code: 'LAB', isActive: true } })) ||
@@ -114,24 +85,45 @@ export class TicketsService {
     return [rad];
   }
 
+  /** Marca un ticket como proveniente de transferencia (mismo número/código). */
+  private buildTransferNotes(params: {
+    sourceServiceName: string;
+    targetService: Pick<Service, 'name' | 'code'>;
+    ticketNumber: string;
+  }): string {
+    const from = params.sourceServiceName || 'servicio anterior';
+    const to = params.targetService.name || params.targetService.code || 'destino';
+    return `Transferido a ${to} (desde ${from}); ticket ${params.ticketNumber}`;
+  }
+
+  private resetTicketForTransferQueue(ticket: Ticket, targetServiceId: number, notes: string) {
+    ticket.serviceId = targetServiceId;
+    ticket.status = ticket.checkInAt ? TicketStatus.CHECK_IN : TicketStatus.CREADO;
+    ticket.notes = notes;
+    ticket.callCount = 0;
+    ticket.windowNumber = null;
+    ticket.calledAt = null;
+    ticket.calledBy = null;
+    ticket.startedAt = null;
+    ticket.completedAt = null;
+  }
+
+  /** Clona el ticket hacia otro servicio conservando el mismo número/código. */
   private async createTransferredQueueTicket(params: {
     source: Ticket;
     targetService: Service;
-    suffix: string;
+    sourceServiceName: string;
   }): Promise<Ticket> {
-    const prefix = this.transferPrefixFor(params.targetService);
-    const ticketNumber = `${prefix}-${params.suffix}`;
-    const existing = await this.ticketRepository.findOne({ where: { ticketNumber } });
-    if (existing) {
-      throw new BadRequestException(
-        `Ya existe un ticket ${ticketNumber} en el sistema; no se puede transferir con el mismo número`,
-      );
-    }
+    const notes = this.buildTransferNotes({
+      sourceServiceName: params.sourceServiceName,
+      targetService: params.targetService,
+      ticketNumber: params.source.ticketNumber,
+    });
     const created = this.ticketRepository.create({
-      ticketNumber,
+      ticketNumber: params.source.ticketNumber,
       patientId: params.source.patientId,
       serviceId: params.targetService.id,
-      status: TicketStatus.CREADO,
+      status: params.source.checkInAt ? TicketStatus.CHECK_IN : TicketStatus.CREADO,
       priority: params.source.priority,
       triageColor: params.source.triageColor ?? null,
       qrCode: this.generateQrCode(),
@@ -142,8 +134,8 @@ export class TicketsService {
       calledBy: null,
       startedAt: null,
       completedAt: null,
-      checkInAt: null,
-      notes: `Transferido desde ${params.source.ticketNumber}`,
+      checkInAt: params.source.checkInAt ?? null,
+      notes,
     });
     return this.ticketRepository.save(created);
   }
@@ -421,6 +413,7 @@ export class TicketsService {
         priority_level: ticket.service?.priorityLevel ?? 2,
         triage_color: ticket.triageColor ?? null,
         created_at: toIsoUtc(ticket.createdAt) ?? new Date().toISOString(),
+        completed_at: toIsoUtc(ticket.completedAt) ?? null,
         qr_code: ticket.qrCode,
         window_number: ticket.windowNumber ?? null,
         call_count: ticket.callCount ?? 0,
@@ -508,16 +501,54 @@ export class TicketsService {
     throw new NotFoundException('Turno o preadmisión no encontrado con ese código o ID');
   }
 
+  async listOccupiedDestinations(): Promise<{ destinations: string[] }> {
+    const rows = await this.ticketRepository.find({
+      where: [{ status: TicketStatus.LLAMADO }, { status: TicketStatus.EN_ATENCION }],
+      select: ['windowNumber'],
+    });
+    const destinations = [
+      ...new Set(
+        rows
+          .map((r) => (r.windowNumber || '').trim())
+          .filter((w) => w.length > 0),
+      ),
+    ];
+    return { destinations };
+  }
+
+  private async assertDestinationAvailable(windowNumber: string, exceptTicketId?: number) {
+    const dest = windowNumber.trim();
+    if (!dest) {
+      throw new BadRequestException('Indique el destino del llamado');
+    }
+    const qb = this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where('ticket.status IN (:...statuses)', {
+        statuses: [TicketStatus.LLAMADO, TicketStatus.EN_ATENCION],
+      })
+      .andWhere('TRIM(ticket.windowNumber) = :dest', { dest });
+    if (exceptTicketId != null) {
+      qb.andWhere('ticket.id != :exceptTicketId', { exceptTicketId });
+    }
+    const conflict = await qb.getOne();
+    if (conflict) {
+      throw new BadRequestException(
+        `El destino «${dest}» está ocupado con otro turno. Elija otro destino o espere a que finalice.`,
+      );
+    }
+  }
+
   async call(id: number, windowNumber: string, agent: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
     ticket.calledBy = agent.id;
-    ticket.windowNumber = windowNumber;
+    ticket.windowNumber = windowNumber.trim();
     ticket.callCount = (ticket.callCount ?? 0) + 1;
     await this.ticketRepository.save(ticket);
     await this.auditService.log('ticket_called', {
@@ -560,10 +591,11 @@ export class TicketsService {
         `Espere ${Math.ceil(recallWaitSeconds - elapsed)} segundos antes de volver a llamar`,
       );
     }
+    await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
     ticket.calledBy = agent.id;
-    ticket.windowNumber = windowNumber;
+    ticket.windowNumber = windowNumber.trim();
     ticket.callCount = (ticket.callCount ?? 0) + 1;
     await this.ticketRepository.save(ticket);
     await this.auditService.log('ticket_recalled', {
@@ -680,7 +712,9 @@ export class TicketsService {
     };
   }
 
-  /** Transferir ticket a Radiología, Laboratorio, Admisión u Urgencias (post-triage). */
+  /** Transferir ticket a Radiología, Laboratorio, Admisión u Urgencias (post-triage).
+   * Conserva el mismo número/código del ticket; solo cambia el servicio destino.
+   */
   async transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
@@ -706,36 +740,35 @@ export class TicketsService {
     }
 
     const targets = await this.resolveTransferTargets(dto.targetArea);
-    const suffix = this.extractTicketSuffix(ticket.ticketNumber);
+    const sourceServiceName = ticket.service?.name || ticket.service?.code || 'servicio anterior';
+    const keepNumber = ticket.ticketNumber;
+    const queueTickets: Ticket[] = [];
 
-    // Validar conflictos de número antes de crear (p. ej. Ambos → LR-n y RD-n).
-    for (const target of targets) {
-      const ticketNumber = `${this.transferPrefixFor(target)}-${suffix}`;
-      const existing = await this.ticketRepository.findOne({ where: { ticketNumber } });
-      if (existing) {
-        throw new BadRequestException(
-          `Ya existe un ticket ${ticketNumber} en el sistema; no se puede transferir con el mismo número`,
-        );
-      }
-    }
+    // Primer destino: reutiliza el mismo ticket (sin cambiar número/código).
+    const primary = targets[0];
+    this.resetTicketForTransferQueue(
+      ticket,
+      primary.id,
+      this.buildTransferNotes({
+        sourceServiceName,
+        targetService: primary,
+        ticketNumber: keepNumber,
+      }),
+    );
+    queueTickets.push(await this.ticketRepository.save(ticket));
 
-    const createdTickets: Ticket[] = [];
-    for (const target of targets) {
-      createdTickets.push(
+    // Destinos adicionales (p. ej. BOTH): clona con el mismo número/código.
+    for (const target of targets.slice(1)) {
+      queueTickets.push(
         await this.createTransferredQueueTicket({
           source: ticket,
           targetService: target,
-          suffix,
+          sourceServiceName,
         }),
       );
     }
 
-    ticket.status = TicketStatus.TRANSFERIDO;
-    ticket.completedAt = new Date();
-    ticket.windowNumber = null;
-    await this.ticketRepository.save(ticket);
-
-    const createdSummary = createdTickets.map((t) => ({
+    const createdSummary = queueTickets.map((t) => ({
       id: t.id,
       ticket_number: t.ticketNumber,
       service_id: t.serviceId,
@@ -745,20 +778,18 @@ export class TicketsService {
       entityType: 'ticket',
       entityId: ticket.id,
       userId: agent?.id,
-      details: `targetArea=${dto.targetArea}; color=${ticket.triageColor ?? ''}; created=${createdSummary
-        .map((c) => c.ticket_number)
+      details: `targetArea=${dto.targetArea}; color=${ticket.triageColor ?? ''}; keptNumber=${keepNumber}; queue=${createdSummary
+        .map((c) => `${c.ticket_number}@${c.service_id}`)
         .join(',')}`,
     });
 
     return {
       message:
         dto.targetArea === 'BOTH'
-          ? `Ticket transferido a ambos servicios: ${createdSummary
-              .map((c) => c.ticket_number)
-              .join(' y ')}`
-          : `Ticket transferido: ${createdSummary[0]?.ticket_number}`,
+          ? `Ticket ${keepNumber} transferido a ambos servicios (mismo número)`
+          : `Ticket ${keepNumber} transferido (mismo número)`,
       original_id: id,
-      original_ticket_number: ticket.ticketNumber,
+      original_ticket_number: keepNumber,
       created_tickets: createdSummary,
     };
   }

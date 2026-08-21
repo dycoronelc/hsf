@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '../providers'
 import Link from 'next/link'
 import { QRCodeSVG } from 'qrcode.react'
-import { isValidDdMmYyyy, getBirthDateValidationMessage, getProbableAttentionDateValidationMessage, isValidBirthDateDdMmYyyy } from '@/lib/dateUtils'
+import { isValidDdMmYyyy, getBirthDateValidationMessage, getProbableAttentionDateValidationMessage, isValidBirthDateDdMmYyyy, isoToDdMmYyyy } from '@/lib/dateUtils'
 import {
   filterDocumentIdInput,
   filterPersonNameInput,
@@ -102,6 +102,40 @@ function patientField(value: unknown, fallback = ''): string {
   return typeof value === 'string' ? value : fallback
 }
 
+function splitLoggedUserName(fullName: string | null | undefined): {
+  name1: string
+  name2: string
+  apellido1: string
+  apellido2: string
+} {
+  const parts = (fullName ?? '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+  if (parts.length === 0) return { name1: '', name2: '', apellido1: '', apellido2: '' }
+  if (parts.length === 1) return { name1: parts[0], name2: '', apellido1: '', apellido2: '' }
+  if (parts.length === 2) return { name1: parts[0], name2: '', apellido1: parts[1], apellido2: '' }
+  if (parts.length === 3) return { name1: parts[0], name2: '', apellido1: parts[1], apellido2: parts[2] }
+  return {
+    name1: parts[0],
+    name2: parts[1],
+    apellido1: parts[2],
+    apellido2: parts.slice(3).join(' '),
+  }
+}
+
+function birthDateFromProfile(value: string | null | undefined): string {
+  const raw = (value ?? '').trim()
+  if (!raw) return ''
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return isoToDdMmYyyy(raw.slice(0, 10))
+  if (isValidDdMmYyyy(raw)) {
+    const m = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)
+    if (!m) return raw
+    return `${m[1].padStart(2, '0')}/${m[2].padStart(2, '0')}/${m[3]}`
+  }
+  return raw
+}
+
 function parsePatientCelular(value: unknown): string {
   const cel = patientField(value)
   const m = cel.match(/^\+(\d{1,3})([\d\s-]+)$/)
@@ -116,7 +150,7 @@ interface LocationData {
 }
 
 export default function PreadmissionPage() {
-  const { isAuthenticated, token, authHydrated, notifySessionExpired } = useAuth()
+  const { isAuthenticated, token, authHydrated, notifySessionExpired, user } = useAuth()
   const { setPageContext } = useHelp()
   const router = useRouter()
   const [step, setStep] = useState(1)
@@ -159,7 +193,7 @@ export default function PreadmissionPage() {
   const cedulaInputRef = useRef<HTMLInputElement>(null)
 
   const [formData, setFormData] = useState({
-    registradoComo: 'paciente',
+    registradoComo: '',
     departamento: '',
     fechaprobableatencion: '',
     pasaporte: 'C',
@@ -168,7 +202,7 @@ export default function PreadmissionPage() {
     name2: '',
     apellido1: '',
     apellido2: '',
-    sexo: 'M',
+    sexo: '',
     fechanac: '',
     nacionalidad: '',
     estadocivil: '',
@@ -366,6 +400,98 @@ export default function PreadmissionPage() {
     }
   }
 
+  const applyPatientSearchToForm = async (
+    patient: Record<string, unknown>,
+    cedula: string,
+    base: typeof formData,
+  ) => {
+    const updatedFormData = {
+      ...base,
+      cedula,
+      name1: patientField(patient.name1),
+      name2: patientField(patient.name2),
+      apellido1: patientField(patient.apellido1),
+      apellido2: patientField(patient.apellido2),
+      sexo: patientField(patient.sexo),
+      fechanac: patientField(patient.fechanac),
+      nacionalidad: patientField(patient.nacionalidad),
+      estadocivil: patientField(patient.estadocivil),
+      tiposangre: patientField(patient.tiposangre),
+      email: patientField(patient.email) || base.email,
+      celularPrefix: patientField(patient.celularPrefix, '507'),
+      celular: parsePatientCelular(patient.celular) || base.celular,
+      provincia1: patientField(patient.provincia1),
+      distrito1: patientField(patient.distrito1),
+      corregimiento1: patientField(patient.corregimiento1),
+      direccion1: patientField(patient.direccion1),
+      encasourgencia: patientField(patient.encasourgencia),
+      relacion: patientField(patient.relacion),
+      email3: patientField(patient.email3),
+      celular3: patientField(patient.celular3),
+      provincia3: patientField(patient.provincia3),
+      distrito3: patientField(patient.distrito3),
+      corregimiento3: patientField(patient.corregimiento3),
+      direccion3: patientField(patient.direccion3),
+      doblecobertura: patientField(patient.doblecobertura, 'NO'),
+      compania1: patientField(patient.compania1),
+      poliza1: patientField(patient.poliza1),
+    }
+    setFormData(updatedFormData)
+    setEmailVerified(false)
+    setEmailCode('')
+    setVerificationHint('')
+    setVerificationError('')
+
+    if (updatedFormData.provincia1) {
+      await loadDistritos(updatedFormData.provincia1, false)
+      if (updatedFormData.distrito1) {
+        await loadCorregimientos(
+          updatedFormData.distrito1,
+          false,
+          updatedFormData.provincia1,
+        )
+      }
+    }
+    setPatientFound(true)
+    return updatedFormData
+  }
+
+  const searchPatientByDocument = async (
+    cedulaRaw: string,
+    tipoIdentificacion: string,
+    baseForm: typeof formData,
+  ): Promise<Record<string, unknown> | null> => {
+    const cedula =
+      tipoIdentificacion === 'C'
+        ? normalizeDocumentId(cedulaRaw, 'C')
+        : cedulaRaw.replace(/\s+/g, '').trim()
+    if (!cedula) return null
+
+    const response = await fetch(
+      `/api/preadmission/search?cedula=${encodeURIComponent(cedula)}&tipoIdentificacion=${encodeURIComponent(tipoIdentificacion)}`,
+    )
+    let data: unknown = null
+    try {
+      data = await parseJsonResponse(response)
+    } catch {
+      throw new Error('No se pudo buscar el paciente: respuesta inválida del servidor')
+    }
+    if (!response.ok) {
+      throw new Error(apiErrorMessage(data, 'No se pudo buscar el paciente'))
+    }
+    const patient = data as Record<string, unknown> | null
+    if (patient) {
+      await applyPatientSearchToForm(patient, cedula, { ...baseForm, pasaporte: tipoIdentificacion })
+      if (patient.source === 'user') {
+        setSearchNotice(
+          'Se cargaron datos del catálogo de pacientes. Complete el resto del formulario.',
+        )
+      }
+      return patient
+    }
+    return null
+  }
+
   const searchPatient = async () => {
     const cedula = getCedulaValue()
     const tipoIdentificacion = formData.pasaporte
@@ -385,78 +511,11 @@ export default function PreadmissionPage() {
     setPatientFound(false)
 
     try {
-      const response = await fetch(
-        `/api/preadmission/search?cedula=${encodeURIComponent(cedula)}&tipoIdentificacion=${encodeURIComponent(tipoIdentificacion)}`,
-      )
-
-      let data: unknown = null
-      try {
-        data = await parseJsonResponse(response)
-      } catch {
-        throw new Error('No se pudo buscar el paciente: respuesta inválida del servidor')
-      }
-
-      if (!response.ok) {
-        throw new Error(apiErrorMessage(data, 'No se pudo buscar el paciente'))
-      }
-
-      const patient = data as Record<string, unknown> | null
-      if (patient) {
-        const updatedFormData = {
-          ...formData,
-          cedula,
-          name1: patientField(patient.name1),
-          name2: patientField(patient.name2),
-          apellido1: patientField(patient.apellido1),
-          apellido2: patientField(patient.apellido2),
-          sexo: patientField(patient.sexo, 'M'),
-          fechanac: patientField(patient.fechanac),
-          nacionalidad: patientField(patient.nacionalidad),
-          estadocivil: patientField(patient.estadocivil),
-          tiposangre: patientField(patient.tiposangre),
-          email: patientField(patient.email),
-          celularPrefix: patientField(patient.celularPrefix, '507'),
-          celular: parsePatientCelular(patient.celular),
-          provincia1: patientField(patient.provincia1),
-          distrito1: patientField(patient.distrito1),
-          corregimiento1: patientField(patient.corregimiento1),
-          direccion1: patientField(patient.direccion1),
-          encasourgencia: patientField(patient.encasourgencia),
-          relacion: patientField(patient.relacion),
-          email3: patientField(patient.email3),
-          celular3: patientField(patient.celular3),
-          provincia3: patientField(patient.provincia3),
-          distrito3: patientField(patient.distrito3),
-          corregimiento3: patientField(patient.corregimiento3),
-          direccion3: patientField(patient.direccion3),
-          doblecobertura: patientField(patient.doblecobertura, 'NO'),
-          compania1: patientField(patient.compania1),
-          poliza1: patientField(patient.poliza1),
-        }
-        setFormData(updatedFormData)
-        setEmailVerified(false)
-        setEmailCode('')
-        setVerificationHint('')
-        setVerificationError('')
-
-        if (updatedFormData.provincia1) {
-          await loadDistritos(updatedFormData.provincia1, false)
-          if (updatedFormData.distrito1) {
-            await loadCorregimientos(
-              updatedFormData.distrito1,
-              false,
-              updatedFormData.provincia1,
-            )
-          }
-        }
-
-        setPatientFound(true)
-        if (patient.source === 'user') {
-          setSearchNotice(
-            'Se cargaron datos del catálogo de pacientes. Complete el resto del formulario.',
-          )
-        }
-      } else {
+      const patient = await searchPatientByDocument(cedula, tipoIdentificacion, {
+        ...formData,
+        cedula,
+      })
+      if (!patient) {
         setPatientFound(false)
         setSearchNotice(
           'No se encontraron datos en preadmisiones ni en el catálogo de pacientes. Puede continuar completando el formulario.',
@@ -469,6 +528,101 @@ export default function PreadmissionPage() {
     } finally {
       setSearching(false)
     }
+  }
+
+  const loadLoggedPatientAndGoToStep3 = async () => {
+    if (!user) {
+      setError('Debe iniciar sesión para completar el registro como paciente')
+      return
+    }
+    const nationalId = (user.nationalId ?? '').trim()
+    if (!nationalId) {
+      setError(
+        'Su cuenta no tiene cédula registrada. Complete el registro como Acompañante o actualice su perfil con su identificación.',
+      )
+      return
+    }
+
+    setSearching(true)
+    setError('')
+    setSearchNotice('')
+    setPatientFound(false)
+
+    const names = splitLoggedUserName(user.fullName)
+    const baseFromProfile = {
+      ...formData,
+      registradoComo: 'paciente',
+      pasaporte: 'C',
+      cedula: normalizeDocumentId(nationalId, 'C'),
+      ...names,
+      fechanac: birthDateFromProfile(user.birthDate),
+      email: user.email || formData.email,
+      celular: parsePatientCelular(user.phone) || formData.celular,
+      celularPrefix: '507',
+      sexo: '',
+    }
+
+    try {
+      const patient = await searchPatientByDocument(nationalId, 'C', baseFromProfile)
+      const cedulaForCheck = normalizeDocumentId(nationalId, 'C')
+      if (!patient) {
+        setFormData(baseFromProfile)
+        setPatientFound(true)
+        setSearchNotice('Se cargaron los datos de su cuenta. Complete el resto del formulario.')
+      }
+      const ok = await checkDuplicatePreadmission({
+        cedula: cedulaForCheck,
+        pasaporte: 'C',
+        departamento: formData.departamento,
+        fechaprobableatencion: formData.fechaprobableatencion,
+      })
+      if (!ok) return
+      setStep(3)
+    } catch (err) {
+      console.error('Error loading logged patient:', err)
+      setError(fetchNetworkErrorMessage(err, 'No se pudieron cargar los datos de su cuenta'))
+    } finally {
+      setSearching(false)
+    }
+  }
+
+  const handleRegistradoComoChange = async (value: string) => {
+    setError('')
+    setSearchNotice('')
+    setPatientFound(false)
+
+    if (value === 'paciente') {
+      setFormData((prev) => ({ ...prev, registradoComo: 'paciente' }))
+      await loadLoggedPatientAndGoToStep3()
+      return
+    }
+
+    if (value === 'acompanante') {
+      setFormData((prev) => ({
+        ...prev,
+        registradoComo: 'acompanante',
+        cedula: '',
+        name1: '',
+        name2: '',
+        apellido1: '',
+        apellido2: '',
+        sexo: '',
+        fechanac: '',
+        nacionalidad: '',
+        estadocivil: '',
+        tiposangre: '',
+        email: '',
+        celular: '',
+        provincia1: '',
+        distrito1: '',
+        corregimiento1: '',
+        direccion1: '',
+      }))
+      setEmailVerified(false)
+      return
+    }
+
+    setFormData((prev) => ({ ...prev, registradoComo: value }))
   }
 
   const clearInsuranceAttachments = () => {
@@ -520,21 +674,27 @@ export default function PreadmissionPage() {
     }
   }
 
-  const checkDuplicatePreadmission = async (): Promise<boolean> => {
-    if (
-      !formData.cedula ||
-      !formData.pasaporte ||
-      !formData.departamento ||
-      !formData.fechaprobableatencion
-    ) {
+  const checkDuplicatePreadmission = async (override?: {
+    cedula?: string
+    pasaporte?: string
+    departamento?: string
+    fechaprobableatencion?: string
+  }): Promise<boolean> => {
+    const cedula = (override?.cedula ?? formData.cedula).trim()
+    const pasaporte = override?.pasaporte ?? formData.pasaporte
+    const departamento = override?.departamento ?? formData.departamento
+    const fechaprobableatencion = (
+      override?.fechaprobableatencion ?? formData.fechaprobableatencion
+    ).trim()
+    if (!cedula || !pasaporte || !departamento || !fechaprobableatencion) {
       return true
     }
     try {
       const params = new URLSearchParams({
-        cedula: formData.cedula.trim(),
-        pasaporte: formData.pasaporte,
-        departamento: formData.departamento,
-        fechaprobableatencion: formData.fechaprobableatencion.trim(),
+        cedula,
+        pasaporte,
+        departamento,
+        fechaprobableatencion,
       })
       const response = await fetch(`/api/preadmission/check-active?${params.toString()}`)
       const data = await response.json().catch(() => ({}))
@@ -674,7 +834,10 @@ export default function PreadmissionPage() {
         if (attentionDateError) return attentionDateError
         return null
       case 2:
-        if (!formData.registradoComo || !formData.pasaporte || !formData.cedula) {
+        if (!formData.registradoComo) {
+          return 'Indique quién completa el registro'
+        }
+        if (!formData.pasaporte || !formData.cedula) {
           return 'Complete la identificación del paciente'
         }
         if (!isValidDocumentIdInput(formData.cedula)) {
@@ -1022,14 +1185,26 @@ export default function PreadmissionPage() {
                 </label>
                 <select
                   value={formData.registradoComo}
-                  onChange={(e) => setFormData({ ...formData, registradoComo: e.target.value })}
+                  onChange={(e) => void handleRegistradoComoChange(e.target.value)}
                   className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
                   required
+                  disabled={searching}
                 >
+                  <option value="">Seleccione...</option>
                   <option value="paciente">Paciente</option>
                   <option value="acompanante">Acompañante</option>
                 </select>
+                {formData.registradoComo === 'paciente' && searching && (
+                  <p className="mt-2 text-sm text-gray-600">Cargando datos de su cuenta...</p>
+                )}
+                {formData.registradoComo === 'paciente' && !searching && formData.cedula && (
+                  <p className="mt-2 text-sm text-green-700">
+                    Datos del paciente logueado cargados ({formData.cedula}). Continúe en Datos Personales.
+                  </p>
+                )}
               </div>
+              {formData.registradoComo === 'acompanante' && (
+                <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -1100,6 +1275,13 @@ export default function PreadmissionPage() {
                   onError={(message) => setError(message)}
                 />
               )}
+                </>
+              )}
+              {!formData.registradoComo && (
+                <p className="text-sm text-gray-500">
+                  Seleccione si quien completa es el paciente o un acompañante para continuar.
+                </p>
+              )}
             </div>
           )}
 
@@ -1162,7 +1344,9 @@ export default function PreadmissionPage() {
                     value={formData.sexo}
                     onChange={(e) => setFormData({ ...formData, sexo: e.target.value })}
                     className="w-full px-4 py-2 border border-gray-300 rounded-lg text-gray-900 bg-white"
+                    required
                   >
+                    <option value="">Seleccione...</option>
                     <option value="M">Masculino</option>
                     <option value="F">Femenino</option>
                   </select>

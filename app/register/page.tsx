@@ -75,10 +75,10 @@ export default function RegisterPage() {
       const payload = {
         email: normalizeEmail(formData.email),
         password: formData.password,
-        fullName: formData.full_name || undefined,
-        nationalId: normalizeDocumentId(formData.national_id, 'C') || undefined,
-        birthDate: formData.birth_date || undefined,
-        phone: phoneDigits || undefined,
+        fullName: formData.full_name.trim(),
+        nationalId: normalizeDocumentId(formData.national_id, 'C'),
+        birthDate: formData.birth_date.trim(),
+        phone: phoneDigits,
       }
       const response = await fetch('/api/auth/register', {
         method: 'POST',
@@ -88,7 +88,10 @@ export default function RegisterPage() {
 
       if (!response.ok) {
         const data = await response.json()
-        throw new Error(data.message || data.detail || 'Error al registrar')
+        const msg = Array.isArray(data.message)
+          ? data.message.join('. ')
+          : data.message || data.detail || 'Error al registrar'
+        throw new Error(msg)
       }
 
       router.push('/login')
@@ -142,7 +145,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="full_name" className="block text-sm font-medium text-gray-700 mb-2">
-                  Nombre completo
+                  Nombre completo *
                 </label>
                 <input
                   id="full_name"
@@ -159,7 +162,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="national_id" className="block text-sm font-medium text-gray-700 mb-2">
-                  Número de identificación
+                  Número de identificación *
                 </label>
                 <input
                   id="national_id"
@@ -178,7 +181,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="birth_date" className="block text-sm font-medium text-gray-700 mb-2">
-                  Fecha de nacimiento
+                  Fecha de nacimiento *
                 </label>
                 <input
                   id="birth_date"
@@ -193,7 +196,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
-                  Correo electrónico
+                  Correo electrónico *
                 </label>
                 <input
                   id="email"
@@ -208,7 +211,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-2">
-                  Número de celular
+                  Número de celular *
                 </label>
                 <input
                   id="phone"
@@ -228,7 +231,7 @@ export default function RegisterPage() {
 
               <div>
                 <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
-                  Contraseña
+                  Contraseña *
                 </label>
                 <div className="relative">
                   <input

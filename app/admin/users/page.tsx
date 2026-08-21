@@ -13,6 +13,7 @@ interface StaffUser {
   id: number
   email: string
   fullName: string | null
+  phone?: string | null
   role: string
   isActive: boolean
   sessionNeverExpires?: boolean
@@ -36,6 +37,8 @@ export default function AdminUsersPage() {
   const [users, setUsers] = useState<StaffUser[]>([])
   const [assignableRoles, setAssignableRoles] = useState<string[]>([])
   const [createForm, setCreateForm] = useState(emptyCreate)
+  const [q, setQ] = useState('')
+  const [appliedQ, setAppliedQ] = useState('')
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
@@ -43,6 +46,9 @@ export default function AdminUsersPage() {
   const [editUser, setEditUser] = useState<StaffUser | null>(null)
   const [editForm, setEditForm] = useState({
     fullName: '',
+    email: '',
+    phone: '',
+    password: '',
     role: 'reception',
     sessionNeverExpires: false,
     sessionExpiresMinutes: '' as string,
@@ -68,7 +74,10 @@ export default function AdminUsersPage() {
     setLoading(true)
     setError('')
     try {
-      const response = await fetch('/api/admin/users', {
+      const params = new URLSearchParams()
+      if (appliedQ.trim()) params.set('q', appliedQ.trim())
+      const qs = params.toString()
+      const response = await fetch(`/api/admin/users${qs ? `?${qs}` : ''}`, {
         headers: { Authorization: `Bearer ${token}` },
       })
       if (!response.ok) throw new Error('No se pudieron cargar los usuarios')
@@ -78,7 +87,7 @@ export default function AdminUsersPage() {
     } finally {
       setLoading(false)
     }
-  }, [token])
+  }, [token, appliedQ])
 
   useEffect(() => {
     if (!authHydrated) return
@@ -98,6 +107,9 @@ export default function AdminUsersPage() {
     if (!editUser) return
     setEditForm({
       fullName: editUser.fullName || '',
+      email: editUser.email || '',
+      phone: editUser.phone || '',
+      password: '',
       role: editUser.role,
       sessionNeverExpires: !!editUser.sessionNeverExpires,
       sessionExpiresMinutes:
@@ -155,6 +167,9 @@ export default function AdminUsersPage() {
       role?: string
       isActive?: boolean
       fullName?: string
+      email?: string
+      phone?: string | null
+      password?: string
       sessionNeverExpires?: boolean
       sessionExpiresMinutes?: number | null
     },
@@ -174,7 +189,10 @@ export default function AdminUsersPage() {
       })
       if (!response.ok) {
         const data = await response.json().catch(() => ({}))
-        throw new Error(data.message || 'No se pudo actualizar el usuario')
+        const msg = Array.isArray(data.message)
+          ? data.message.join('. ')
+          : data.message || 'No se pudo actualizar el usuario'
+        throw new Error(msg)
       }
       setMessage('Usuario actualizado.')
       await load()
@@ -193,8 +211,28 @@ export default function AdminUsersPage() {
       setError(PERSON_NAME_MESSAGE)
       return
     }
+    if (!isValidEmail(editForm.email)) {
+      setError(EMAIL_MESSAGE)
+      return
+    }
+    const phoneDigits = editForm.phone.replace(/\D/g, '')
+    if (phoneDigits && (phoneDigits.length > 8 || !/^\d+$/.test(phoneDigits))) {
+      setError('El celular debe contener solo dígitos (máximo 8)')
+      return
+    }
+    const password = editForm.password.trim()
+    if (password) {
+      const PASSWORD_RULE = /^(?=.*[A-Z])(?=.*[a-z0-9])[A-Za-z0-9!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]{8,}$/
+      if (!PASSWORD_RULE.test(password)) {
+        setError('La contraseña debe tener al menos 8 caracteres, ser alfanumérica e incluir una mayúscula')
+        return
+      }
+    }
     await updateUser(editUser.id, {
       fullName: editForm.fullName.trim(),
+      email: normalizeEmail(editForm.email),
+      phone: phoneDigits || null,
+      ...(password ? { password } : {}),
       role: editForm.role,
       sessionNeverExpires: editForm.sessionNeverExpires,
       sessionExpiresMinutes: editForm.sessionNeverExpires
@@ -319,8 +357,45 @@ export default function AdminUsersPage() {
 
           <div className="lg:col-span-2 bg-white rounded-lg shadow-lg p-6 overflow-x-auto">
             <h2 className="text-lg font-semibold text-gray-900 mb-4">Usuarios registrados</h2>
+            <div className="mb-4 flex flex-col sm:flex-row gap-3">
+              <input
+                type="search"
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') setAppliedQ(q)
+                }}
+                placeholder="Buscar por nombre, correo, celular o rol"
+                className="flex-1 px-3 py-2 border border-gray-300 rounded-lg"
+              />
+              <button
+                type="button"
+                onClick={() => setAppliedQ(q)}
+                className="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark shrink-0"
+              >
+                Buscar
+              </button>
+              {appliedQ.trim() && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setQ('')
+                    setAppliedQ('')
+                  }}
+                  className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 shrink-0"
+                >
+                  Limpiar
+                </button>
+              )}
+            </div>
             {loading ? (
               <p className="text-gray-600">Cargando usuarios...</p>
+            ) : users.length === 0 ? (
+              <p className="text-gray-600">
+                {appliedQ.trim()
+                  ? 'No hay usuarios con los filtros actuales.'
+                  : 'No hay usuarios registrados.'}
+              </p>
             ) : (
               <table className="min-w-full text-sm">
                 <thead>
@@ -379,10 +454,9 @@ export default function AdminUsersPage() {
           <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/40 p-4">
             <form
               onSubmit={saveEditModal}
-              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4"
+              className="bg-white rounded-lg shadow-xl max-w-md w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto"
             >
               <h3 className="text-lg font-semibold text-gray-900">Editar usuario</h3>
-              <p className="text-sm text-gray-600">{editUser.email}</p>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
                 <input
@@ -392,6 +466,50 @@ export default function AdminUsersPage() {
                   }
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+                <input
+                  type="email"
+                  value={editForm.email}
+                  onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                  required
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Celular (máx. 8)</label>
+                <input
+                  type="tel"
+                  value={editForm.phone}
+                  onChange={(e) =>
+                    setEditForm({
+                      ...editForm,
+                      phone: e.target.value.replace(/\D/g, '').slice(0, 8),
+                    })
+                  }
+                  inputMode="numeric"
+                  maxLength={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="61234567"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Nueva contraseña
+                </label>
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  value={editForm.password}
+                  onChange={(e) => setEditForm({ ...editForm, password: e.target.value })}
+                  minLength={8}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                  placeholder="Dejar vacío para no cambiar"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Solo complete si desea cambiarla (mín. 8 caracteres y una mayúscula).
+                </p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>

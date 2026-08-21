@@ -3,6 +3,7 @@ import {
   IsString,
   IsOptional,
   IsEnum,
+  IsNotEmpty,
   Matches,
   MinLength,
 } from 'class-validator';
@@ -63,27 +64,27 @@ export class RegisterPublicUserDto {
   })
   password: string;
 
-  @IsOptional()
-  @IsPersonName(true)
   @IsString()
-  fullName?: string;
+  @IsNotEmpty({ message: 'El nombre completo es obligatorio' })
+  @IsPersonName(false)
+  fullName: string;
 
-  @IsOptional()
   @IsString()
+  @IsNotEmpty({ message: 'El número de celular es obligatorio' })
   @Matches(/^\d{1,8}$/, {
     message: 'El número de celular debe contener solo dígitos (máximo 8)',
   })
-  phone?: string;
+  phone: string;
 
-  @IsOptional()
+  @IsString()
+  @IsNotEmpty({ message: 'El número de identificación es obligatorio' })
   @IsDocumentIdInput()
-  @IsString()
-  nationalId?: string;
+  nationalId: string;
 
-  @IsOptional()
-  @IsBirthDateDdMmYyyy(true)
   @IsString()
-  birthDate?: string;
+  @IsNotEmpty({ message: 'La fecha de nacimiento es obligatoria' })
+  @IsBirthDateDdMmYyyy(false)
+  birthDate: string;
 }
 
 export class LoginDto {
@@ -120,6 +121,11 @@ export class UserResponseDto {
   sessionNeverExpires?: boolean;
   sessionExpiresMinutes?: number | null;
   agentState?: string | null;
+  /** Cédula / identificación del paciente (si está registrada). */
+  nationalId?: string | null;
+  phone?: string | null;
+  /** Fecha de nacimiento (ISO yyyy-mm-dd o dd/mm/yyyy). */
+  birthDate?: string | null;
   /** Permisos efectivos del rol (vacío para paciente; todos para admin). */
   permissions?: string[];
 }

@@ -59,6 +59,9 @@ export class UsersService {
       fullName: savedUser.fullName,
       role: savedUser.role,
       isActive: savedUser.isActive,
+      nationalId: savedUser.nationalId ?? null,
+      phone: savedUser.phone ?? null,
+      birthDate: savedUser.birthDate ?? null,
     };
   }
 
@@ -89,6 +92,9 @@ export class UsersService {
       fullName: user.fullName,
       role: user.role,
       isActive: user.isActive,
+      nationalId: user.nationalId ?? null,
+      phone: user.phone ?? null,
+      birthDate: user.birthDate ?? null,
     };
   }
 }

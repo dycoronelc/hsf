@@ -103,6 +103,25 @@ export class UpdateStaffUserDto {
   fullName?: string;
 
   @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @IsOptional()
+  @IsString()
+  @Matches(/^\d{0,8}$/, {
+    message: 'El celular debe contener solo dígitos (máximo 8)',
+  })
+  phone?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(8)
+  @Matches(PASSWORD_RULE, {
+    message: 'La contraseña debe ser alfanumérica e incluir al menos una mayúscula',
+  })
+  password?: string;
+
+  @IsOptional()
   @IsBoolean()
   sessionNeverExpires?: boolean;
 

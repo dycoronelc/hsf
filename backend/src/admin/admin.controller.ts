@@ -131,8 +131,8 @@ export class AdminController {
 
   @Get('users')
   @RequirePermissions('manage_users')
-  listStaffUsers() {
-    return this.adminService.listStaffUsers();
+  listStaffUsers(@Query('q') q?: string) {
+    return this.adminService.listStaffUsers(q);
   }
 
   @Post('users')

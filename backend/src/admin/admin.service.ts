@@ -383,21 +383,33 @@ export class AdminService {
     return { ok: true };
   }
 
-  async listStaffUsers() {
-    return this.userRepository.find({
-      where: { role: Not(UserRole.PATIENT) },
-      order: { fullName: 'ASC', email: 'ASC' },
-      select: [
-        'id',
-        'email',
-        'fullName',
-        'role',
-        'isActive',
-        'createdAt',
-        'sessionNeverExpires',
-        'sessionExpiresMinutes',
-      ],
-    });
+  async listStaffUsers(q?: string) {
+    const qb = this.userRepository
+      .createQueryBuilder('u')
+      .where('u.role != :patient', { patient: UserRole.PATIENT })
+      .orderBy('u.fullName', 'ASC')
+      .addOrderBy('u.email', 'ASC')
+      .select([
+        'u.id',
+        'u.email',
+        'u.fullName',
+        'u.phone',
+        'u.role',
+        'u.isActive',
+        'u.createdAt',
+        'u.sessionNeverExpires',
+        'u.sessionExpiresMinutes',
+      ]);
+
+    if (q?.trim()) {
+      const term = `%${q.trim()}%`;
+      qb.andWhere(
+        '(u.email ILIKE :term OR u.fullName ILIKE :term OR u.phone ILIKE :term OR CAST(u.role AS text) ILIKE :term)',
+        { term },
+      );
+    }
+
+    return qb.getMany();
   }
 
   async listPatients(q?: string) {
@@ -553,6 +565,24 @@ export class AdminService {
     if (dto.role !== undefined) user.role = dto.role;
     if (dto.isActive !== undefined) user.isActive = dto.isActive;
     if (dto.fullName !== undefined) user.fullName = dto.fullName || null;
+    if (dto.email !== undefined && dto.email.trim().toLowerCase() !== user.email) {
+      const nextEmail = dto.email.trim().toLowerCase();
+      const existing = await this.userRepository.findOne({ where: { email: nextEmail } });
+      if (existing && existing.id !== id) {
+        throw new ConflictException('Ya existe una cuenta con este correo electrónico');
+      }
+      user.email = nextEmail;
+    }
+    if (dto.phone !== undefined) {
+      const phone = dto.phone?.replace(/\D/g, '') || null;
+      if (phone && phone.length > 8) {
+        throw new BadRequestException('El celular debe tener máximo 8 dígitos');
+      }
+      user.phone = phone;
+    }
+    if (dto.password !== undefined && dto.password.trim()) {
+      user.hashedPassword = await bcrypt.hash(dto.password.trim(), 10);
+    }
     if (dto.sessionNeverExpires !== undefined) {
       user.sessionNeverExpires = dto.sessionNeverExpires;
       if (dto.sessionNeverExpires) {
@@ -573,6 +603,7 @@ export class AdminService {
       id: saved.id,
       email: saved.email,
       fullName: saved.fullName,
+      phone: saved.phone,
       role: saved.role,
       isActive: saved.isActive,
       sessionNeverExpires: saved.sessionNeverExpires,

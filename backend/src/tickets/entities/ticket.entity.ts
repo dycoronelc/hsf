@@ -15,7 +15,7 @@ export class Ticket {
   @PrimaryGeneratedColumn()
   id: number;
 
-  @Column({ unique: true })
+  @Column()
   ticketNumber: string;
 
   @Column({ nullable: true })

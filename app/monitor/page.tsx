@@ -114,8 +114,6 @@ export default function MonitorPage() {
   const prevSnapRef = useRef<Record<number, string | null>>({})
   const firstPollDoneRef = useRef(false)
   const speechUnlockedRef = useRef(false)
-  const [callFlashKey, setCallFlashKey] = useState<string | null>(null)
-  const callFlashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const refreshVoices = useCallback(() => {
     warmupSpeechVoices()
@@ -273,23 +271,10 @@ export default function MonitorPage() {
       })
       setLastAnnouncement(text)
       enqueueMonitorAnnouncement(text)
-
-      const flashKey = `${ch.service_id}-${cur.ticket_number}-${cur.call_count ?? 0}-${cur.called_at ?? ''}`
-      setCallFlashKey(flashKey)
-      if (callFlashTimerRef.current) clearTimeout(callFlashTimerRef.current)
-      callFlashTimerRef.current = setTimeout(() => {
-        setCallFlashKey((k) => (k === flashKey ? null : k))
-      }, 4500)
     }
 
     prevSnapRef.current = next
   }, [queues, loading, voiceTemplate, speechPrefs, ensureSpeechReady])
-
-  useEffect(() => {
-    return () => {
-      if (callFlashTimerRef.current) clearTimeout(callFlashTimerRef.current)
-    }
-  }, [])
 
   if (loading) {
     return (
@@ -315,11 +300,6 @@ export default function MonitorPage() {
 
   // Máximo 4 turnos en pantalla
   const visibleCalls = activeCalls.slice(0, 4)
-  const featuredCall = visibleCalls[0] ?? null
-  const featuredKey = featuredCall
-    ? `${featuredCall.service_id}-${featuredCall.current.ticket_number}-${featuredCall.current.call_count ?? 0}-${featuredCall.current.called_at ?? ''}`
-    : null
-  const isFreshCall = !!featuredKey && featuredKey === callFlashKey
 
   const currentMedia = media[mediaIndex] ?? null
   const videoEmbed = currentMedia?.kind === 'video' && currentMedia.body
@@ -578,11 +558,9 @@ export default function MonitorPage() {
                   <div
                     key={callKey}
                     className={`rounded-xl border-2 px-3 py-3 sm:px-4 sm:py-4 flex-1 min-h-0 flex flex-col justify-center ${
-                      isTop && isFreshCall
-                        ? 'bg-white text-slate-900 border-amber-300 monitor-call-flash'
-                        : isTop
-                          ? 'bg-white text-slate-900 border-white'
-                          : 'bg-white/10 border-white/25 text-white'
+                      isTop
+                        ? 'bg-white text-slate-900 border-white monitor-call-fade'
+                        : 'bg-white/10 border-white/25 text-white'
                     }`}
                   >
                     {isTop && (
@@ -598,32 +576,27 @@ export default function MonitorPage() {
                         Llamando
                       </p>
                     )}
-                    <p
-                      className={ticketNumberClassName(
-                        displayColor,
-                        `font-black tracking-tight leading-none break-all ${
-                          isTop ? 'text-slate-900' : 'text-white'
-                        } text-5xl sm:text-6xl lg:text-7xl`,
-                      )}
-                    >
-                      {current.ticket_number}
-                    </p>
-                    <p
-                      className={`mt-2 text-sm sm:text-base font-medium leading-snug truncate ${
-                        isTop ? 'text-slate-600' : 'text-white/85'
-                      }`}
-                    >
-                      {service_name}
-                    </p>
-                    {current.window_number ? (
-                      <div
-                        className={`mt-3 inline-block self-start rounded-lg px-3 py-1.5 text-sm sm:text-base font-bold ${
-                          isTop ? 'bg-[#00816D] text-white' : 'bg-white text-slate-900'
-                        }`}
+                    <div className="w-fit max-w-full">
+                      <p
+                        className={ticketNumberClassName(
+                          displayColor,
+                          `font-black tracking-tight leading-none break-all ${
+                            isTop ? 'text-slate-900' : 'text-white'
+                          } text-5xl sm:text-6xl lg:text-7xl`,
+                        )}
                       >
-                        {current.window_number}
-                      </div>
-                    ) : null}
+                        {current.ticket_number}
+                      </p>
+                      {current.window_number ? (
+                        <div
+                          className={`mt-3 w-full text-center rounded-lg px-3 py-2 text-xl sm:text-2xl lg:text-3xl font-bold leading-tight ${
+                            isTop ? 'bg-[#00816D] text-white' : 'bg-white text-slate-900'
+                          }`}
+                        >
+                          {current.window_number}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 )
               })
@@ -640,19 +613,17 @@ export default function MonitorPage() {
       </footer>
 
       <style jsx global>{`
-        @keyframes monitor-call-pulse {
-          0% {
-            box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.7);
-          }
-          70% {
-            box-shadow: 0 0 0 16px rgba(251, 191, 36, 0);
-          }
+        @keyframes monitor-call-fade {
+          0%,
           100% {
-            box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+            opacity: 1;
+          }
+          50% {
+            opacity: 0.28;
           }
         }
-        .monitor-call-flash {
-          animation: monitor-call-pulse 1.1s ease-out 3;
+        .monitor-call-fade {
+          animation: monitor-call-fade 1.5s ease-in-out infinite;
         }
       `}</style>
     </div>

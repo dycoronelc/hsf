@@ -30,6 +30,12 @@ export class TicketsController {
     return this.settingsService.getCallTimings();
   }
 
+  @Get('occupied-destinations')
+  @UseGuards(JwtAuthGuard)
+  async listOccupiedDestinations() {
+    return this.ticketsService.listOccupiedDestinations();
+  }
+
   @Post('kiosk')
   async createKioskTicket(@Body() createDto: CreateTicketDto) {
     return this.ticketsService.createKioskTicket(createDto);

@@ -20,6 +20,9 @@ interface User {
   agentState?: string | null
   sessionNeverExpires?: boolean
   permissions?: string[]
+  nationalId?: string | null
+  phone?: string | null
+  birthDate?: string | null
 }
 
 interface AuthContextType {

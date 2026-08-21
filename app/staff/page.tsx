@@ -5,7 +5,7 @@ import { useAuth } from '../providers'
 import { useRouter } from 'next/navigation'
 import { SiteLayout } from '../components/SiteLayout'
 import { LiveQrScannerModal } from '@/app/components/LiveQrScannerModal'
-import { isAgentOperational } from '@/lib/agentState'
+import { canSelectCallDestination, isAgentOperational } from '@/lib/agentState'
 import { canAccessStaffConsole } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
@@ -22,10 +22,18 @@ interface Ticket {
   priority_level?: number
   triage_color?: string | null
   created_at: string
+  completed_at?: string | null
   window_number: string | null
   estimated_wait_label?: string
   call_count?: number
   called_at?: string | null
+  notes?: string | null
+}
+
+type QueueView = 'all' | 'priority' | 'attended' | 'transferred'
+
+function isTransferOriginTicket(ticket: Ticket): boolean {
+  return Boolean(ticket.notes?.startsWith('Transferido'))
 }
 
 const DEFAULT_RECALL_WAIT_SECONDS = 60
@@ -61,6 +69,7 @@ export default function StaffConsolePage() {
   const [selectedService, setSelectedService] = useState<number | null>(null)
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [windowNumber, setWindowNumber] = useState('')
+  const [occupiedDestinations, setOccupiedDestinations] = useState<string[]>([])
   const [loading, setLoading] = useState(false)
   const [noShowTarget, setNoShowTarget] = useState<Ticket | null>(null)
   const [noShowReason, setNoShowReason] = useState('')
@@ -68,10 +77,11 @@ export default function StaffConsolePage() {
   const [checkInLoading, setCheckInLoading] = useState(false)
   const [checkInMessage, setCheckInMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showScanner, setShowScanner] = useState(false)
-  const [agentState, setAgentState] = useState<string>(user?.agentState ?? '')
+  const [agentState, setAgentState] = useState('')
   const [transferringId, setTransferringId] = useState<number | null>(null)
   const [transferNotice, setTransferNotice] = useState('')
-  const [queueView, setQueueView] = useState<'all' | 'priority'>('all')
+  const [queueView, setQueueView] = useState<QueueView>('all')
+  const [queueSearch, setQueueSearch] = useState('')
   const [apiError, setApiError] = useState('')
   const scannerContainerId = 'staff-qr-reader'
 
@@ -96,6 +106,26 @@ export default function StaffConsolePage() {
       }
     } catch (error) {
       console.error('Error fetching services:', error)
+    }
+  }
+
+  const fetchOccupiedDestinations = async () => {
+    if (!token) return
+    try {
+      const response = await fetch('/api/tickets/occupied-destinations', {
+        headers: authHeaders(token),
+      })
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
+      if (response.ok) {
+        const data = await response.json()
+        setOccupiedDestinations(
+          Array.isArray(data.destinations)
+            ? data.destinations.map((d: string) => String(d).trim()).filter(Boolean)
+            : [],
+        )
+      }
+    } catch (error) {
+      console.error('Error fetching occupied destinations:', error)
     }
   }
 
@@ -165,16 +195,28 @@ export default function StaffConsolePage() {
   }, [canUseStaff, tickets])
 
   useEffect(() => {
-    if (!canUseStaff) return
-    if (user?.agentState) setAgentState(user.agentState)
-  }, [canUseStaff, user?.agentState])
-
-  useEffect(() => {
     if (!canUseStaff || !token) return
     fetchTickets()
-    const interval = setInterval(fetchTickets, 3000)
+    fetchOccupiedDestinations()
+    const interval = setInterval(() => {
+      fetchTickets()
+      fetchOccupiedDestinations()
+    }, 3000)
     return () => clearInterval(interval)
   }, [canUseStaff, selectedService, token])
+
+  useEffect(() => {
+    if (!windowNumber.trim()) return
+    if (!occupiedDestinations.includes(windowNumber.trim())) return
+    const stillMine = tickets.some(
+      (t) =>
+        (t.status === 'llamado' || t.status === 'en_atencion') &&
+        (t.window_number || '').trim() === windowNumber.trim(),
+    )
+    if (!stillMine) {
+      setWindowNumber('')
+    }
+  }, [occupiedDestinations, tickets, windowNumber])
 
   if (!authHydrated) {
     return (
@@ -211,6 +253,7 @@ export default function StaffConsolePage() {
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         fetchTickets()
+        fetchOccupiedDestinations()
       } else {
         const data = await response.json().catch(() => ({}))
         setApiError(apiErrorMessage(data, 'No se pudo llamar el turno'))
@@ -245,6 +288,9 @@ export default function StaffConsolePage() {
 
   const handleAgentStateChange = async (newState: string) => {
     setAgentState(newState)
+    if (!canSelectCallDestination(newState)) {
+      setWindowNumber('')
+    }
     try {
       await fetch('/api/auth/agent-state', {
         method: 'PATCH',
@@ -275,7 +321,9 @@ export default function StaffConsolePage() {
           ? data.created_tickets.map((t: { ticket_number?: string }) => t.ticket_number).filter(Boolean)
           : []
         if (created.length) {
-          setTransferNotice(`Transferido a cola: ${created.join(', ')}`)
+          setTransferNotice(
+            `Transferido (mismo número): ${Array.from(new Set(created)).join(', ')}`,
+          )
         } else {
           setTransferNotice(data.message || 'Ticket transferido')
         }
@@ -406,6 +454,7 @@ export default function StaffConsolePage() {
       llamado: 'bg-orange-100 text-orange-800 border border-orange-300',
       en_atencion: 'bg-purple-100 text-purple-800',
       finalizado: 'bg-green-100 text-green-800',
+      transferido: 'bg-indigo-100 text-indigo-800',
       no_show: 'bg-red-100 text-red-800',
     }
     return colors[status] || 'bg-gray-100 text-gray-800'
@@ -419,9 +468,23 @@ export default function StaffConsolePage() {
       llamado: 'Llamado',
       en_atencion: 'En Atención',
       finalizado: 'Finalizado',
+      transferido: 'Transferido',
       no_show: 'No se presentó',
     }
     return labels[status] || status
+  }
+
+  const formatTicketDate = (value?: string | null) => {
+    if (!value) return '—'
+    try {
+      return new Date(value).toLocaleString('es-PA', {
+        timeZone: 'America/Panama',
+        dateStyle: 'short',
+        timeStyle: 'short',
+      })
+    } catch {
+      return value
+    }
   }
 
   const doCheckInByCode = async (code: string) => {
@@ -467,10 +530,38 @@ export default function StaffConsolePage() {
   }
 
   const agentCanOperate = isAgentOperational(agentState)
+  const destinationUnlocked = canSelectCallDestination(agentState)
+  const occupiedSet = new Set(occupiedDestinations)
+
+  const matchesQueueSearch = (ticket: Ticket) => {
+    const q = queueSearch.trim().toLowerCase()
+    if (!q) return true
+    const haystack = [
+      ticket.ticket_number,
+      ticket.service_name,
+      ticket.service_code,
+      ticket.status,
+      getStatusLabel(ticket.status),
+      ticket.priority,
+      ticket.window_number,
+      ticket.notes,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return haystack.includes(q)
+  }
 
   const queueTickets = tickets
     .filter((t) => ['creado', 'check_in'].includes(t.status))
-    .filter((t) => (queueView === 'priority' ? (t.priority_level ?? 2) <= 2 : true))
+    .filter((t) => {
+      const transferred = isTransferOriginTicket(t)
+      if (queueView === 'transferred') return transferred
+      if (queueView === 'priority') return !transferred && (t.priority_level ?? 2) <= 2
+      // "Todos": cola normal sin transferidos
+      return !transferred
+    })
+    .filter(matchesQueueSearch)
     .sort((a, b) => {
       const levelA = a.priority_level ?? 2
       const levelB = b.priority_level ?? 2
@@ -481,6 +572,18 @@ export default function StaffConsolePage() {
       }
       return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
     })
+
+  const attendedTickets = tickets
+    .filter((t) => t.status === 'finalizado')
+    .filter(matchesQueueSearch)
+    .sort((a, b) => {
+      const timeA = new Date(a.completed_at || a.created_at).getTime()
+      const timeB = new Date(b.completed_at || b.created_at).getTime()
+      return timeB - timeA
+    })
+
+  const showWaitingQueue = queueView === 'all' || queueView === 'priority' || queueView === 'transferred'
+  const searchActive = queueSearch.trim().length > 0
 
   return (
     <SiteLayout>
@@ -576,14 +679,17 @@ export default function StaffConsolePage() {
             <select
               value={agentState}
               onChange={(e) => handleAgentStateChange(e.target.value)}
-              className="w-full md:w-56 px-4 py-2 border border-gray-300 rounded-lg"
+              className="w-full md:w-56 px-4 py-2 border border-gray-300 rounded-lg bg-white"
             >
               <option value="">Seleccionar...</option>
               {agentStateOptions.map((opt) => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-500 mt-1">En estados no operativos no se asignan tickets ni llamados.</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Seleccione En línea, Manual o Fuera de línea para habilitar el destino. Solo En línea y
+              Manual permiten llamar turnos.
+            </p>
           </div>
 
           {/* Destino de llamado */}
@@ -594,18 +700,36 @@ export default function StaffConsolePage() {
             <select
               value={windowNumber}
               onChange={(e) => setWindowNumber(e.target.value)}
-              className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg bg-white"
+              disabled={!destinationUnlocked}
+              className="w-full md:w-80 px-4 py-2 border border-gray-300 rounded-lg bg-white disabled:bg-gray-100 disabled:text-gray-500 disabled:cursor-not-allowed"
             >
               <option value="">Seleccione un destino</option>
-              {CALL_DESTINATIONS.map((dest) => (
-                <option key={dest} value={dest}>
-                  {dest}
-                </option>
-              ))}
+              {CALL_DESTINATIONS.map((dest) => {
+                const occupied = occupiedSet.has(dest)
+                const keepSelected = windowNumber === dest
+                const disabledOption = occupied && !keepSelected
+                return (
+                  <option key={dest} value={dest} disabled={disabledOption}>
+                    {disabledOption ? `${dest} (ocupado)` : dest}
+                  </option>
+                )
+              })}
             </select>
-            {!windowNumber.trim() && (
+            {!destinationUnlocked && (
+              <p className="text-sm text-amber-700 mt-2">
+                Seleccione el estado del agente (En línea, Manual o Fuera de línea) para elegir un
+                destino.
+              </p>
+            )}
+            {destinationUnlocked && !windowNumber.trim() && (
               <p className="text-sm text-amber-700 mt-2">
                 Seleccione el destino para habilitar <strong>Llamar</strong>.
+              </p>
+            )}
+            {destinationUnlocked && occupiedSet.size > 0 && (
+              <p className="text-xs text-gray-500 mt-2">
+                Los destinos ocupados se liberan al <strong>Finalizar</strong> o marcar{' '}
+                <strong>No se presentó</strong>.
               </p>
             )}
           </div>
@@ -801,14 +925,105 @@ export default function StaffConsolePage() {
             >
               Tickets con prioridades
             </button>
+            <button
+              type="button"
+              onClick={() => setQueueView('attended')}
+              className={`px-4 py-2 rounded-lg text-sm ${queueView === 'attended' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'}`}
+            >
+              Atendidos
+            </button>
+            <button
+              type="button"
+              onClick={() => setQueueView('transferred')}
+              className={`px-4 py-2 rounded-lg text-sm ${queueView === 'transferred' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'}`}
+            >
+              Transferidos
+            </button>
           </div>
 
-          {/* Queue */}
+          <div className="mb-4 flex flex-wrap items-center gap-2">
+            <label htmlFor="staff-queue-search" className="sr-only">
+              Buscar en la cola
+            </label>
+            <input
+              id="staff-queue-search"
+              type="search"
+              value={queueSearch}
+              onChange={(e) => setQueueSearch(e.target.value)}
+              placeholder="Buscar por número, servicio, estado…"
+              className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg text-sm"
+            />
+            {searchActive && (
+              <button
+                type="button"
+                onClick={() => setQueueSearch('')}
+                className="px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
+
+          {queueView === 'attended' ? (
+            <div>
+              <h2 className="text-xl font-semibold mb-4">Tickets atendidos</h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Vista informativa de turnos finalizados. No se pueden llamar desde aquí.
+              </p>
+              {attendedTickets.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  {searchActive
+                    ? 'Ningún ticket atendido coincide con la búsqueda'
+                    : 'No hay tickets atendidos'}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attendedTickets.map((ticket) => (
+                    <div
+                      key={ticket.id}
+                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
+                    >
+                      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                        <span className="text-2xl font-bold text-gray-900">
+                          {ticket.ticket_number}
+                        </span>
+                        <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(ticket.status)}`}>
+                          {getStatusLabel(ticket.status)}
+                        </span>
+                        <span className="text-sm text-gray-600">
+                          {ticket.service_name}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          Finalizado: {formatTicketDate(ticket.completed_at || ticket.created_at)}
+                        </span>
+                        {ticket.window_number && (
+                          <span className="text-sm text-gray-500">
+                            Destino: {ticket.window_number}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : showWaitingQueue ? (
           <div>
-            <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
+            <h2 className="text-xl font-semibold mb-4">
+              {queueView === 'transferred' ? 'Cola de transferidos' : 'Cola de Espera'}
+            </h2>
+            {queueView === 'transferred' && (
+              <p className="text-sm text-gray-600 mb-4">
+                Turnos transferidos que conservan su número original. Solo aparecen en esta pestaña y se pueden llamar igual que en la cola general.
+              </p>
+            )}
             {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                No hay pacientes en cola
+                {searchActive
+                  ? 'Ningún ticket coincide con la búsqueda'
+                  : queueView === 'transferred'
+                    ? 'No hay tickets transferidos en cola'
+                    : 'No hay pacientes en cola'}
               </div>
             ) : (
               <div className="space-y-2">
@@ -817,7 +1032,7 @@ export default function StaffConsolePage() {
                     key={ticket.id}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100"
                   >
-                    <div className="flex items-center space-x-4">
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
                       <span className="text-2xl font-bold text-gray-900">
                         {ticket.ticket_number}
                       </span>
@@ -830,6 +1045,11 @@ export default function StaffConsolePage() {
                       {ticket.estimated_wait_label && (
                         <span className="text-sm text-gray-500">
                           Espera estimada: {ticket.estimated_wait_label}
+                        </span>
+                      )}
+                      {isTransferOriginTicket(ticket) && ticket.notes && (
+                        <span className="text-sm text-indigo-700">
+                          {ticket.notes}
                         </span>
                       )}
                     </div>
@@ -847,6 +1067,7 @@ export default function StaffConsolePage() {
               </div>
             )}
           </div>
+          ) : null}
         </div>
       </div>
 
