@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { HospitalLogo } from '../components/HospitalLogo'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
+import { TicketPrintData, TicketPrintOverlay } from '../components/TicketPrintSlip'
 
 interface Service {
   id: number
@@ -24,6 +25,8 @@ function KioskContent() {
   const [ticketCreated, setTicketCreated] = useState(false)
   const [ticketNumber, setTicketNumber] = useState('')
   const [qrCode, setQrCode] = useState('')
+  const [savedTicket, setSavedTicket] = useState<TicketPrintData | null>(null)
+  const [printTicket, setPrintTicket] = useState<TicketPrintData | null>(null)
 
   // Obtener sede desde query params si existe
   const sedeId = searchParams.get('sede')
@@ -73,8 +76,20 @@ function KioskContent() {
       }
 
       const ticket = await response.json()
+      const serviceName =
+        ticket.service_name ||
+        services.find((s) => s.id === selectedService)?.name ||
+        ''
       setTicketNumber(ticket.ticket_number || ticket.ticketNumber || '')
       setQrCode(ticket.qr_code || ticket.qrCode || '')
+      setSavedTicket({
+        ticketNumber: ticket.ticket_number || ticket.ticketNumber || '',
+        serviceName,
+        qrCode: ticket.qr_code || ticket.qrCode || '',
+        queuePosition: ticket.queue_position,
+        createdAt: ticket.created_at ?? null,
+      })
+      setPrintTicket(null)
       setTicketCreated(true)
     } catch (err: any) {
       setError(err.message)
@@ -84,11 +99,13 @@ function KioskContent() {
   }
 
   const handlePrintTicket = () => {
-    window.print()
+    if (!savedTicket) return
+    setPrintTicket(savedTicket)
   }
 
   if (ticketCreated) {
     return (
+      <>
       <div className="min-h-screen hospital-page-bg flex items-center justify-center p-4">
         <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8 text-center">
           <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -118,7 +135,8 @@ function KioskContent() {
             </p>
             <button
               onClick={handlePrintTicket}
-              className="w-full bg-hospital-blue text-white py-3 rounded-lg font-semibold hover:bg-hospital-blue-dark"
+              disabled={!savedTicket?.qrCode}
+              className="w-full bg-hospital-blue text-white py-3 rounded-lg font-semibold hover:bg-hospital-blue-dark disabled:opacity-50"
             >
               Imprimir Ticket
             </button>
@@ -128,6 +146,8 @@ function KioskContent() {
                 setSelectedService(null)
                 setTicketNumber('')
                 setQrCode('')
+                setSavedTicket(null)
+                setPrintTicket(null)
               }}
               className="w-full border border-gray-300 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-50"
             >
@@ -142,6 +162,14 @@ function KioskContent() {
           </div>
         </div>
       </div>
+      {printTicket && (
+        <TicketPrintOverlay
+          ticket={printTicket}
+          autoPrint
+          onClose={() => setPrintTicket(null)}
+        />
+      )}
+      </>
     )
   }
 

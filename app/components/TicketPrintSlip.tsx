@@ -27,45 +27,59 @@ export { formatTicketGeneratedAt }
 
 export function TicketPrintSlip({
   ticket,
-  footerNote = 'Presente este ticket en la ventanilla cuando sea llamado.',
+  footerNote = 'Presente este ticket en ventanilla cuando sea llamado.',
 }: TicketPrintSlipProps) {
   const { date, time } = formatTicketGeneratedAt(ticket.createdAt)
 
   return (
-    <div className="ticket-print-slip mx-auto max-w-xs text-center text-gray-900">
-      <div className="flex justify-center">
+    <div className="ticket-print-slip flex flex-col items-center justify-between text-center text-gray-900">
+      <div className="flex w-full flex-col items-center">
         <Image
           src="/logo-hospital-santa-fe.png"
           alt="Hospital Santa Fe"
-          width={120}
-          height={120}
-          className="h-24 w-24 object-contain"
+          width={72}
+          height={72}
+          className="h-10 w-auto object-contain sm:h-12"
           unoptimized
           priority
         />
+
+        <p className="mt-1 text-[10px] font-medium leading-tight text-gray-700 sm:text-xs">
+          Número de turno
+        </p>
+        <p className="mt-0.5 text-2xl font-bold leading-none tracking-tight text-gray-900 sm:text-3xl">
+          {ticket.ticketNumber}
+        </p>
+
+        {ticket.serviceName ? (
+          <p className="mt-0.5 max-w-full truncate text-[9px] leading-tight text-gray-600 sm:text-[10px]">
+            {ticket.serviceName}
+          </p>
+        ) : null}
+
+        {typeof ticket.queuePosition === 'number' && ticket.queuePosition > 0 && (
+          <p className="mt-0.5 text-[9px] leading-tight text-gray-600 sm:text-[10px]">
+            Cola: {ticket.queuePosition}
+          </p>
+        )}
       </div>
 
-      <p className="mt-4 text-base text-gray-900">Número de turno</p>
-      <p className="mt-1 text-4xl font-bold tracking-tight text-gray-800">{ticket.ticketNumber}</p>
+      <div className="my-1 flex justify-center">
+        <QRCodeSVG value={ticket.qrCode} size={72} level="M" className="h-[18mm] w-[18mm]" />
+      </div>
 
-      {typeof ticket.queuePosition === 'number' && ticket.queuePosition > 0 && (
-        <p className="mt-2 text-sm text-gray-600">Posición en cola: {ticket.queuePosition}</p>
-      )}
+      <div className="flex w-full flex-col items-center">
+        <p className="max-w-full px-1 text-[8px] leading-tight text-gray-800 sm:text-[9px]">
+          {footerNote}
+        </p>
 
-      <div className="my-5 flex justify-center">
-        <div className="rounded-lg bg-white p-3 ring-1 ring-gray-200">
-          <QRCodeSVG value={ticket.qrCode} size={148} level="M" />
+        <div className="mt-1 inline-flex items-center justify-center gap-2 rounded border border-slate-700 px-2 py-0.5 text-[9px] font-semibold leading-tight text-gray-900 sm:text-[10px]">
+          <span>{date}</span>
+          <span className="text-slate-400" aria-hidden>
+            |
+          </span>
+          <span>{time}</span>
         </div>
-      </div>
-
-      <p className="text-sm text-gray-800">{footerNote}</p>
-
-      <div className="mt-5 inline-flex items-center justify-center gap-3 rounded-full border-2 border-slate-700 px-5 py-2 text-sm font-semibold text-gray-900">
-        <span>{date}</span>
-        <span className="text-slate-400" aria-hidden>
-          |
-        </span>
-        <span>{time}</span>
       </div>
     </div>
   )
@@ -118,6 +132,9 @@ export function TicketPrintOverlay({
           <h2 id="ticket-print-title" className="mb-4 text-lg font-semibold text-gray-900">
             Ticket generado
           </h2>
+          <p className="mb-3 text-xs text-gray-500">
+            Formato de impresión: 7,9 cm × 10 cm (ticket térmico).
+          </p>
           <TicketPrintSlip ticket={ticket} />
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <button
