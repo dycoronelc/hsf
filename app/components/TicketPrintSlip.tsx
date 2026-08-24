@@ -1,10 +1,11 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { createPortal } from 'react-dom'
 import Image from 'next/image'
 import { QRCodeSVG } from 'qrcode.react'
 import { formatTicketGeneratedAt } from '@/lib/timezone'
+import { downloadTicketPdf, openTicketPdfForPrint } from '@/lib/ticketPdf'
 
 export interface TicketPrintData {
   ticketNumber: string
@@ -103,12 +104,47 @@ export function TicketPrintOverlay({
   onClose: () => void
 }) {
   useTicketPrintBodyClass(true)
+  const [pdfBusy, setPdfBusy] = useState(false)
+  const [pdfError, setPdfError] = useState('')
+
+  const runPdf = async (mode: 'open' | 'download') => {
+    setPdfError('')
+    setPdfBusy(true)
+    try {
+      if (mode === 'download') {
+        await downloadTicketPdf(ticket)
+      } else {
+        await openTicketPdfForPrint(ticket)
+      }
+    } catch (err) {
+      console.error('Error generando PDF del ticket:', err)
+      setPdfError('No se pudo generar el PDF del ticket. Intente de nuevo.')
+    } finally {
+      setPdfBusy(false)
+    }
+  }
 
   useEffect(() => {
     if (!autoPrint) return
-    const timer = window.setTimeout(() => window.print(), 500)
-    return () => window.clearTimeout(timer)
-  }, [autoPrint, ticket.ticketNumber])
+    // Descarga automática (no la bloquea el navegador como un pop-up diferido).
+    let cancelled = false
+    ;(async () => {
+      setPdfError('')
+      setPdfBusy(true)
+      try {
+        if (!cancelled) await downloadTicketPdf(ticket)
+      } catch (err) {
+        console.error('Error generando PDF del ticket:', err)
+        if (!cancelled) setPdfError('No se pudo generar el PDF del ticket. Intente de nuevo.')
+      } finally {
+        if (!cancelled) setPdfBusy(false)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo al abrir este ticket
+  }, [autoPrint, ticket.ticketNumber, ticket.qrCode])
 
   const printPortal =
     typeof document !== 'undefined'
@@ -133,16 +169,31 @@ export function TicketPrintOverlay({
             Ticket generado
           </h2>
           <p className="mb-3 text-xs text-gray-500">
-            Formato de impresión: 7,9 cm × 10 cm (ticket térmico).
+            PDF de página exacta: 7,9 cm × 10 cm. Ábralo o descárguelo e imprima con escala 100% y sin
+            “ajustar a página”.
           </p>
           <TicketPrintSlip ticket={ticket} />
+          {pdfError && (
+            <p className="mt-3 text-sm text-red-600" role="alert">
+              {pdfError}
+            </p>
+          )}
           <div className="mt-6 flex flex-wrap justify-end gap-2">
             <button
               type="button"
-              onClick={() => window.print()}
-              className="rounded-lg bg-hospital-blue px-4 py-2 text-sm font-medium text-white hover:bg-hospital-blue-dark"
+              onClick={() => void runPdf('open')}
+              disabled={pdfBusy}
+              className="rounded-lg bg-hospital-blue px-4 py-2 text-sm font-medium text-white hover:bg-hospital-blue-dark disabled:opacity-50"
             >
-              Imprimir de nuevo
+              {pdfBusy ? 'Generando…' : 'Abrir PDF / Imprimir'}
+            </button>
+            <button
+              type="button"
+              onClick={() => void runPdf('download')}
+              disabled={pdfBusy}
+              className="rounded-lg border border-hospital-blue px-4 py-2 text-sm font-medium text-hospital-blue hover:bg-blue-50 disabled:opacity-50"
+            >
+              Descargar PDF
             </button>
             <button
               type="button"
