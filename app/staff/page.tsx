@@ -545,6 +545,7 @@ export default function StaffConsolePage() {
       ticket.priority,
       ticket.window_number,
       ticket.notes,
+      ticket.triage_color,
     ]
       .filter(Boolean)
       .join(' ')
@@ -760,14 +761,15 @@ export default function StaffConsolePage() {
                           {ticket.window_number && <span>{ticket.window_number}</span>}
                           {ticket.triage_color && (
                             <span className="inline-flex items-center gap-1.5 capitalize">
-                              Color:{' '}
+                              Color asignado:{' '}
                               <span
                                 className={`inline-block h-3 w-3 rounded-full ${
                                   TRIAGE_COLOR_OPTIONS.find((c) => c.value === ticket.triage_color)?.className ||
                                   'bg-gray-400'
                                 }`}
                               />
-                              {ticket.triage_color}
+                              {TRIAGE_COLOR_OPTIONS.find((c) => c.value === ticket.triage_color)?.label ||
+                                ticket.triage_color}
                             </span>
                           )}
                           {(ticket.call_count ?? 0) > 0 && (
@@ -1045,6 +1047,22 @@ export default function StaffConsolePage() {
                       {ticket.estimated_wait_label && (
                         <span className="text-sm text-gray-500">
                           Espera estimada: {ticket.estimated_wait_label}
+                        </span>
+                      )}
+                      {ticket.triage_color && (
+                        <span className="inline-flex items-center gap-1.5 text-sm capitalize text-gray-700">
+                          Color asignado:
+                          <span
+                            className={`inline-block h-3.5 w-3.5 rounded-full border border-black/10 ${
+                              TRIAGE_COLOR_OPTIONS.find((c) => c.value === ticket.triage_color)?.className ||
+                              'bg-gray-400'
+                            }`}
+                            aria-hidden
+                          />
+                          <span className="font-semibold">
+                            {TRIAGE_COLOR_OPTIONS.find((c) => c.value === ticket.triage_color)?.label ||
+                              ticket.triage_color}
+                          </span>
                         </span>
                       )}
                       {isTransferOriginTicket(ticket) && ticket.notes && (

@@ -72,6 +72,14 @@ const TRIAGE_COLOR_STYLES: Record<string, string> = {
   azul: 'bg-blue-600 text-white border-blue-700',
 }
 
+const TRIAGE_COLOR_LABELS: Record<string, string> = {
+  rojo: 'Rojo',
+  naranja: 'Naranja',
+  amarillo: 'Amarillo',
+  verde: 'Verde',
+  azul: 'Azul',
+}
+
 function ticketNumberClassName(displayColor: string | null, base: string): string {
   if (!displayColor) return base
   return `${base} px-3 py-1 rounded-lg border-2 ${TRIAGE_COLOR_STYLES[displayColor] || 'bg-slate-700 text-white'}`
@@ -587,6 +595,15 @@ export default function MonitorPage() {
                       >
                         {current.ticket_number}
                       </p>
+                      {displayColor ? (
+                        <p
+                          className={`mt-2 inline-flex items-center gap-2 rounded-lg border-2 px-3 py-1.5 text-sm sm:text-base font-bold uppercase tracking-wide ${
+                            TRIAGE_COLOR_STYLES[displayColor] || 'bg-slate-700 text-white border-slate-800'
+                          }`}
+                        >
+                          Color: {TRIAGE_COLOR_LABELS[displayColor] || displayColor}
+                        </p>
+                      ) : null}
                       {current.window_number ? (
                         <div
                           className={`mt-3 w-full text-center rounded-lg px-3 py-2 text-xl sm:text-2xl lg:text-3xl font-bold leading-tight ${
