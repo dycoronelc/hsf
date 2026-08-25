@@ -39,6 +39,16 @@ function imageFormatFromDataUrl(dataUrl: string): 'PNG' | 'JPEG' | 'WEBP' {
   return 'PNG'
 }
 
+/** Dimensiones naturales del PNG (para no deformar el logo en el PDF). */
+function loadImageNaturalSize(dataUrl: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image()
+    img.onload = () => resolve({ width: img.naturalWidth || img.width, height: img.naturalHeight || img.height })
+    img.onerror = () => reject(new Error('No se pudo leer el logo'))
+    img.src = dataUrl
+  })
+}
+
 /**
  * Genera un PDF de una sola página 79×100 mm con el contenido del ticket.
  */
@@ -53,17 +63,44 @@ export async function buildTicketPdf(ticket: TicketPdfInput): Promise<jsPDF> {
   const pageW = TICKET_PDF_WIDTH_MM
   const marginX = 4
   const contentW = pageW - marginX * 2
-  let y = 4
+  let y = 3
 
   const logo = await loadImageDataUrl('/logo-hospital-santa-fe.png')
   if (logo) {
-    const logoW = 22
-    const logoH = 22
-    doc.addImage(logo, imageFormatFromDataUrl(logo), (pageW - logoW) / 2, y, logoW, logoH)
-    y += logoH + 2
+    try {
+      const natural = await loadImageNaturalSize(logo)
+      const aspect = natural.width > 0 && natural.height > 0 ? natural.width / natural.height : 4.5
+      // Logo horizontal oficial (~1218×272): caber en el ticket sin aplastarlo
+      const maxLogoW = Math.min(contentW, 58)
+      const maxLogoH = 14
+      let logoW = maxLogoW
+      let logoH = logoW / aspect
+      if (logoH > maxLogoH) {
+        logoH = maxLogoH
+        logoW = logoH * aspect
+      }
+      doc.addImage(
+        logo,
+        imageFormatFromDataUrl(logo),
+        (pageW - logoW) / 2,
+        y,
+        logoW,
+        logoH,
+        undefined,
+        'FAST',
+      )
+      y += logoH + 2.5
+    } catch {
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.setTextColor(0, 129, 109)
+      doc.text('Hospital Santa Fe', pageW / 2, y + 4, { align: 'center' })
+      y += 10
+    }
   } else {
     doc.setFont('helvetica', 'bold')
     doc.setFontSize(9)
+    doc.setTextColor(0, 129, 109)
     doc.text('Hospital Santa Fe', pageW / 2, y + 4, { align: 'center' })
     y += 10
   }
