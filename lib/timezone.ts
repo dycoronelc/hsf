@@ -1,5 +1,6 @@
 /** Zona horaria operativa del hospital (Panamá, UTC-5 todo el año, sin DST). */
 export const APP_TIMEZONE = 'America/Panama'
+const APP_OFFSET = '-05:00'
 
 function parseInstant(value?: string | Date | null): Date {
   if (value instanceof Date && !Number.isNaN(value.getTime())) {
@@ -7,12 +8,25 @@ function parseInstant(value?: string | Date | null): Date {
   }
   if (typeof value === 'string' && value.trim()) {
     const raw = value.trim()
-    // ISO sin zona: el API/BD a menudo manda UTC “naive”; no usar la TZ del navegador.
-    if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(\.\d+)?$/.test(raw)) {
-      const iso = raw.replace(' ', 'T') + 'Z'
+
+    // Con offset explícito (±HH:MM o Z): el instante es inequívoco.
+    if (/([zZ]|[+-]\d{2}:\d{2})$/.test(raw)) {
+      const parsed = new Date(raw)
+      if (!Number.isNaN(parsed.getTime())) return parsed
+    }
+
+    // ISO / SQL naive: tratar como hora de pared en Panamá (no como UTC).
+    // Antes se forzaba "Z" y, si el backend ya venía en hora local, la UI adelantaba ~5 h.
+    const naive = raw.match(
+      /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2})(?::(\d{2})(?:\.\d+)?)?$/,
+    )
+    if (naive) {
+      const [, y, mo, d, h, mi, s] = naive
+      const iso = `${y}-${mo}-${d}T${h}:${mi}:${s ?? '00'}${APP_OFFSET}`
       const parsed = new Date(iso)
       if (!Number.isNaN(parsed.getTime())) return parsed
     }
+
     const parsed = new Date(raw)
     if (!Number.isNaN(parsed.getTime())) return parsed
   }

@@ -50,6 +50,12 @@ import { SettingsModule } from './settings/settings.module';
         process.env.DATABASE_SSL === 'true'
           ? { rejectUnauthorized: false }
           : false,
+      /**
+       * Interpretar `timestamp without time zone` como UTC.
+       * Si el proceso Node está en America/Panama y PG guarda UTC, sin esto la hora
+       * del ticket sale ~5 h adelantada (p. ej. 11:27 → 4:27 P.M.).
+       */
+      timezone: 'UTC',
       entities: [
         User,
         Service,
