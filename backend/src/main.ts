@@ -3,6 +3,15 @@ import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
 import * as express from 'express';
 
+/**
+ * node-pg interpreta `timestamp without time zone` con la TZ del proceso.
+ * Forzar UTC evita el desfase de ~+5 h en tickets cuando el OS está en America/Panama.
+ * Se puede sobreescribir con la variable de entorno TZ.
+ */
+if (!process.env.TZ) {
+  process.env.TZ = 'UTC';
+}
+
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   

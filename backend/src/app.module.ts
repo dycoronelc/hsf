@@ -51,11 +51,13 @@ import { SettingsModule } from './settings/settings.module';
           ? { rejectUnauthorized: false }
           : false,
       /**
-       * Interpretar `timestamp without time zone` como UTC.
-       * Si el proceso Node está en America/Panama y PG guarda UTC, sin esto la hora
-       * del ticket sale ~5 h adelantada (p. ej. 11:27 → 4:27 P.M.).
+       * Forzar sesión PG en UTC (timestamp without time zone).
+       * Complementa TZ=UTC en main.ts: evita que la hora del ticket salga ~5 h adelantada
+       * cuando el proceso Node está en America/Panama.
        */
-      timezone: 'UTC',
+      extra: {
+        options: '-c TimeZone=UTC',
+      },
       entities: [
         User,
         Service,
