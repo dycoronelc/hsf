@@ -73,3 +73,18 @@ export class SetTriageColorDto {
   @IsEnum(TriageColor)
   triageColor: TriageColor;
 }
+
+export class ReleaseDestinationDto {
+  @IsString()
+  @IsIn([
+    'Ventanilla 1',
+    'Ventanilla 2',
+    'Ventanilla 3',
+    'Ventanilla 4',
+    'Ventanilla 5',
+    'Triage',
+    'Laboratorio',
+    'Radiología',
+  ])
+  windowNumber: string;
+}

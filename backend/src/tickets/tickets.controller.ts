@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
-import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto, SetTriageColorDto, OptionalWindowDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto, SetTriageColorDto, OptionalWindowDto, ReleaseDestinationDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RequirePermissions } from '../permissions/require-permissions.decorator';
@@ -34,6 +34,20 @@ export class TicketsController {
   @UseGuards(JwtAuthGuard)
   async listOccupiedDestinations() {
     return this.ticketsService.listOccupiedDestinations();
+  }
+
+  @Post('release-my-session')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
+  async releaseMySession(@Request() req) {
+    return this.ticketsService.releaseAgentSession(req.user.id);
+  }
+
+  @Post('release-destination')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('staff_call_ticket')
+  async releaseDestination(@Body() dto: ReleaseDestinationDto, @Request() req) {
+    return this.ticketsService.releaseDestination(dto.windowNumber, req.user);
   }
 
   @Post('kiosk')

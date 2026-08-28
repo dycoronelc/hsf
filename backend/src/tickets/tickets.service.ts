@@ -49,25 +49,19 @@ export class TicketsService {
       // Evita colisiones bajo carga concurrente (kiosco / recepción).
       await em.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`ticket_seq:${prefix}`]);
       // Secuencia diaria (zona Panamá): reinicia en 001 cada día.
-      const dayRows: Array<{ d: string }> = await em.query(
-        `SELECT to_char((NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'America/Panama', 'YYYY-MM-DD') AS d`,
+      // createdAt = timestamp sin TZ (UTC en BD). Usar timezone('America/Panama', …) en ambos lados;
+      // la fórmula (NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'America/Panama' desfasa el "hoy" ~5 h.
+      const rows: Array<{ max_num: string | number | null }> = await em.query(
+        `
+        SELECT COALESCE(MAX((regexp_match("ticketNumber", '-(\\d+)$'))[1]::int), 0) AS max_num
+        FROM tickets
+        WHERE "ticketNumber" ILIKE $1
+          AND to_char(timezone('America/Panama', "createdAt" AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+            = to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')
+        `,
+        [`${prefix}-%`],
       );
-      const day = dayRows[0]?.d;
-      const rows = await em
-        .createQueryBuilder(Ticket, 't')
-        .select(['t.id', 't.ticketNumber', 't.createdAt'])
-        .where('t.ticketNumber ILIKE :pattern', { pattern: `${prefix}-%` })
-        .andWhere(
-          `to_char((t.createdAt AT TIME ZONE 'UTC') AT TIME ZONE 'America/Panama', 'YYYY-MM-DD') = :day`,
-          { day },
-        )
-        .getMany();
-      let max = 0;
-      const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`, 'i');
-      for (const row of rows) {
-        const m = String(row.ticketNumber || '').match(re);
-        if (m) max = Math.max(max, parseInt(m[1], 10));
-      }
+      const max = Number(rows[0]?.max_num ?? 0);
       const next = max + 1;
       return `${prefix}-${String(next).padStart(3, '0')}`;
     });
@@ -576,6 +570,75 @@ export class TicketsService {
       ),
     ];
     return { destinations };
+  }
+
+  /** Devuelve a cola los turnos activos del agente (p. ej. cierre de sesión o expiración). */
+  private async releaseTicketsToQueue(tickets: Ticket[]): Promise<string[]> {
+    const numbers: string[] = [];
+    for (const ticket of tickets) {
+      numbers.push(ticket.ticketNumber);
+      ticket.windowNumber = null;
+      ticket.calledAt = null;
+      ticket.calledBy = null;
+      ticket.startedAt = null;
+      ticket.callCount = 0;
+      ticket.status = ticket.checkInAt ? TicketStatus.CHECK_IN : TicketStatus.CREADO;
+      await this.ticketRepository.save(ticket);
+    }
+    return numbers;
+  }
+
+  async releaseAgentSession(agentId: number): Promise<{ released: number; tickets: string[] }> {
+    const active = await this.ticketRepository.find({
+      where: {
+        calledBy: agentId,
+        status: In([TicketStatus.LLAMADO, TicketStatus.EN_ATENCION]),
+      },
+    });
+    if (!active.length) {
+      return { released: 0, tickets: [] };
+    }
+    const numbers = await this.releaseTicketsToQueue(active);
+    await this.auditService.log('agent_session_released', {
+      entityType: 'user',
+      entityId: agentId,
+      userId: agentId,
+      details: `tickets=${numbers.join(',')}`,
+    });
+    return { released: numbers.length, tickets: numbers };
+  }
+
+  /** Libera un destino bloqueado (supervisor/admin). */
+  async releaseDestination(
+    windowNumber: string,
+    actor: Pick<User, 'id' | 'role'>,
+  ): Promise<{ released: number; tickets: string[] }> {
+    const role = String(actor.role || '').toLowerCase();
+    if (role !== 'admin' && role !== 'supervisor') {
+      throw new BadRequestException('Solo un supervisor o administrador puede liberar un destino');
+    }
+    const dest = windowNumber.trim();
+    if (!dest) {
+      throw new BadRequestException('Indique el destino a liberar');
+    }
+    const active = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where('ticket.status IN (:...statuses)', {
+        statuses: [TicketStatus.LLAMADO, TicketStatus.EN_ATENCION],
+      })
+      .andWhere('TRIM(ticket.windowNumber) = :dest', { dest })
+      .getMany();
+    if (!active.length) {
+      return { released: 0, tickets: [] };
+    }
+    const numbers = await this.releaseTicketsToQueue(active);
+    await this.auditService.log('destination_released', {
+      entityType: 'ticket',
+      entityId: active[0]?.id,
+      userId: actor.id,
+      details: `dest=${dest}; tickets=${numbers.join(',')}`,
+    });
+    return { released: numbers.length, tickets: numbers };
   }
 
   private async assertDestinationAvailable(windowNumber: string, exceptTicketId?: number) {

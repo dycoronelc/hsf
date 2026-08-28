@@ -11,6 +11,7 @@ import {
   isJwtExpired,
   msUntilSessionWarning,
 } from '@/lib/jwtUtils'
+import { releaseStaffSession } from '@/lib/releaseStaffSession'
 
 interface User {
   id: number
@@ -29,7 +30,7 @@ interface AuthContextType {
   user: User | null
   token: string | null
   login: (email: string, password: string) => Promise<void>
-  logout: () => void
+  logout: () => Promise<void>
   notifySessionExpired: (message?: string) => void
   isAuthenticated: boolean
   authHydrated: boolean
@@ -82,7 +83,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       setSessionExpiredMessage(message?.trim() || DEFAULT_SESSION_EXPIRED_MESSAGE)
       setSessionExpired(true)
       setSessionExpiring(false)
-      clearStoredAuth()
+      void releaseStaffSession().finally(() => clearStoredAuth())
     },
     [clearStoredAuth],
   )
@@ -237,15 +238,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
     applySession(data.access_token, userData)
   }
 
-  const logout = () => {
+  const logout = async () => {
+    await releaseStaffSession()
     clearStoredAuth()
     setSessionExpired(false)
     setSessionExpiring(false)
   }
 
   const handleSessionLogout = () => {
-    logout()
-    router.replace('/login')
+    void logout().finally(() => router.replace('/login'))
   }
 
   const minutesLeft = token

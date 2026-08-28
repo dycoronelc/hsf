@@ -104,6 +104,7 @@ export default function StaffConsolePage() {
   const [queueView, setQueueView] = useState<QueueView>('all')
   const [queueSearch, setQueueSearch] = useState('')
   const [apiError, setApiError] = useState('')
+  const [releaseLoading, setReleaseLoading] = useState<string | null>(null)
   const scannerContainerId = 'staff-qr-reader'
 
   const agentStateOptions = [
@@ -234,6 +235,20 @@ export default function StaffConsolePage() {
     }, 3000)
     return () => clearInterval(interval)
   }, [canUseStaff, selectedService, token])
+
+  // Si el agente tenía un turno activo (p. ej. volvió tras expirar sesión), restaurar destino.
+  useEffect(() => {
+    if (!user?.id || !tickets.length || windowNumber.trim()) return
+    const mine = tickets.find(
+      (t) =>
+        (t.status === 'llamado' || t.status === 'en_atencion') &&
+        t.called_by === user.id &&
+        (t.window_number || '').trim(),
+    )
+    if (mine?.window_number) {
+      setWindowNumber(mine.window_number.trim())
+    }
+  }, [tickets, user?.id, windowNumber])
 
   // Destino se mantiene seleccionado al llamar (solo se limpia si el estado del agente no permite destino).
   // No auto-limpiar por ocupación: el propio ticket del oficial ocupa el destino.
@@ -558,6 +573,57 @@ export default function StaffConsolePage() {
   const destinationUnlocked = canSelectCallDestination(agentState)
   const occupiedSet = new Set(occupiedDestinations)
   const myDestination = windowNumber.trim()
+  const myOccupiedDestinations = new Set(
+    tickets
+      .filter(
+        (t) =>
+          (t.status === 'llamado' || t.status === 'en_atencion') &&
+          t.called_by === user?.id &&
+          (t.window_number || '').trim(),
+      )
+      .map((t) => (t.window_number || '').trim()),
+  )
+  const foreignOccupiedDestinations = occupiedDestinations.filter(
+    (dest) => !myOccupiedDestinations.has(dest),
+  )
+  const canForceReleaseDestination =
+    user?.role === 'admin' || user?.role === 'supervisor'
+  const myResumableTickets = tickets.filter(
+    (t) =>
+      (t.status === 'llamado' || t.status === 'en_atencion') &&
+      t.called_by === user?.id,
+  )
+
+  const handleReleaseDestination = async (dest: string) => {
+    if (!token) return
+    const ok = window.confirm(
+      `¿Liberar «${dest}»? El turno en curso volverá a la cola de espera.`,
+    )
+    if (!ok) return
+    setReleaseLoading(dest)
+    try {
+      const response = await fetch('/api/tickets/release-destination', {
+        method: 'POST',
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ windowNumber: dest }),
+      })
+      if (handleAuthFailure(response.status, notifySessionExpired)) return
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        alert(apiErrorMessage(data, 'No se pudo liberar el destino'))
+        return
+      }
+      await fetchTickets()
+      await fetchOccupiedDestinations()
+      if (windowNumber === dest) {
+        setWindowNumber('')
+      }
+    } catch {
+      alert('Error al liberar el destino')
+    } finally {
+      setReleaseLoading(null)
+    }
+  }
 
   const matchesQueueSearch = (ticket: Ticket) => {
     const q = queueSearch.trim().toLowerCase()
@@ -745,10 +811,15 @@ export default function StaffConsolePage() {
               {CALL_DESTINATIONS.map((dest) => {
                 const occupied = occupiedSet.has(dest)
                 const keepSelected = windowNumber === dest
-                const disabledOption = occupied && !keepSelected
+                const mine = myOccupiedDestinations.has(dest)
+                const disabledOption = occupied && !keepSelected && !mine
                 return (
                   <option key={dest} value={dest} disabled={disabledOption}>
-                    {disabledOption ? `${dest} (ocupado)` : dest}
+                    {disabledOption
+                      ? `${dest} (ocupado)`
+                      : mine && occupied
+                        ? `${dest} (su turno)`
+                        : dest}
                   </option>
                 )
               })}
@@ -767,8 +838,35 @@ export default function StaffConsolePage() {
             {destinationUnlocked && occupiedSet.size > 0 && (
               <p className="text-xs text-gray-500 mt-2">
                 Los destinos ocupados se liberan al <strong>Finalizar</strong> o marcar{' '}
-                <strong>No se presentó</strong>. El destino seleccionado se conserva al llamar.
+                <strong>No se presentó</strong>. Si cerró sesión con un turno activo, seleccione
+                el destino marcado como <strong>su turno</strong> o pida a un supervisor liberarlo.
               </p>
+            )}
+            {myResumableTickets.length > 0 && !myDestination && (
+              <div className="mt-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-900">
+                Tiene {myResumableTickets.length} turno(s) en curso. Seleccione el destino
+                correspondiente para continuar la atención.
+              </div>
+            )}
+            {canForceReleaseDestination && foreignOccupiedDestinations.length > 0 && (
+              <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg text-sm">
+                <p className="font-medium text-blue-900 mb-2">Destinos bloqueados</p>
+                <ul className="space-y-2">
+                  {foreignOccupiedDestinations.map((dest) => (
+                    <li key={dest} className="flex flex-wrap items-center gap-2">
+                      <span className="text-blue-900">{dest}</span>
+                      <button
+                        type="button"
+                        onClick={() => void handleReleaseDestination(dest)}
+                        disabled={releaseLoading === dest}
+                        className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                      >
+                        {releaseLoading === dest ? 'Liberando…' : 'Liberar destino'}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             )}
             {destinationUnlocked && myDestination && (
               <p className="text-xs text-gray-500 mt-1">
