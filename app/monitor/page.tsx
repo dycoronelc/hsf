@@ -547,7 +547,7 @@ export default function MonitorPage() {
         </section>
 
         <section className="bg-[#00816D] text-white px-3 py-4 sm:px-4 sm:py-5 flex flex-col min-h-0">
-          <h2 className="text-xl sm:text-2xl font-bold tracking-wide mb-4 shrink-0 uppercase">
+          <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-wide mb-4 shrink-0 uppercase">
             Turno
           </h2>
           <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-hidden">
@@ -555,8 +555,9 @@ export default function MonitorPage() {
               <p className="text-white/80 text-lg">En espera de llamados</p>
             ) : (
               visibleCalls.map(({ service_id, service_name, current }, index) => {
-                const callKey = `${service_id}-${current.ticket_number}-${current.call_count ?? 0}-${current.called_at ?? ''}`
+                const callKey = `${service_id}-${current.ticket_number}-${current.call_count ?? 0}-${current.called_at ?? ''}-${current.status}`
                 const isTop = index === 0
+                const isInAttention = current.status === 'en_atencion'
                 const displayColor = monitorDisplayColor(
                   service_name,
                   current.service_code,
@@ -566,25 +567,33 @@ export default function MonitorPage() {
                   <div
                     key={callKey}
                     className={`rounded-xl border-2 px-3 py-3 sm:px-4 sm:py-4 flex-1 min-h-0 flex flex-col justify-center ${
-                      isTop
+                      isTop && !isInAttention
                         ? 'bg-white text-slate-900 border-white monitor-call-fade'
-                        : 'bg-white/10 border-white/25 text-white'
+                        : isTop
+                          ? 'bg-white text-slate-900 border-white'
+                          : 'bg-white/10 border-white/25 text-white'
                     }`}
                   >
                     {isTop && (
                       <p
-                        className={`text-xs font-bold uppercase tracking-[0.16em] mb-1 flex items-center gap-1.5 ${
+                        className={`text-sm sm:text-base font-bold uppercase tracking-[0.16em] mb-1 flex items-center gap-1.5 ${
                           isTop ? 'text-[#00816D]' : 'text-white/80'
                         }`}
                       >
                         <span
-                          className={`h-2 w-2 rounded-full animate-pulse ${isTop ? 'bg-[#00816D]' : 'bg-white'}`}
+                          className={`h-2.5 w-2.5 rounded-full ${
+                            isInAttention
+                              ? isTop
+                                ? 'bg-[#00816D]'
+                                : 'bg-white'
+                              : `animate-pulse ${isTop ? 'bg-[#00816D]' : 'bg-white'}`
+                          }`}
                           aria-hidden
                         />
-                        Llamando
+                        {isInAttention ? 'En atención' : 'Llamando'}
                       </p>
                     )}
-                    <div className="w-fit max-w-full">
+                    <div className="w-full max-w-full">
                       <p
                         className={ticketNumberClassName(
                           displayColor,
@@ -606,7 +615,7 @@ export default function MonitorPage() {
                       ) : null}
                       {current.window_number ? (
                         <div
-                          className={`mt-3 w-full text-center rounded-lg px-3 py-2 text-xl sm:text-2xl lg:text-3xl font-bold leading-tight ${
+                          className={`mt-3 w-full text-center rounded-lg px-3 py-3 text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight ${
                             isTop ? 'bg-[#00816D] text-white' : 'bg-white text-slate-900'
                           }`}
                         >
@@ -625,7 +634,7 @@ export default function MonitorPage() {
         </section>
       </div>
 
-      <footer className="bg-[#00816D] text-white text-center py-3 px-4 text-base sm:text-xl font-semibold tracking-wide shrink-0">
+      <footer className="bg-[#00816D] text-white text-center py-4 px-4 text-xl sm:text-2xl lg:text-3xl font-semibold tracking-wide shrink-0 leading-snug">
         Bienvenido al Hospital Santa Fe, por favor estar atento a su turno.
       </footer>
 

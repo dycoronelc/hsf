@@ -38,12 +38,57 @@ export class TicketsService {
     private settingsService: SettingsService,
   ) {}
 
-  private generateTicketNumber(service: Pick<Service, 'code' | 'ticketPrefix'>): string {
-    const prefix = service.ticketPrefix || service.code;
-    const randomSuffix = Math.floor(Math.random() * 10000)
-      .toString()
-      .padStart(4, '0');
-    return `${prefix}-${randomSuffix}`;
+  /** Número secuencial por prefijo: T-001, OT-002, etc. (orden de llegada por tipo). */
+  private async generateTicketNumber(
+    service: Pick<Service, 'code' | 'ticketPrefix'>,
+  ): Promise<string> {
+    const prefix = String(service.ticketPrefix || service.code || 'TK')
+      .trim()
+      .toUpperCase();
+    return this.ticketRepository.manager.transaction(async (em) => {
+      // Evita colisiones bajo carga concurrente (kiosco / recepción).
+      await em.query(`SELECT pg_advisory_xact_lock(hashtext($1))`, [`ticket_seq:${prefix}`]);
+      // Secuencia diaria (zona Panamá): reinicia en 001 cada día.
+      const dayRows: Array<{ d: string }> = await em.query(
+        `SELECT to_char((NOW() AT TIME ZONE 'UTC') AT TIME ZONE 'America/Panama', 'YYYY-MM-DD') AS d`,
+      );
+      const day = dayRows[0]?.d;
+      const rows = await em
+        .createQueryBuilder(Ticket, 't')
+        .select(['t.id', 't.ticketNumber', 't.createdAt'])
+        .where('t.ticketNumber ILIKE :pattern', { pattern: `${prefix}-%` })
+        .andWhere(
+          `to_char((t.createdAt AT TIME ZONE 'UTC') AT TIME ZONE 'America/Panama', 'YYYY-MM-DD') = :day`,
+          { day },
+        )
+        .getMany();
+      let max = 0;
+      const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-(\\d+)$`, 'i');
+      for (const row of rows) {
+        const m = String(row.ticketNumber || '').match(re);
+        if (m) max = Math.max(max, parseInt(m[1], 10));
+      }
+      const next = max + 1;
+      return `${prefix}-${String(next).padStart(3, '0')}`;
+    });
+  }
+
+  /** Solo el agente/destino que llamó puede gestionar el turno. */
+  private assertTicketOwnedByAgent(
+    ticket: Ticket,
+    agent?: Pick<User, 'id'> | null,
+    windowNumber?: string | null,
+  ) {
+    if (!agent?.id) return;
+    const dest = (windowNumber || '').trim();
+    const ticketDest = (ticket.windowNumber || '').trim();
+    const sameAgent = ticket.calledBy != null && ticket.calledBy === agent.id;
+    const sameDest = dest && ticketDest && dest === ticketDest;
+    if (ticket.calledBy != null && !sameAgent && !sameDest) {
+      throw new BadRequestException(
+        'Este turno fue llamado desde otro destino. Solo esa ventanilla puede gestionarlo.',
+      );
+    }
   }
 
   private async resolveLabRadServices(): Promise<{ lab: Service; rad: Service }> {
@@ -154,11 +199,25 @@ export class TicketsService {
   }
 
   private getActiveQueueStatuses(): TicketStatus[] {
-    // Por ahora el flujo solo llega hasta recepción:
-    // - CREADO  => "Solicitado" (aún no ha llegado)
-    // - CHECK_IN => "Arribado" (ya llegó a recepción) y NO debe contar "por delante"
-    // Cuando agreguemos más estados, podemos volver a incluir EN_COLA/LLAMADO/EN_ATENCION aquí.
-    return [TicketStatus.CREADO];
+    // Cola operativa: solicitados y arribados cuentan para posición / espera.
+    return [TicketStatus.CREADO, TicketStatus.CHECK_IN, TicketStatus.EN_COLA];
+  }
+
+  private formatElapsedWaitLabel(from: Date | null | undefined): {
+    elapsed_wait_seconds: number;
+    elapsed_wait_label: string;
+  } {
+    if (!from) {
+      return { elapsed_wait_seconds: 0, elapsed_wait_label: '0h 0m 0s' };
+    }
+    const waitSeconds = Math.max(0, Math.floor((Date.now() - from.getTime()) / 1000));
+    const hours = Math.floor(waitSeconds / 3600);
+    const minutes = Math.floor((waitSeconds % 3600) / 60);
+    const seconds = waitSeconds % 60;
+    return {
+      elapsed_wait_seconds: waitSeconds,
+      elapsed_wait_label: `${hours}h ${minutes}m ${seconds}s`,
+    };
   }
 
   private async getQueuePositionsByService(serviceId: number): Promise<Map<number, number>> {
@@ -230,7 +289,7 @@ export class TicketsService {
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(service),
+      ticketNumber: await this.generateTicketNumber(service),
       patientId: null, // Ticket anónimo desde kiosco
       serviceId: createDto.serviceId,
       priority: createDto.priority || Priority.NORMAL,
@@ -277,7 +336,7 @@ export class TicketsService {
 
     const now = new Date();
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(service),
+      ticketNumber: await this.generateTicketNumber(service),
       patientId: null,
       serviceId: createDto.serviceId,
       priority: createDto.priority || Priority.NORMAL,
@@ -330,7 +389,7 @@ export class TicketsService {
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(service),
+      ticketNumber: await this.generateTicketNumber(service),
       patientId,
       serviceId: createDto.serviceId,
       priority: createDto.priority || Priority.NORMAL,
@@ -413,12 +472,15 @@ export class TicketsService {
         priority_level: ticket.service?.priorityLevel ?? 2,
         triage_color: ticket.triageColor ?? null,
         created_at: toPanamaOffsetIso(ticket.createdAt) ?? toIsoUtc(new Date())!,
+        check_in_at: toPanamaOffsetIso(ticket.checkInAt),
         completed_at: toPanamaOffsetIso(ticket.completedAt),
         qr_code: ticket.qrCode,
         window_number: ticket.windowNumber ?? null,
         call_count: ticket.callCount ?? 0,
         called_at: toPanamaOffsetIso(ticket.calledAt),
+        called_by: ticket.calledBy ?? null,
         notes: ticket.notes ?? null,
+        ...this.formatElapsedWaitLabel(ticket.checkInAt ?? ticket.createdAt),
         ...qi,
       };
     });
@@ -584,6 +646,7 @@ export class TicketsService {
     if ((ticket.callCount ?? 0) < 1) {
       throw new BadRequestException('Debe llamar al paciente al menos una vez antes de volver a llamar');
     }
+    this.assertTicketOwnedByAgent(ticket, agent, windowNumber);
     const { recallWaitSeconds } = await this.settingsService.getCallTimings();
     const elapsed = ticket.calledAt ? (Date.now() - ticket.calledAt.getTime()) / 1000 : 0;
     if (elapsed < recallWaitSeconds) {
@@ -607,12 +670,18 @@ export class TicketsService {
     return { message: 'Turno re-llamado', ticket_number: ticket.ticketNumber, call_count: ticket.callCount };
   }
 
-  async markNoShow(id: number, reason: string, agent: Pick<User, 'id' | 'agentState'>) {
+  async markNoShow(
+    id: number,
+    reason: string,
+    agent: Pick<User, 'id' | 'agentState'>,
+    windowNumber?: string,
+  ) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    this.assertTicketOwnedByAgent(ticket, agent, windowNumber);
     if (ticket.status !== TicketStatus.LLAMADO) {
       throw new BadRequestException('Solo se puede marcar no presentado un turno que fue llamado');
     }
@@ -643,12 +712,13 @@ export class TicketsService {
     return { message: 'Marcado como no se presentó', ticket_number: ticket.ticketNumber };
   }
 
-  async start(id: number, agent?: Pick<User, 'id' | 'agentState'>) {
+  async start(id: number, agent?: Pick<User, 'id' | 'agentState'>, windowNumber?: string) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    this.assertTicketOwnedByAgent(ticket, agent, windowNumber);
     ticket.status = TicketStatus.EN_ATENCION;
     ticket.startedAt = new Date();
     await this.ticketRepository.save(ticket);
@@ -660,12 +730,13 @@ export class TicketsService {
     return { message: 'Atención iniciada' };
   }
 
-  async complete(id: number, agent?: Pick<User, 'id' | 'agentState'>) {
+  async complete(id: number, agent?: Pick<User, 'id' | 'agentState'>, windowNumber?: string) {
     this.assertAgentCanOperate(agent);
     const ticket = await this.ticketRepository.findOne({ where: { id } });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    this.assertTicketOwnedByAgent(ticket, agent, windowNumber);
     ticket.status = TicketStatus.FINALIZADO;
     ticket.completedAt = new Date();
     await this.ticketRepository.save(ticket);
@@ -721,6 +792,7 @@ export class TicketsService {
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    this.assertTicketOwnedByAgent(ticket, agent, null);
     if (
       ticket.status === TicketStatus.FINALIZADO ||
       ticket.status === TicketStatus.CANCELADO ||
@@ -858,7 +930,7 @@ export class TicketsService {
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: this.generateTicketNumber(admService),
+      ticketNumber: await this.generateTicketNumber(admService),
       patientId: pre.patientId ?? null,
       serviceId: admService.id,
       priority: Priority.NORMAL,

@@ -57,6 +57,16 @@ export class TransferTicketDto {
 export class NoShowTicketDto {
   @IsString()
   reason: string;
+
+  @IsOptional()
+  @IsString()
+  windowNumber?: string;
+}
+
+export class OptionalWindowDto {
+  @IsOptional()
+  @IsString()
+  windowNumber?: string;
 }
 
 export class SetTriageColorDto {

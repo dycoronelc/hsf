@@ -25,12 +25,12 @@ export class MonitorService {
       throw new NotFoundException('Servicio no encontrado');
     }
 
-    // Ticket actualmente llamado
+    // Ticket actualmente llamado o en atención (permanece en monitor sin parpadear al iniciar)
     const current = await this.ticketRepository.findOne({
-      where: {
-        serviceId,
-        status: TicketStatus.LLAMADO,
-      },
+      where: [
+        { serviceId, status: TicketStatus.LLAMADO },
+        { serviceId, status: TicketStatus.EN_ATENCION },
+      ],
       order: { calledAt: 'DESC' },
     });
 
@@ -42,7 +42,6 @@ export class MonitorService {
         { serviceId, status: TicketStatus.EN_COLA },
       ],
       order: {
-        priority: 'DESC',
         createdAt: 'ASC',
       },
     });

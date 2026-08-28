@@ -10,7 +10,7 @@ import {
   Query,
 } from '@nestjs/common';
 import { TicketsService } from './tickets.service';
-import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto, SetTriageColorDto } from './dto/ticket.dto';
+import { CreateTicketDto, UpdateTicketDto, CallTicketDto, CheckInByCodeDto, TransferTicketDto, NoShowTicketDto, SetTriageColorDto, OptionalWindowDto } from './dto/ticket.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
 import { RequirePermissions } from '../permissions/require-permissions.decorator';
@@ -104,21 +104,29 @@ export class TicketsController {
     @Body() dto: NoShowTicketDto,
     @Request() req,
   ) {
-    return this.ticketsService.markNoShow(+id, dto.reason, req.user);
+    return this.ticketsService.markNoShow(+id, dto.reason, req.user, dto.windowNumber);
   }
 
   @Post(':id/start')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('staff_call_ticket')
-  async start(@Param('id') id: number, @Request() req) {
-    return this.ticketsService.start(+id, req.user);
+  async start(
+    @Param('id') id: number,
+    @Body() dto: OptionalWindowDto,
+    @Request() req,
+  ) {
+    return this.ticketsService.start(+id, req.user, dto?.windowNumber);
   }
 
   @Post(':id/complete')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('staff_complete_ticket')
-  async complete(@Param('id') id: number, @Request() req) {
-    return this.ticketsService.complete(+id, req.user);
+  async complete(
+    @Param('id') id: number,
+    @Body() dto: OptionalWindowDto,
+    @Request() req,
+  ) {
+    return this.ticketsService.complete(+id, req.user, dto?.windowNumber);
   }
 
   @Post(':id/transfer')

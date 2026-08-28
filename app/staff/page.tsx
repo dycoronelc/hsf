@@ -22,18 +22,39 @@ interface Ticket {
   priority_level?: number
   triage_color?: string | null
   created_at: string
+  check_in_at?: string | null
   completed_at?: string | null
   window_number: string | null
   estimated_wait_label?: string
+  elapsed_wait_label?: string
   call_count?: number
   called_at?: string | null
+  called_by?: number | null
   notes?: string | null
 }
 
-type QueueView = 'all' | 'priority' | 'attended' | 'transferred'
+type QueueView = 'all' | 'priority' | 'attended'
 
 function isTransferOriginTicket(ticket: Ticket): boolean {
   return Boolean(ticket.notes?.startsWith('Transferido'))
+}
+
+/** Triage + Consulta se atienden juntos en destino Triage. */
+function isTriageQueueService(service: { code?: string | null; name?: string | null }): boolean {
+  const code = (service.code || '').toUpperCase()
+  if (code === 'TRIAGE' || code === 'CTA') return true
+  return /triage|consulta/i.test(service.name || '')
+}
+
+function formatElapsedFromIso(iso?: string | null, now = Date.now()): string {
+  if (!iso) return '0h 0m 0s'
+  const start = new Date(iso).getTime()
+  if (Number.isNaN(start)) return '0h 0m 0s'
+  const waitSeconds = Math.max(0, Math.floor((now - start) / 1000))
+  const hours = Math.floor(waitSeconds / 3600)
+  const minutes = Math.floor((waitSeconds % 3600) / 60)
+  const seconds = waitSeconds % 60
+  return `${hours}h ${minutes}m ${seconds}s`
 }
 
 const DEFAULT_RECALL_WAIT_SECONDS = 60
@@ -94,6 +115,12 @@ export default function StaffConsolePage() {
     { value: 'documentando', label: 'Documentando' },
   ]
 
+  const triageServiceIds = new Set(
+    services.filter((s) => isTriageQueueService(s)).map((s) => s.id),
+  )
+  const selectedIsTriageGroup =
+    selectedService != null && triageServiceIds.has(selectedService)
+
   const canUseStaff =
     authHydrated && isAuthenticated && user != null && canAccessStaffConsole(user)
 
@@ -133,13 +160,18 @@ export default function StaffConsolePage() {
     if (!token) return
 
     try {
-      const url = selectedService
-        ? `/api/tickets/?service_id=${selectedService}`
-        : '/api/tickets/'
+      // Triage + Consulta: misma cola operativa → cargar todos y filtrar en cliente
+      const url =
+        selectedService && !selectedIsTriageGroup
+          ? `/api/tickets/?service_id=${selectedService}`
+          : '/api/tickets/'
       const response = await fetch(url, { headers: authHeaders(token) })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
-        const data = await response.json()
+        let data = await response.json()
+        if (selectedIsTriageGroup && Array.isArray(data)) {
+          data = data.filter((t: Ticket) => triageServiceIds.has(t.service_id))
+        }
         setTickets(data)
         setApiError('')
       } else {
@@ -188,11 +220,9 @@ export default function StaffConsolePage() {
 
   useEffect(() => {
     if (!canUseStaff) return
-    const hasCalled = tickets.some((t) => t.status === 'llamado')
-    if (!hasCalled) return
     const timer = window.setInterval(() => setNowMs(Date.now()), 1000)
     return () => window.clearInterval(timer)
-  }, [canUseStaff, tickets])
+  }, [canUseStaff])
 
   useEffect(() => {
     if (!canUseStaff || !token) return
@@ -205,18 +235,8 @@ export default function StaffConsolePage() {
     return () => clearInterval(interval)
   }, [canUseStaff, selectedService, token])
 
-  useEffect(() => {
-    if (!windowNumber.trim()) return
-    if (!occupiedDestinations.includes(windowNumber.trim())) return
-    const stillMine = tickets.some(
-      (t) =>
-        (t.status === 'llamado' || t.status === 'en_atencion') &&
-        (t.window_number || '').trim() === windowNumber.trim(),
-    )
-    if (!stillMine) {
-      setWindowNumber('')
-    }
-  }, [occupiedDestinations, tickets, windowNumber])
+  // Destino se mantiene seleccionado al llamar (solo se limpia si el estado del agente no permite destino).
+  // No auto-limpiar por ocupación: el propio ticket del oficial ocupa el destino.
 
   if (!authHydrated) {
     return (
@@ -270,7 +290,8 @@ export default function StaffConsolePage() {
     try {
       const response = await fetch(`/api/tickets/${ticketId}/start`, {
         method: 'POST',
-        headers: authHeaders(token),
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ windowNumber: windowNumber.trim() || undefined }),
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
@@ -368,7 +389,8 @@ export default function StaffConsolePage() {
     try {
       const response = await fetch(`/api/tickets/${ticketId}/complete`, {
         method: 'POST',
-        headers: authHeaders(token),
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify({ windowNumber: windowNumber.trim() || undefined }),
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
@@ -415,7 +437,10 @@ export default function StaffConsolePage() {
       const response = await fetch(`/api/tickets/${noShowTarget.id}/no-show`, {
         method: 'POST',
         headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ reason: noShowReason.trim() }),
+        body: JSON.stringify({
+          reason: noShowReason.trim(),
+          windowNumber: windowNumber.trim() || undefined,
+        }),
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
@@ -532,6 +557,7 @@ export default function StaffConsolePage() {
   const agentCanOperate = isAgentOperational(agentState)
   const destinationUnlocked = canSelectCallDestination(agentState)
   const occupiedSet = new Set(occupiedDestinations)
+  const myDestination = windowNumber.trim()
 
   const matchesQueueSearch = (ticket: Ticket) => {
     const q = queueSearch.trim().toLowerCase()
@@ -556,22 +582,18 @@ export default function StaffConsolePage() {
   const queueTickets = tickets
     .filter((t) => ['creado', 'check_in'].includes(t.status))
     .filter((t) => {
-      const transferred = isTransferOriginTicket(t)
-      if (queueView === 'transferred') return transferred
-      if (queueView === 'priority') return !transferred && (t.priority_level ?? 2) <= 2
-      // "Todos": cola normal sin transferidos
-      return !transferred
+      if (queueView === 'priority') return (t.priority_level ?? 2) <= 2
+      return true
     })
     .filter(matchesQueueSearch)
     .sort((a, b) => {
+      // Orden de llegada: prioridad de servicio (Triage 1, Consulta 2…), luego llegada
       const levelA = a.priority_level ?? 2
       const levelB = b.priority_level ?? 2
       if (levelA !== levelB) return levelA - levelB
-      if (a.priority !== b.priority) {
-        const priorityOrder = ['emergencia', 'cita', 'adulto_mayor', 'embarazo', 'discapacidad', 'normal']
-        return priorityOrder.indexOf(a.priority) - priorityOrder.indexOf(b.priority)
-      }
-      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      const arrivalA = new Date(a.check_in_at || a.created_at).getTime()
+      const arrivalB = new Date(b.check_in_at || b.created_at).getTime()
+      return arrivalA - arrivalB
     })
 
   const attendedTickets = tickets
@@ -583,7 +605,14 @@ export default function StaffConsolePage() {
       return timeB - timeA
     })
 
-  const showWaitingQueue = queueView === 'all' || queueView === 'priority' || queueView === 'transferred'
+  const myActiveTickets = tickets.filter(
+    (t) =>
+      (t.status === 'llamado' || t.status === 'en_atencion') &&
+      myDestination &&
+      (t.window_number || '').trim() === myDestination,
+  )
+
+  const showWaitingQueue = queueView === 'all' || queueView === 'priority'
   const searchActive = queueSearch.trim().length > 0
 
   return (
@@ -663,14 +692,22 @@ export default function StaffConsolePage() {
               className="w-full md:w-64 px-4 py-2 border border-gray-300 rounded-lg"
             >
               <option value="">Todos los servicios</option>
-              {services.map((service) => (
+              {services
+                .filter((service) => {
+                  // Consulta se unifica bajo Triage en la consola
+                  const code = (service.code || '').toUpperCase()
+                  return code !== 'CTA'
+                })
+                .map((service) => (
                 <option key={service.id} value={service.id}>
-                  {service.name} ({service.code})
+                  {(service.code || '').toUpperCase() === 'TRIAGE'
+                    ? 'Triage (incluye Consulta)'
+                    : `${service.name} (${service.code})`}
                 </option>
               ))}
             </select>
             <p className="text-xs text-gray-500 mt-1">
-              Por defecto se muestran todos los turnos en cola (Solicitado o Arribado).
+              Por defecto se muestran todos los turnos en cola. Al filtrar Triage también se incluyen turnos de Consulta.
             </p>
           </div>
 
@@ -730,19 +767,23 @@ export default function StaffConsolePage() {
             {destinationUnlocked && occupiedSet.size > 0 && (
               <p className="text-xs text-gray-500 mt-2">
                 Los destinos ocupados se liberan al <strong>Finalizar</strong> o marcar{' '}
-                <strong>No se presentó</strong>.
+                <strong>No se presentó</strong>. El destino seleccionado se conserva al llamar.
+              </p>
+            )}
+            {destinationUnlocked && myDestination && (
+              <p className="text-xs text-gray-500 mt-1">
+                Solo verá en <strong>Turno Actual</strong> los tickets llamados desde{' '}
+                <strong>{myDestination}</strong>.
               </p>
             )}
           </div>
 
-          {/* Current Ticket */}
-          {tickets.find(t => t.status === 'llamado' || t.status === 'en_atencion') && (
+          {/* Current Ticket — solo la ventanilla que lo llamó */}
+          {myActiveTickets.length > 0 && (
             <div className="mb-6 p-4 bg-orange-50 border-2 border-orange-300 rounded-xl">
               <h2 className="text-xl font-semibold mb-4">Turno Actual</h2>
               <div className="space-y-4">
-                {tickets
-                  .filter(t => t.status === 'llamado' || t.status === 'en_atencion')
-                  .map((ticket) => (
+                {myActiveTickets.map((ticket) => (
                     <div
                       key={ticket.id}
                       className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 p-4 bg-white border border-orange-200 rounded-lg shadow-sm"
@@ -934,13 +975,6 @@ export default function StaffConsolePage() {
             >
               Atendidos
             </button>
-            <button
-              type="button"
-              onClick={() => setQueueView('transferred')}
-              className={`px-4 py-2 rounded-lg text-sm ${queueView === 'transferred' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'}`}
-            >
-              Transferidos
-            </button>
           </div>
 
           <div className="mb-4 flex flex-wrap items-center gap-2">
@@ -1011,21 +1045,15 @@ export default function StaffConsolePage() {
             </div>
           ) : showWaitingQueue ? (
           <div>
-            <h2 className="text-xl font-semibold mb-4">
-              {queueView === 'transferred' ? 'Cola de transferidos' : 'Cola de Espera'}
-            </h2>
-            {queueView === 'transferred' && (
-              <p className="text-sm text-gray-600 mb-4">
-                Turnos transferidos que conservan su número original. Solo aparecen en esta pestaña y se pueden llamar igual que en la cola general.
-              </p>
-            )}
+            <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
+            <p className="text-sm text-gray-600 mb-4">
+              Ordenada por llegada (Triage antes que Consulta). Incluye tickets transferidos.
+            </p>
             {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {searchActive
                   ? 'Ningún ticket coincide con la búsqueda'
-                  : queueView === 'transferred'
-                    ? 'No hay tickets transferidos en cola'
-                    : 'No hay pacientes en cola'}
+                  : 'No hay pacientes en cola'}
               </div>
             ) : (
               <div className="space-y-2">
@@ -1044,11 +1072,10 @@ export default function StaffConsolePage() {
                       <span className="text-sm text-gray-600">
                         {ticket.service_name}
                       </span>
-                      {ticket.estimated_wait_label && (
-                        <span className="text-sm text-gray-500">
-                          Espera estimada: {ticket.estimated_wait_label}
-                        </span>
-                      )}
+                      <span className="text-sm font-medium text-amber-800">
+                        En espera:{' '}
+                        {formatElapsedFromIso(ticket.check_in_at || ticket.created_at, nowMs)}
+                      </span>
                       {ticket.triage_color && (
                         <span className="inline-flex items-center gap-1.5 text-sm capitalize text-gray-700">
                           Color asignado:
@@ -1065,9 +1092,9 @@ export default function StaffConsolePage() {
                           </span>
                         </span>
                       )}
-                      {isTransferOriginTicket(ticket) && ticket.notes && (
-                        <span className="text-sm text-indigo-700">
-                          {ticket.notes}
+                      {isTransferOriginTicket(ticket) && (
+                        <span className="text-xs font-semibold uppercase tracking-wide text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded">
+                          Transferido
                         </span>
                       )}
                     </div>
