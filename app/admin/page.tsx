@@ -42,6 +42,12 @@ const adminCards = [
     title: 'Configuración operativa',
     description: 'Tiempos para Volver a llamar y No se presentó en la consola staff.',
   },
+  {
+    href: '/admin/release-destinations',
+    title: 'Liberar destinos',
+    description:
+      'Desbloquee ventanillas u otros destinos ocupados por un turno tras sesión expirada u otro incidente.',
+  },
 ]
 
 export default function AdminHomePage() {

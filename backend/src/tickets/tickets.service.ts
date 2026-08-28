@@ -557,19 +557,29 @@ export class TicketsService {
     throw new NotFoundException('Turno o preadmisión no encontrado con ese código o ID');
   }
 
-  async listOccupiedDestinations(): Promise<{ destinations: string[] }> {
+  async listOccupiedDestinations(): Promise<{
+    destinations: string[];
+    items: Array<{
+      destination: string;
+      ticket_id: number;
+      ticket_number: string;
+      status: string;
+    }>;
+  }> {
     const rows = await this.ticketRepository.find({
       where: [{ status: TicketStatus.LLAMADO }, { status: TicketStatus.EN_ATENCION }],
-      select: ['windowNumber'],
+      select: ['id', 'windowNumber', 'ticketNumber', 'status'],
     });
-    const destinations = [
-      ...new Set(
-        rows
-          .map((r) => (r.windowNumber || '').trim())
-          .filter((w) => w.length > 0),
-      ),
-    ];
-    return { destinations };
+    const items = rows
+      .map((r) => ({
+        destination: (r.windowNumber || '').trim(),
+        ticket_id: r.id,
+        ticket_number: r.ticketNumber,
+        status: r.status,
+      }))
+      .filter((i) => i.destination.length > 0);
+    const destinations = [...new Set(items.map((i) => i.destination))];
+    return { destinations, items };
   }
 
   /** Devuelve a cola los turnos activos del agente (p. ej. cierre de sesión o expiración). */
@@ -608,14 +618,14 @@ export class TicketsService {
     return { released: numbers.length, tickets: numbers };
   }
 
-  /** Libera un destino bloqueado (supervisor/admin). */
+  /** Libera un destino bloqueado (Administración). */
   async releaseDestination(
     windowNumber: string,
     actor: Pick<User, 'id' | 'role'>,
   ): Promise<{ released: number; tickets: string[] }> {
     const role = String(actor.role || '').toLowerCase();
-    if (role !== 'admin' && role !== 'supervisor') {
-      throw new BadRequestException('Solo un supervisor o administrador puede liberar un destino');
+    if (role !== 'admin') {
+      throw new BadRequestException('Solo un administrador puede liberar un destino');
     }
     const dest = windowNumber.trim();
     if (!dest) {
