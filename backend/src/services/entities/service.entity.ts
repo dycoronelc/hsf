@@ -33,8 +33,17 @@ export class Service {
   @Column({ default: true })
   isActive: boolean;
 
+  /** Tiempo estimado de cola (minutos) — legado / UI kiosco. */
   @Column({ nullable: true })
   estimatedTime: number; // minutos
+
+  /** SLA de espera en ventanilla (minutos) para reportes. */
+  @Column({ type: 'int', nullable: true })
+  slaWaitMinutes: number | null;
+
+  /** SLA de tiempo de atención (minutos) para reportes. */
+  @Column({ type: 'int', nullable: true })
+  slaAttentionMinutes: number | null;
 
   /** Prefijo del ticket (PDF: H, PMSF, LR, etc.). */
   @Column({ nullable: true })

@@ -139,9 +139,9 @@ async function bootstrap() {
 
     // Crear servicios
     const servicesData = [
-      { name: 'Laboratorio Clínico', code: 'LAB', area: 'LAB', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2 },
-      { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45, ticketPrefix: 'RD', priorityLevel: 2 },
-      { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60, ticketPrefix: 'RD', priorityLevel: 2 },
+      { name: 'Laboratorio Clínico', code: 'LAB', area: 'LAB', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 30 },
+      { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45, ticketPrefix: 'RD', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 45 },
+      { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60, ticketPrefix: 'RD', priorityLevel: 2, slaWaitMinutes: 15, slaAttentionMinutes: 60 },
       {
         name: 'Resonancia Magnética',
         code: 'RMN',
@@ -149,16 +149,18 @@ async function bootstrap() {
         estimatedTime: 90,
         ticketPrefix: 'RD',
         priorityLevel: 2,
+        slaWaitMinutes: 15,
+        slaAttentionMinutes: 90,
       },
-      { name: 'Ecografía', code: 'ECO', area: 'RAD', estimatedTime: 30, ticketPrefix: 'RD', priorityLevel: 2 },
-      { name: 'Admisión', code: 'ADM', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'CTA', priorityLevel: 2 },
-      { name: 'Hospitalización', code: 'HOSP', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'H', priorityLevel: 1 },
-      { name: 'Copago / Ingreso PMSF', code: 'PMSF', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'PMSF', priorityLevel: 2 },
-      { name: 'Cirugías / Endoscopias / Hemodinámica', code: 'CEH', area: 'ADMISION', estimatedTime: 25, ticketPrefix: 'CEH', priorityLevel: 1 },
-      { name: 'Triage', code: 'TRIAGE', area: 'ADMISION', estimatedTime: 10, ticketPrefix: 'T', priorityLevel: 1 },
-      { name: 'Urgencias', code: 'URG', area: 'ADMISION', estimatedTime: 10, ticketPrefix: 'URG', priorityLevel: 1 },
-      { name: 'Consulta', code: 'CTA', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'CTA', priorityLevel: 2 },
-      { name: 'Otros servicios', code: 'OT', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'OT', priorityLevel: 3 },
+      { name: 'Ecografía', code: 'ECO', area: 'RAD', estimatedTime: 30, ticketPrefix: 'RD', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 30 },
+      { name: 'Admisión', code: 'ADM', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'CTA', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 15 },
+      { name: 'Hospitalización', code: 'HOSP', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'H', priorityLevel: 1, slaWaitMinutes: 10, slaAttentionMinutes: 20 },
+      { name: 'Copago / Ingreso PMSF', code: 'PMSF', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'PMSF', priorityLevel: 2, slaWaitMinutes: 15, slaAttentionMinutes: 30 },
+      { name: 'Cirugías / Endoscopias / Hemodinámica', code: 'CEH', area: 'ADMISION', estimatedTime: 25, ticketPrefix: 'CEH', priorityLevel: 1, slaWaitMinutes: 10, slaAttentionMinutes: 25 },
+      { name: 'Triage', code: 'TRIAGE', area: 'ADMISION', estimatedTime: 10, ticketPrefix: 'T', priorityLevel: 1, slaWaitMinutes: 5, slaAttentionMinutes: 10 },
+      { name: 'Urgencias', code: 'URG', area: 'ADMISION', estimatedTime: 10, ticketPrefix: 'URG', priorityLevel: 1, slaWaitMinutes: 5, slaAttentionMinutes: 15 },
+      { name: 'Consulta', code: 'CTA', area: 'ADMISION', estimatedTime: 20, ticketPrefix: 'CTA', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 20 },
+      { name: 'Otros servicios', code: 'OT', area: 'ADMISION', estimatedTime: 15, ticketPrefix: 'OT', priorityLevel: 3, slaWaitMinutes: 10, slaAttentionMinutes: 20 },
     ];
 
     for (const serviceData of servicesData) {
@@ -185,6 +187,20 @@ async function bootstrap() {
         existing.ticketPrefix = serviceData.ticketPrefix;
         await serviceRepository.save(existing);
         console.log(`✓ Prefijo actualizado ${serviceData.code}: ${serviceData.ticketPrefix}`);
+      }
+      if (existing && (existing.slaWaitMinutes == null || existing.slaAttentionMinutes == null)) {
+        const data = serviceData as {
+          slaWaitMinutes?: number;
+          slaAttentionMinutes?: number;
+        };
+        if (existing.slaWaitMinutes == null && data.slaWaitMinutes != null) {
+          existing.slaWaitMinutes = data.slaWaitMinutes;
+        }
+        if (existing.slaAttentionMinutes == null && data.slaAttentionMinutes != null) {
+          existing.slaAttentionMinutes = data.slaAttentionMinutes;
+        }
+        await serviceRepository.save(existing);
+        console.log(`✓ SLA por defecto aplicado a ${serviceData.code}`);
       }
     }
 
