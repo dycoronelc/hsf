@@ -1,4 +1,5 @@
-import { Controller, Get, Put, Body, Query, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Put, Body, Query, Param, UseGuards, Res } from '@nestjs/common';
+import { Response } from 'express';
 import { ReportsService, TicketReportFilters } from './reports.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { PermissionsGuard } from '../permissions/permissions.guard';
@@ -141,6 +142,38 @@ export class ReportsController {
   ) {
     const state = this.parseArrivalState(arrivalState);
     return this.reportsService.getPreadmissionsReport(startDate, endDate, tipo, documento, state);
+  }
+
+  @Get('export')
+  @RequirePermissions('export_reports')
+  async exportFullReport(
+    @Res() res: Response,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('serviceId') serviceId?: string,
+    @Query('serviceCode') serviceCode?: string,
+    @Query('windowNumber') windowNumber?: string,
+    @Query('agentId') agentId?: string,
+    @Query('tipo') tipo?: string,
+    @Query('documento') documento?: string,
+    @Query('arrivalState') arrivalState?: string,
+  ) {
+    const state = this.parseArrivalState(arrivalState);
+    const buffer = await this.reportsService.exportFullReportWorkbook({
+      startDate,
+      endDate,
+      filters: this.parseTicketFilters({ serviceId, serviceCode, windowNumber, agentId }),
+      tipo,
+      documento,
+      arrivalState: state,
+    });
+    const filename = `reportes_hsf_${new Date().toISOString().slice(0, 10)}.xlsx`;
+    res.setHeader(
+      'Content-Type',
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send(buffer);
   }
 
   @Get('preadmissions/export')

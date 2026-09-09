@@ -1093,4 +1093,274 @@ export class ReportsService {
       .join('');
     return `<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Preadmisiones"><Table>${body}</Table></Worksheet></Workbook>`;
   }
+
+  /**
+   * Excel (.xlsx) multi-hoja con resumen, detalle, diario, eficiencia, SLA y preadmisiones.
+   */
+  async exportFullReportWorkbook(params: {
+    startDate?: string | null;
+    endDate?: string | null;
+    filters?: TicketReportFilters;
+    documento?: string;
+    arrivalState?: PreadmissionArrivalState;
+    tipo?: string;
+  }): Promise<Buffer> {
+    const ExcelJS = await import('exceljs');
+    const workbook = new ExcelJS.Workbook();
+    workbook.creator = 'Hospital Santa Fe';
+    workbook.created = new Date();
+
+    const filters = params.filters || {};
+    const [summary, efficiency, slaParams] = await Promise.all([
+      this.getSummaryReport(params.startDate, params.endDate, filters),
+      this.getEfficiencyReport(params.startDate, params.endDate, filters),
+      this.listSlaParameters(),
+    ]);
+
+    let preadTipo = params.tipo;
+    let skipPreads = Boolean(filters.windowNumber || filters.agentId != null);
+    if (!skipPreads && filters.serviceId != null) {
+      const svc = await this.serviceRepository.findOne({ where: { id: filters.serviceId } });
+      const area = String(svc?.area || svc?.code || '').toUpperCase();
+      if (area === 'RAD' || area === 'LAB') {
+        preadTipo = area;
+      } else if (!params.tipo) {
+        skipPreads = true;
+      }
+    }
+    const preads = skipPreads
+      ? []
+      : await this.getPreadmissionsReport(
+          params.startDate,
+          params.endDate,
+          preadTipo,
+          params.documento,
+          params.arrivalState,
+        );
+
+    const addSheet = (name: string, headers: string[], rows: Array<Array<string | number | null>>) => {
+      const sheet = workbook.addWorksheet(name.slice(0, 31));
+      sheet.addRow(headers);
+      sheet.getRow(1).font = { bold: true };
+      for (const row of rows) sheet.addRow(row);
+      sheet.columns.forEach((col) => {
+        let max = 12;
+        col.eachCell?.({ includeEmpty: true }, (cell) => {
+          const len = String(cell.value ?? '').length;
+          if (len > max) max = Math.min(len + 2, 40);
+        });
+        col.width = max;
+      });
+    };
+
+    // KPIs / Dashboard
+    const k = efficiency.kpis;
+    addSheet(
+      'Dashboard',
+      ['Indicador', 'Valor'],
+      [
+        ['Período inicio', summary.period.start || ''],
+        ['Período fin', summary.period.end || ''],
+        ['Tickets generados', k?.tickets_generated ?? 0],
+        ['Tickets atendidos', k?.tickets_attended ?? 0],
+        ['No presentados', k?.no_shows ?? 0],
+        ['Transferidos', k?.transferred ?? 0],
+        ['Espera promedio', k?.avg_wait_label ?? ''],
+        ['Espera máxima', k?.max_wait_label ?? ''],
+        ['Atención promedio', k?.avg_attention_label ?? ''],
+        ['% SLA atención', k?.sla_met_percent ?? 0],
+        ['% SLA espera', k?.sla_wait_met_percent ?? 0],
+      ],
+    );
+
+    // Resumen consolidado
+    const byService = summary.management?.by_service || [];
+    addSheet(
+      'Resumen',
+      [
+        'Área / Servicio',
+        'Tickets Emitidos',
+        'Tickets Atendidos',
+        '% No Presentados',
+        'T. Espera Prom.',
+        'T. Atención Prom.',
+        'SLA Espera Objetivo',
+        'SLA Cumplido (%)',
+      ],
+      [
+        ...byService.map((r) => [
+          r.service_name,
+          r.tickets_issued,
+          r.tickets_attended,
+          r.no_show_percent,
+          r.avg_wait_label,
+          r.avg_attention_label,
+          r.sla_objective_label,
+          r.sla_met_percent,
+        ]),
+        summary.management?.totals
+          ? [
+              'TOTAL / PROMEDIO GENERAL',
+              summary.management.totals.tickets_issued,
+              summary.management.totals.tickets_attended,
+              summary.management.totals.no_show_percent,
+              summary.management.totals.avg_wait_label,
+              summary.management.totals.avg_attention_label,
+              '',
+              summary.management.totals.sla_met_percent,
+            ]
+          : [],
+      ].filter((r) => r.length > 0),
+    );
+
+    // Detalle tickets
+    const details = summary.management?.ticket_details || [];
+    addSheet(
+      'Detalle Tickets',
+      [
+        'Fecha',
+        'Área / Servicio',
+        'N° Ticket',
+        'Hora Entrada',
+        'Hora Inicio Atención',
+        'Hora Salida',
+        'T. Espera',
+        'T. Atención',
+        'Estado',
+        'SLA Atención (min)',
+        'Cumple SLA',
+      ],
+      details.map((d) => [
+        d.date,
+        d.service_name,
+        d.ticket_number,
+        d.entry_time,
+        d.start_time,
+        d.exit_time,
+        d.wait_label,
+        d.attention_label,
+        d.status_label,
+        d.sla_attention_minutes,
+        d.meets_sla_label,
+      ]),
+    );
+
+    // Resumen diario
+    const daily = summary.management?.daily_attention;
+    const dailyServices = daily?.services || [];
+    addSheet(
+      'Resumen Diario',
+      [
+        'Fecha',
+        ...dailyServices.map((s) => s.service_name),
+        'Promedio total general',
+      ],
+      [
+        ...(daily?.rows || []).map((row) => [
+          row.date,
+          ...dailyServices.map((s) => row.values[String(s.service_id)]?.label || ''),
+          row.day_average_label || '',
+        ]),
+        daily
+          ? [
+              'PROMEDIO TOTAL DE ATENCIÓN GENERAL',
+              ...dailyServices.map(() => ''),
+              daily.overall_average_label || '',
+            ]
+          : [],
+      ].filter((r) => r.length > 0),
+    );
+
+    // Eficiencia KPIs
+    addSheet(
+      'Eficiencia',
+      ['KPI', 'Valor'],
+      [
+        ['Tickets generados', k?.tickets_generated ?? 0],
+        ['Tickets atendidos', k?.tickets_attended ?? 0],
+        ['No presentados', k?.no_shows ?? 0],
+        ['Transferidos', k?.transferred ?? 0],
+        ['Espera promedio', k?.avg_wait_label ?? ''],
+        ['Espera máxima', k?.max_wait_label ?? ''],
+        ['Atención promedio', k?.avg_attention_label ?? ''],
+        ['% SLA atención', k?.sla_met_percent ?? 0],
+        ['% SLA espera', k?.sla_wait_met_percent ?? 0],
+      ],
+    );
+
+    // Por ventanilla / agente
+    const byWindow = Object.values(efficiency.byWindow || {}) as Array<{
+      windowNumber: string;
+      totalTickets: number;
+      averageServiceTime: number;
+    }>;
+    addSheet(
+      'Por Ventanilla',
+      ['Destino', 'Turnos', 'Tiempo prom. atención (min)'],
+      byWindow.map((w) => [
+        w.windowNumber,
+        w.totalTickets,
+        Math.round((w.averageServiceTime || 0) * 10) / 10,
+      ]),
+    );
+
+    const byAgent = Object.values(efficiency.byAgent || {}) as Array<{
+      agentName: string;
+      totalTickets: number;
+      averageServiceTime: number;
+    }>;
+    addSheet(
+      'Por Agente',
+      ['Agente', 'Turnos', 'Tiempo prom. atención (min)'],
+      byAgent.map((a) => [
+        a.agentName,
+        a.totalTickets,
+        Math.round((a.averageServiceTime || 0) * 10) / 10,
+      ]),
+    );
+
+    // Parámetros SLA
+    addSheet(
+      'Parametros SLA',
+      ['Área / Servicio', 'Código', 'SLA Espera (min)', 'SLA Atención (min)'],
+      slaParams.map((s) => [
+        s.service_name,
+        s.service_code,
+        s.sla_wait_minutes,
+        s.sla_attention_minutes,
+      ]),
+    );
+
+    // Preadmisiones
+    addSheet(
+      'Preadmisiones',
+      [
+        'ID',
+        'Paciente',
+        'Cédula',
+        'Área',
+        'Estado llegada',
+        'Estado revisión',
+        'Ticket',
+        'Fecha envío',
+        'Email',
+      ],
+      preads.map((p) => [
+        p.id,
+        `${p.name1 || ''} ${p.apellido1 || ''}`.trim(),
+        p.cedula || '',
+        p.departamento || '',
+        p.arrivalState || '',
+        p.status || '',
+        p.ticketId ?? '',
+        p.fechapreadmision instanceof Date
+          ? p.fechapreadmision.toISOString()
+          : String(p.fechapreadmision || ''),
+        p.email || '',
+      ]),
+    );
+
+    const buffer = await workbook.xlsx.writeBuffer();
+    return Buffer.from(buffer);
+  }
 }

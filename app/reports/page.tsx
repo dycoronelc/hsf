@@ -252,11 +252,13 @@ export default function ReportsPage() {
     serviceId: '',
     windowNumber: '',
     agentId: '',
+    preDocumento: '',
+    preArrivalState: '',
   })
 
-  const [preTipo, setPreTipo] = useState('')
   const [preDocumento, setPreDocumento] = useState('')
   const [preArrivalState, setPreArrivalState] = useState('')
+  const [exporting, setExporting] = useState(false)
 
   const appendSharedParams = useCallback(
     (params: URLSearchParams, opts?: { includeDates?: boolean }) => {
@@ -414,17 +416,41 @@ export default function ReportsPage() {
     }
   }
 
+  const resolvePreadTipoFromService = useCallback(
+    (sid: string): string => {
+      if (!sid) return ''
+      const svc = services.find((s) => String(s.id) === sid)
+      const area = String(svc?.area || svc?.code || '').toUpperCase()
+      if (area === 'RAD' || area === 'LAB') return area
+      return ''
+    },
+    [services],
+  )
+
   const loadPreadmissions = useCallback(async () => {
     if (!token) return
     setLoadingPre(true)
     try {
+      if (applied.serviceId) {
+        const tipoFromService = resolvePreadTipoFromService(applied.serviceId)
+        if (!tipoFromService) {
+          setPreadmissions([])
+          setLoadingPre(false)
+          return
+        }
+      }
+      if (applied.windowNumber || applied.agentId) {
+        setPreadmissions([])
+        setLoadingPre(false)
+        return
+      }
+
       const params = new URLSearchParams()
       appendSharedParams(params)
-      // Preadmisiones: área RAD/LAB propia; serviceId del filtro compartido también puede mapearse vía backend summary,
-      // aquí mantenemos el filtro de área de preadmisión.
-      if (preTipo === 'RAD' || preTipo === 'LAB') params.append('tipo', preTipo)
-      if (preDocumento.trim()) params.append('documento', preDocumento.trim())
-      if (preArrivalState) params.append('arrivalState', preArrivalState)
+      const tipo = resolvePreadTipoFromService(applied.serviceId)
+      if (tipo === 'RAD' || tipo === 'LAB') params.append('tipo', tipo)
+      if (applied.preDocumento.trim()) params.append('documento', applied.preDocumento.trim())
+      if (applied.preArrivalState) params.append('arrivalState', applied.preArrivalState)
 
       const response = await fetch(`/api/reports/preadmissions?${params.toString()}`, {
         headers: authHeaders(token),
@@ -442,28 +468,29 @@ export default function ReportsPage() {
   }, [
     token,
     appendSharedParams,
-    preTipo,
-    preDocumento,
-    preArrivalState,
+    applied.serviceId,
+    applied.windowNumber,
+    applied.agentId,
+    applied.preDocumento,
+    applied.preArrivalState,
+    resolvePreadTipoFromService,
     notifySessionExpired,
   ])
 
-  const buildPreadmissionExportParams = (format: string) => {
-    const params = new URLSearchParams({ format })
-    appendSharedParams(params)
-    if (preTipo === 'RAD' || preTipo === 'LAB') params.append('tipo', preTipo)
-    if (preDocumento.trim()) params.append('documento', preDocumento.trim())
-    if (preArrivalState) params.append('arrivalState', preArrivalState)
-    return params
-  }
-
-  const exportPreadmissionsExcel = async () => {
+  const exportFullExcel = async () => {
     if (!token) return
+    setExporting(true)
     try {
-      const response = await fetch(
-        `/api/reports/preadmissions/export?${buildPreadmissionExportParams('excel').toString()}`,
-        { headers: authHeaders(token) },
-      )
+      const params = new URLSearchParams()
+      appendSharedParams(params)
+      const tipo = resolvePreadTipoFromService(applied.serviceId)
+      if (tipo === 'RAD' || tipo === 'LAB') params.append('tipo', tipo)
+      if (applied.preDocumento.trim()) params.append('documento', applied.preDocumento.trim())
+      if (applied.preArrivalState) params.append('arrivalState', applied.preArrivalState)
+
+      const response = await fetch(`/api/reports/export?${params.toString()}`, {
+        headers: authHeaders(token),
+      })
       if (
         handleAuthFailure(
           response.status,
@@ -473,47 +500,21 @@ export default function ReportsPage() {
       ) {
         return
       }
-      if (!response.ok) return
-      const data = await response.json()
-      const excel = data.excel as string
-      const blob = new Blob([excel], { type: 'application/vnd.ms-excel;charset=utf-8;' })
+      if (!response.ok) {
+        alert('No se pudo generar el Excel de reportes')
+        return
+      }
+      const blob = await response.blob()
       const link = document.createElement('a')
       link.href = URL.createObjectURL(blob)
-      link.download = `preadmisiones_${new Date().toISOString().slice(0, 10)}.xls`
+      link.download = `reportes_hsf_${new Date().toISOString().slice(0, 10)}.xlsx`
       link.click()
       URL.revokeObjectURL(link.href)
     } catch (e) {
       console.error('Export Excel failed:', e)
-    }
-  }
-
-  const exportPreadmissionsCsv = async () => {
-    if (!token) return
-    try {
-      const response = await fetch(
-        `/api/reports/preadmissions/export?${buildPreadmissionExportParams('csv').toString()}`,
-        { headers: authHeaders(token) },
-      )
-      if (
-        handleAuthFailure(
-          response.status,
-          notifySessionExpired,
-          'Su sesión ha expirado o no tiene permiso para exportar reportes. Debe iniciar sesión de nuevo.',
-        )
-      ) {
-        return
-      }
-      if (!response.ok) return
-      const data = await response.json()
-      const csv = data.csv as string
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
-      const link = document.createElement('a')
-      link.href = URL.createObjectURL(blob)
-      link.download = `preadmisiones_${new Date().toISOString().slice(0, 10)}.csv`
-      link.click()
-      URL.revokeObjectURL(link.href)
-    } catch (e) {
-      console.error('Export CSV failed:', e)
+      alert('Error al exportar Excel')
+    } finally {
+      setExporting(false)
     }
   }
 
@@ -532,6 +533,8 @@ export default function ReportsPage() {
       serviceId,
       windowNumber,
       agentId,
+      preDocumento,
+      preArrivalState,
     })
   }
 
@@ -541,12 +544,16 @@ export default function ReportsPage() {
     setServiceId('')
     setWindowNumber('')
     setAgentId('')
+    setPreDocumento('')
+    setPreArrivalState('')
     setApplied({
       startDate: '',
       endDate: '',
       serviceId: '',
       windowNumber: '',
       agentId: '',
+      preDocumento: '',
+      preArrivalState: '',
     })
   }
 
@@ -585,9 +592,6 @@ export default function ReportsPage() {
     user,
     activeTab,
     applied,
-    preTipo,
-    preDocumento,
-    preArrivalState,
     token,
     loadSummary,
     loadRealTime,
@@ -720,6 +724,38 @@ export default function ReportsPage() {
                   ))}
                 </select>
               </div>
+              {activeTab === 'preadmissions' && (
+                <>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Documento / nombre
+                    </label>
+                    <input
+                      type="text"
+                      value={preDocumento}
+                      onChange={(e) => setPreDocumento(e.target.value)}
+                      placeholder="Cédula o parte del nombre"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Estado llegada
+                    </label>
+                    <select
+                      value={preArrivalState}
+                      onChange={(e) => setPreArrivalState(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg min-w-[200px]"
+                    >
+                      <option value="">Todos</option>
+                      <option value="registrado">Registrado</option>
+                      <option value="espera_llegada">En espera de llegada</option>
+                      <option value="paciente_presente">Paciente presente</option>
+                      <option value="ticket_generado">Ticket generado</option>
+                    </select>
+                  </div>
+                </>
+              )}
               <button
                 type="button"
                 onClick={applyFilters}
@@ -734,11 +770,25 @@ export default function ReportsPage() {
               >
                 Limpiar
               </button>
+              {canExportReports(user) && (
+                <button
+                  type="button"
+                  onClick={() => void exportFullExcel()}
+                  disabled={exporting}
+                  className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 text-sm disabled:opacity-50"
+                >
+                  {exporting ? 'Generando…' : 'Exportar Excel'}
+                </button>
+              )}
             </div>
+            <p className="text-xs text-gray-500 mt-3">
+              Exportar Excel genera un archivo .xlsx con varias hojas (Dashboard, Resumen, Detalle,
+              Diario, Eficiencia, SLA, Preadmisiones) según los filtros aplicados.
+            </p>
             {(applied.windowNumber || applied.agentId) && activeTab === 'preadmissions' && (
-              <p className="text-xs text-amber-700 mt-3">
-                Ventanilla y agente aplican a reportes de turnos. En Preadmisiones solo se usan las
-                fechas (y los filtros propios de esa pestaña).
+              <p className="text-xs text-amber-700 mt-2">
+                Ventanilla y agente aplican a reportes de turnos. En Preadmisiones solo se usan
+                fechas, área/servicio (RAD/LAB), documento y estado de llegada.
               </p>
             )}
           </div>
@@ -1394,67 +1444,6 @@ export default function ReportsPage() {
 
             {activeTab === 'preadmissions' && (
               <div className="space-y-6">
-                <div className="bg-white rounded-lg shadow-lg p-4 flex flex-wrap gap-4 items-end">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Área</label>
-                    <select
-                      value={preTipo}
-                      onChange={(e) => setPreTipo(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg min-w-[140px]"
-                    >
-                      <option value="">Todas</option>
-                      <option value="RAD">Radiología</option>
-                      <option value="LAB">Laboratorio</option>
-                    </select>
-                  </div>
-                  <div className="flex-1 min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Documento / nombre
-                    </label>
-                    <input
-                      type="text"
-                      value={preDocumento}
-                      onChange={(e) => setPreDocumento(e.target.value)}
-                      placeholder="Cédula o parte del nombre"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">
-                      Estado llegada
-                    </label>
-                    <select
-                      value={preArrivalState}
-                      onChange={(e) => setPreArrivalState(e.target.value)}
-                      className="px-3 py-2 border border-gray-300 rounded-lg min-w-[200px]"
-                    >
-                      <option value="">Todos</option>
-                      <option value="registrado">Registrado</option>
-                      <option value="espera_llegada">En espera de llegada</option>
-                      <option value="paciente_presente">Paciente presente</option>
-                      <option value="ticket_generado">Ticket generado</option>
-                    </select>
-                  </div>
-                  {canExportReports(user) && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => exportPreadmissionsCsv()}
-                        className="px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 text-sm"
-                      >
-                        Exportar CSV
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => exportPreadmissionsExcel()}
-                        className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 text-sm"
-                      >
-                        Exportar Excel
-                      </button>
-                    </>
-                  )}
-                </div>
-
                 {loadingPre ? (
                   <div className="text-center py-12">
                     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-hospital-blue mx-auto"></div>

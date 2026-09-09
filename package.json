@@ -37,6 +37,7 @@
     "class-validator": "^0.14.0",
     "clsx": "^2.0.0",
     "date-fns": "^2.30.0",
+    "exceljs": "^4.4.0",
     "express": "^5.2.1",
     "html5-qrcode": "^2.3.8",
     "jspdf": "^4.2.1",
