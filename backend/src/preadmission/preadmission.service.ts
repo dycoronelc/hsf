@@ -339,6 +339,7 @@ export class PreadmissionService {
       entityId: saved.id,
       userId: patientId ?? undefined,
       details: `departamento=${saved.departamento}`,
+      module: 'preadmission',
     });
 
     this.cellbyteService.sendPreadmission(saved).then(async (result) => {
@@ -548,11 +549,30 @@ export class PreadmissionService {
     pre.checkInAt = new Date();
 
     const saved = await this.preadmissionRepository.save(pre);
+    await this.auditService.log('preadmission_arrival_confirmed', {
+      entityType: 'preadmission',
+      entityId: saved.id,
+      userId: user.id,
+      details: 'arrivalState:espera_llegada|registrado→paciente_presente',
+      module: 'host',
+    });
     return toPreadmissionResponse(saved);
   }
 
   async activateTicket(id: number, user: User): Promise<unknown> {
     return this.ticketsService.createTicketForPreadmission(id);
+  }
+
+  async associateTicket(
+    id: number,
+    dto: { ticketId?: number; ticketNumber?: string },
+    user: User,
+  ): Promise<unknown> {
+    return this.ticketsService.associateTicketToPreadmission(
+      id,
+      { ticketId: dto.ticketId, ticketNumber: dto.ticketNumber },
+      user.id,
+    );
   }
 
   async findOne(id: number, user: User): Promise<PreadmissionResponse> {
@@ -679,12 +699,21 @@ export class PreadmissionService {
       throw new NotFoundException('Preadmisión no encontrada');
     }
 
+    const previousStatus = preadmission.status;
+    const previousObs = preadmission.observaciones ?? '';
     preadmission.status = reviewDto.status;
     preadmission.observaciones = reviewDto.observaciones;
     preadmission.reviewedBy = reviewerId;
     preadmission.reviewedAt = new Date();
 
     await this.preadmissionRepository.save(preadmission);
+    await this.auditService.log('preadmission_reviewed', {
+      entityType: 'preadmission',
+      entityId: preadmission.id,
+      userId: reviewerId,
+      details: `status:${previousStatus}→${reviewDto.status}; observaciones:${previousObs || '—'}→${reviewDto.observaciones ?? '—'}`,
+      module: 'admin',
+    });
     return { message: 'Preadmisión actualizada', status: reviewDto.status };
   }
 

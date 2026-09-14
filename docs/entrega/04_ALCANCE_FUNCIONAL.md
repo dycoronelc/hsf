@@ -103,6 +103,16 @@ Se entrega una plataforma web compuesta por **frontend Next.js 14** y **backend 
 | `synchronize: true` en TypeORM | Migrar a migraciones SQL en producción estable |
 | Campo `ssimagen` en Cellbyte | Soportado en API; no hay campo dedicado en wizard paso 7 |
 | JWT 30 min | Usuario debe re-login tras expiración |
+| Compatibilidad móvil (modelos específicos) | **Pendiente:** el hospital está identificando dispositivos/modelos con problemas de visualización; no hay lista cerrada para corregir en este ciclo |
+
+---
+
+## 7bis. Bitácora de auditoría
+
+- Consulta: Administración → **Bitácora** (`/admin/audit`) o API `GET /api/audit`
+- Exportación Excel: `GET /api/audit/export`
+- Permiso: `view_audit` (admin, supervisor, auditor según matriz recomendada)
+- Logout registra evento vía `POST /api/auth/logout`
 
 ---
 

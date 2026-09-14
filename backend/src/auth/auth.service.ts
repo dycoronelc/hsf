@@ -35,7 +35,10 @@ export class AuthService {
     return null;
   }
 
-  async login(loginDto: LoginDto): Promise<TokenResponseDto> {
+  async login(
+    loginDto: LoginDto,
+    auditMeta?: { ipAddress?: string | null },
+  ): Promise<TokenResponseDto> {
     const user = await this.validateUser(loginDto.email, loginDto.password);
     if (!user) {
       throw new UnauthorizedException('Credenciales incorrectas');
@@ -44,11 +47,16 @@ export class AuthService {
       entityType: 'user',
       entityId: user.id,
       userId: user.id,
+      ipAddress: auditMeta?.ipAddress ?? null,
+      module: 'auth',
     });
     return this.issueToken(user);
   }
 
-  async refreshSession(user: { id: number; email: string }): Promise<TokenResponseDto> {
+  async refreshSession(
+    user: { id: number; email: string },
+    auditMeta?: { ipAddress?: string | null },
+  ): Promise<TokenResponseDto> {
     const full = await this.usersService.findByEmail(user.email);
     if (!full) {
       throw new UnauthorizedException('Usuario no encontrado');
@@ -57,6 +65,8 @@ export class AuthService {
       entityType: 'user',
       entityId: full.id,
       userId: full.id,
+      ipAddress: auditMeta?.ipAddress ?? null,
+      module: 'auth',
     });
     const { hashedPassword, ...safeUser } = full;
     return this.issueToken(safeUser);

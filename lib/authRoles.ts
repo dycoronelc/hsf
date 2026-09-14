@@ -102,6 +102,13 @@ export function canExportReports(roleOrUser?: AccessUser | string | null): boole
   return canAccessReports(user)
 }
 
+export function canAccessAudit(roleOrUser?: AccessUser | string | null): boolean {
+  const user = asAccessUser(roleOrUser)
+  const granted = permissionGranted(user, 'view_audit')
+  if (granted !== null) return granted
+  return !!user.role && ['admin', 'supervisor', 'auditor'].includes(user.role)
+}
+
 export function isStaffRole(roleOrUser?: AccessUser | string | null): boolean {
   return (
     canAccessHost(roleOrUser) ||

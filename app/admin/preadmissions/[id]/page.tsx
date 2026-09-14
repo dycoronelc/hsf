@@ -92,6 +92,8 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
   const [observaciones, setObservaciones] = useState('')
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
+  const [associateRef, setAssociateRef] = useState('')
+  const [associateLoading, setAssociateLoading] = useState(false)
 
   const load = useCallback(async () => {
     if (!token) return
@@ -168,6 +170,40 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
     }
   }
 
+  const associateTicket = async () => {
+    if (!token || !detail) return
+    const ref = associateRef.trim()
+    if (!ref) {
+      setError('Indique el número o ID del ticket')
+      return
+    }
+    setAssociateLoading(true)
+    setMessage('')
+    setError('')
+    const body: { ticketId?: number; ticketNumber?: string } = /^\d+$/.test(ref)
+      ? { ticketId: Number(ref), ticketNumber: ref }
+      : { ticketNumber: ref }
+    try {
+      const response = await fetch(`/api/preadmission/${detail.id}/associate-ticket`, {
+        method: 'POST',
+        headers: authHeaders(token, { 'Content-Type': 'application/json' }),
+        body: JSON.stringify(body),
+      })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(apiErrorMessage(data, 'No se pudo asociar el ticket'))
+      }
+      const data = await response.json()
+      setMessage(data.message || 'Ticket asociado correctamente.')
+      setAssociateRef('')
+      await load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Error al asociar')
+    } finally {
+      setAssociateLoading(false)
+    }
+  }
+
   const fullName = detail
     ? [detail.name1, detail.name2, detail.apellido1, detail.apellido2].filter(Boolean).join(' ')
     : ''
@@ -217,6 +253,40 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
               <DetailRow label="Código QR" value={detail.qrCode} />
               <DetailRow label="Llegada confirmada" value={formatPreadmissionDate(detail.confirmedArrivalAt)} />
             </Section>
+
+            {detail.arrivalState === 'paciente_presente' && !detail.ticketId && (
+              <section className="bg-white rounded-lg shadow-lg p-5 sm:p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-2 pb-2 border-b border-gray-100">
+                  Asociar ticket generado
+                </h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  Si el paciente ya tiene un ticket creado fuera del flujo de preadmisión, vincúlelo aquí.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 sm:items-end max-w-xl">
+                  <div className="flex-1">
+                    <label htmlFor="associate-ticket" className="block text-sm font-medium text-gray-700 mb-1">
+                      Número o ID del ticket
+                    </label>
+                    <input
+                      id="associate-ticket"
+                      type="text"
+                      value={associateRef}
+                      onChange={(e) => setAssociateRef(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg"
+                      placeholder="Ej. T-001 o 123"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={associateTicket}
+                    disabled={associateLoading}
+                    className="px-4 py-2 bg-hospital-blue text-white rounded-lg hover:bg-hospital-blue-dark disabled:opacity-50"
+                  >
+                    {associateLoading ? 'Asociando…' : 'Asociar ticket'}
+                  </button>
+                </div>
+              </section>
+            )}
 
             <Section title="Datos personales">
               <DetailRow label="Documento" value={detail.cedula} />

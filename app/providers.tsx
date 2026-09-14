@@ -239,10 +239,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    await releaseStaffSession()
-    clearStoredAuth()
-    setSessionExpired(false)
-    setSessionExpiring(false)
+    const currentToken = token || (typeof window !== 'undefined' ? localStorage.getItem('token') : null)
+    try {
+      if (currentToken) {
+        await fetch('/api/auth/logout', {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${currentToken}` },
+        }).catch(() => undefined)
+      }
+    } finally {
+      await releaseStaffSession()
+      clearStoredAuth()
+      setSessionExpired(false)
+      setSessionExpiring(false)
+    }
   }
 
   const handleSessionLogout = () => {

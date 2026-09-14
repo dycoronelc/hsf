@@ -6,7 +6,10 @@ import {
   ValidateIf,
   IsNotEmpty,
   MaxLength,
+  IsInt,
+  Min,
 } from 'class-validator';
+import { Type } from 'class-transformer';
 import { PreadmissionStatus } from '../../common/enums';
 import {
   IsBirthDateDdMmYyyy,
@@ -178,4 +181,17 @@ export class ReviewPreadmissionDto {
   @IsOptional()
   @IsString()
   observaciones?: string;
+}
+
+export class AssociateTicketDto {
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  ticketId?: number;
+
+  @IsOptional()
+  @IsString()
+  @IsNotEmpty()
+  ticketNumber?: string;
 }

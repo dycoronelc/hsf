@@ -651,10 +651,40 @@ export class TicketsService {
     return { released: numbers.length, tickets: numbers };
   }
 
+  /** Radiología / Toma de muestra permiten varios llamados concurrentes. */
+  private isMultiSlotDestination(dest: string): boolean {
+    const d = dest.trim();
+    return d === 'Radiología' || d === 'Toma de muestra' || d === 'Laboratorio';
+  }
+
+  private isTransferOnlyDestination(dest: string): boolean {
+    return this.isMultiSlotDestination(dest);
+  }
+
+  private isTransferOriginTicket(ticket: Pick<Ticket, 'notes'>): boolean {
+    return Boolean(ticket.notes?.startsWith('Transferido'));
+  }
+
+  private assertTransferEligibleForDestination(
+    windowNumber: string,
+    ticket: Pick<Ticket, 'notes' | 'ticketNumber'>,
+  ) {
+    if (!this.isTransferOnlyDestination(windowNumber)) return;
+    if (!this.isTransferOriginTicket(ticket)) {
+      throw new BadRequestException(
+        `En «${windowNumber.trim()}» solo se pueden llamar tickets transferidos (turno ${ticket.ticketNumber}).`,
+      );
+    }
+  }
+
   private async assertDestinationAvailable(windowNumber: string, exceptTicketId?: number) {
     const dest = windowNumber.trim();
     if (!dest) {
       throw new BadRequestException('Indique el destino del llamado');
+    }
+    // Multi-puesto: Radiología / Toma de muestra no bloquean por ocupación.
+    if (this.isMultiSlotDestination(dest)) {
+      return;
     }
     const qb = this.ticketRepository
       .createQueryBuilder('ticket')
@@ -679,6 +709,7 @@ export class TicketsService {
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    this.assertTransferEligibleForDestination(windowNumber, ticket);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
@@ -727,6 +758,7 @@ export class TicketsService {
         `Espere ${Math.ceil(recallWaitSeconds - elapsed)} segundos antes de volver a llamar`,
       );
     }
+    this.assertTransferEligibleForDestination(windowNumber, ticket);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
@@ -1037,6 +1069,99 @@ export class TicketsService {
       qr_code: savedTicket.qrCode,
       preadmission_id: pre.id,
       ...qi,
+    };
+  }
+
+  /**
+   * Vincula un ticket ya generado (p. ej. walk-in Host) a una preadmisión
+   * en estado Paciente presente (solicitud hospital 12-sep-2026).
+   */
+  async associateTicketToPreadmission(
+    preadmissionId: number,
+    opts: { ticketId?: number; ticketNumber?: string },
+    actorId?: number,
+  ) {
+    const pre = await this.preadmissionRepository.findOne({ where: { id: preadmissionId } });
+    if (!pre) {
+      throw new NotFoundException('Preadmisión no encontrada');
+    }
+    if (pre.ticketId) {
+      throw new BadRequestException('Ya existe un ticket asociado a esta preadmisión');
+    }
+    if (pre.arrivalState !== PreadmissionArrivalState.PACIENTE_PRESENTE) {
+      throw new BadRequestException(
+        'Solo se puede asociar un ticket cuando el estado de llegada es Paciente presente',
+      );
+    }
+
+    const rawNumber = opts.ticketNumber?.trim();
+    let ticket: Ticket | null = null;
+    if (opts.ticketId != null && Number.isFinite(opts.ticketId)) {
+      ticket = await this.ticketRepository.findOne({
+        where: { id: opts.ticketId },
+        relations: ['service'],
+      });
+    }
+    if (!ticket && rawNumber) {
+      ticket = await this.ticketRepository.findOne({
+        where: { ticketNumber: rawNumber },
+        relations: ['service'],
+      });
+      if (!ticket) {
+        ticket = await this.ticketRepository.findOne({
+          where: { ticketNumber: rawNumber.toUpperCase() },
+          relations: ['service'],
+        });
+      }
+    }
+    if (!ticket && opts.ticketId == null && !rawNumber) {
+      throw new BadRequestException('Indique el ID o el número del ticket a asociar');
+    }
+
+    if (!ticket) {
+      throw new NotFoundException('Ticket no encontrado');
+    }
+    if (ticket.preadmissionId) {
+      throw new BadRequestException(
+        `El ticket ${ticket.ticketNumber} ya está vinculado a otra preadmisión`,
+      );
+    }
+    if (
+      ticket.status === TicketStatus.CANCELADO ||
+      ticket.status === TicketStatus.FINALIZADO
+    ) {
+      throw new BadRequestException(
+        `No se puede asociar un ticket en estado ${ticket.status}`,
+      );
+    }
+
+    ticket.preadmissionId = pre.id;
+    if (pre.patientId && !ticket.patientId) {
+      ticket.patientId = pre.patientId;
+    }
+    await this.ticketRepository.save(ticket);
+
+    pre.ticketId = ticket.id;
+    pre.arrivalState = PreadmissionArrivalState.TICKET_GENERADO;
+    await this.preadmissionRepository.save(pre);
+
+    await this.auditService.log('ticket_associated_to_preadmission', {
+      entityType: 'preadmission',
+      entityId: pre.id,
+      userId: actorId,
+      details: `ticketId=${ticket.id}; ticketNumber=${ticket.ticketNumber}`,
+      module: 'preadmission',
+    });
+
+    return {
+      id: ticket.id,
+      ticket_number: ticket.ticketNumber,
+      service_id: ticket.serviceId,
+      service_name: ticket.service?.name ?? null,
+      status: ticket.status,
+      preadmission_id: pre.id,
+      arrival_state: pre.arrivalState,
+      message: `Ticket ${ticket.ticketNumber} asociado a la preadmisión #${pre.id}`,
     };
   }
 }

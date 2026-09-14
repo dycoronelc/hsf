@@ -24,6 +24,7 @@ import {
   CreatePreadmissionDto,
   CreatePreadmissionBodyDto,
   ReviewPreadmissionDto,
+  AssociateTicketDto,
   ParseCedulaQrDto,
   RequestVerificationDto,
   ConfirmVerificationDto,
@@ -218,6 +219,20 @@ export class PreadmissionController {
   @RequirePermissions('activate_ticket')
   async activateTicket(@Param('id') id: number, @Request() req) {
     return this.preadmissionService.activateTicket(+id, req.user);
+  }
+
+  @Post(':id/associate-ticket')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('activate_ticket')
+  async associateTicket(
+    @Param('id') id: number,
+    @Body() body: AssociateTicketDto,
+    @Request() req,
+  ) {
+    if (body.ticketId == null && !body.ticketNumber?.trim()) {
+      throw new BadRequestException('Indique ticketId o ticketNumber');
+    }
+    return this.preadmissionService.associateTicket(+id, body, req.user);
   }
 
   @Get(':id')

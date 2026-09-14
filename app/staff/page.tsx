@@ -9,7 +9,7 @@ import { canSelectCallDestination, isAgentOperational } from '@/lib/agentState'
 import { canAccessStaffConsole } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
-import { CALL_DESTINATIONS } from '@/lib/callDestinations'
+import { CALL_DESTINATIONS, isMultiSlotCallDestination, isTransferOnlyCallDestination } from '@/lib/callDestinations'
 
 interface Ticket {
   id: number
@@ -614,6 +614,10 @@ export default function StaffConsolePage() {
       if (queueView === 'priority') return (t.priority_level ?? 2) <= 2
       return true
     })
+    .filter((t) => {
+      if (!isTransferOnlyCallDestination(myDestination)) return true
+      return isTransferOriginTicket(t)
+    })
     .filter(matchesQueueSearch)
     .sort((a, b) => {
       // Orden de llegada: prioridad de servicio (Triage 1, Consulta 2…), luego llegada
@@ -775,14 +779,17 @@ export default function StaffConsolePage() {
                 const occupied = occupiedSet.has(dest)
                 const keepSelected = windowNumber === dest
                 const mine = myOccupiedDestinations.has(dest)
-                const disabledOption = occupied && !keepSelected && !mine
+                const multiSlot = isMultiSlotCallDestination(dest)
+                const disabledOption = !multiSlot && occupied && !keepSelected && !mine
                 return (
                   <option key={dest} value={dest} disabled={disabledOption}>
                     {disabledOption
                       ? `${dest} (ocupado)`
                       : mine && occupied
                         ? `${dest} (su turno)`
-                        : dest}
+                        : multiSlot && occupied
+                          ? `${dest} (multi-llamado)`
+                          : dest}
                   </option>
                 )
               })}
@@ -798,12 +805,19 @@ export default function StaffConsolePage() {
                 Seleccione el destino para habilitar <strong>Llamar</strong>.
               </p>
             )}
+            {destinationUnlocked && isTransferOnlyCallDestination(myDestination) && (
+              <p className="text-sm text-blue-700 mt-2">
+                En <strong>{myDestination}</strong> la cola muestra solo tickets{' '}
+                <strong>transferidos</strong> y permite múltiples llamados concurrentes.
+              </p>
+            )}
             {destinationUnlocked && occupiedSet.size > 0 && (
               <p className="text-xs text-gray-500 mt-2">
-                Los destinos ocupados se liberan al <strong>Finalizar</strong> o marcar{' '}
-                <strong>No se presentó</strong>. Si cerró sesión con un turno activo, seleccione
-                el destino marcado como <strong>su turno</strong> o pida a un administrador
-                liberarlo en <strong>Administración → Liberar destinos</strong>.
+                Los destinos de ventanilla/triage ocupados se liberan al <strong>Finalizar</strong> o
+                marcar <strong>No se presentó</strong>. Radiología y Toma de muestra permiten
+                varios turnos a la vez. Si cerró sesión con un turno activo, seleccione el destino
+                marcado como <strong>su turno</strong> o pida a un administrador liberarlo en{' '}
+                <strong>Administración → Liberar destinos</strong>.
               </p>
             )}
             {myResumableTickets.length > 0 && !myDestination && (
@@ -1089,13 +1103,17 @@ export default function StaffConsolePage() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
             <p className="text-sm text-gray-600 mb-4">
-              Ordenada por llegada (Triage antes que Consulta). Incluye tickets transferidos.
+              {isTransferOnlyCallDestination(myDestination)
+                ? 'Solo tickets transferidos a este destino, ordenados por llegada.'
+                : 'Ordenada por llegada (Triage antes que Consulta). Incluye tickets transferidos.'}
             </p>
             {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
                 {searchActive
                   ? 'Ningún ticket coincide con la búsqueda'
-                  : 'No hay pacientes en cola'}
+                  : isTransferOnlyCallDestination(myDestination)
+                    ? 'No hay tickets transferidos en cola para este destino'
+                    : 'No hay pacientes en cola'}
               </div>
             ) : (
               <div className="space-y-2">

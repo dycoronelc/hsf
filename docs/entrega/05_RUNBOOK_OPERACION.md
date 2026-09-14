@@ -196,6 +196,15 @@ Adjuntos de preadmisión: /ruta/absoluta
 
 Confirme que la ruta apunta al volumen persistente.
 
+### Bitácora
+
+- UI: `/admin/audit` (permiso `view_audit`)
+- Tras actualizar el catálogo de permisos, en **Permisos por rol** use «Aplicar recomendados» para supervisor/auditor si no ven Bitácora.
+
+### Compatibilidad móvil (pendiente)
+
+Algunos modelos de celular reportan UI incompleta. Hasta recibir la lista de modelos afectados del hospital, no hay cambios de layout móvil adicionales en este ciclo.
+
 ---
 
 ## 7. Escalamiento

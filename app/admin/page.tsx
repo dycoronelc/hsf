@@ -13,6 +13,11 @@ const adminCards = [
     description: 'Consulte y administre las preadmisiones digitales de pacientes.',
   },
   {
+    href: '/admin/audit',
+    title: 'Bitácora',
+    description: 'Consulte auditoría de acciones (quién, cuándo, IP, módulo) y exporte a Excel.',
+  },
+  {
     href: '/admin/permissions',
     title: 'Permisos por rol',
     description: 'Configure qué acciones puede realizar cada rol operativo.',

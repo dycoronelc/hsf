@@ -39,6 +39,9 @@ export default function HostPage() {
   const [msg, setMsg] = useState('')
   const [loading, setLoading] = useState(false)
   const [printTicket, setPrintTicket] = useState<TicketPrintData | null>(null)
+  const [associateForId, setAssociateForId] = useState<number | null>(null)
+  const [associateTicketRef, setAssociateTicketRef] = useState('')
+  const [associateLoading, setAssociateLoading] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -116,6 +119,40 @@ export default function HostPage() {
     } else {
       const body = await res.json().catch(() => ({}))
       setMsg(apiErrorMessage(body, 'No se pudo generar el ticket'))
+    }
+  }
+
+  const associateTicket = async (id: number) => {
+    const ref = associateTicketRef.trim()
+    if (!ref) {
+      setMsg('Indique el número o ID del ticket a asociar')
+      return
+    }
+    setAssociateLoading(true)
+    setMsg('')
+    const body: { ticketId?: number; ticketNumber?: string } = /^\d+$/.test(ref)
+      ? { ticketId: Number(ref), ticketNumber: ref }
+      : { ticketNumber: ref }
+    try {
+      const res = await fetch(`/api/preadmission/${id}/associate-ticket`, {
+        method: 'POST',
+        headers: { ...authHeaders(token), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setMsg(data.message || `Ticket ${data.ticket_number} asociado`)
+        setAssociateForId(null)
+        setAssociateTicketRef('')
+        await load()
+      } else if (handleAuthFailure(res.status, notifySessionExpired)) {
+        return
+      } else {
+        const err = await res.json().catch(() => ({}))
+        setMsg(apiErrorMessage(err, 'No se pudo asociar el ticket'))
+      }
+    } finally {
+      setAssociateLoading(false)
     }
   }
 
@@ -224,13 +261,55 @@ export default function HostPage() {
                       </button>
                     )}
                     {row.arrivalState === 'paciente_presente' && (
-                      <button
-                        type="button"
-                        onClick={() => activate(row.id)}
-                        className="text-green-700 font-medium hover:underline"
-                      >
-                        Generar ticket admisión
-                      </button>
+                      <div className="inline-flex flex-col gap-2 items-start">
+                        <button
+                          type="button"
+                          onClick={() => activate(row.id)}
+                          className="text-green-700 font-medium hover:underline"
+                        >
+                          Generar ticket admisión
+                        </button>
+                        {associateForId === row.id ? (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              type="text"
+                              value={associateTicketRef}
+                              onChange={(e) => setAssociateTicketRef(e.target.value)}
+                              placeholder="N.º o ID ticket"
+                              className="px-2 py-1 border border-gray-300 rounded text-sm w-36"
+                            />
+                            <button
+                              type="button"
+                              disabled={associateLoading}
+                              onClick={() => associateTicket(row.id)}
+                              className="text-hospital-blue font-medium hover:underline text-sm disabled:opacity-50"
+                            >
+                              {associateLoading ? 'Asociando…' : 'Confirmar'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setAssociateForId(null)
+                                setAssociateTicketRef('')
+                              }}
+                              className="text-gray-500 hover:underline text-sm"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setAssociateForId(row.id)
+                              setAssociateTicketRef('')
+                            }}
+                            className="text-hospital-blue font-medium hover:underline"
+                          >
+                            Asociar ticket generado
+                          </button>
+                        )}
+                      </div>
                     )}
                     {row.arrivalState === 'ticket_generado' && (
                       <span className="text-gray-500">Ticket #{row.ticketId ?? '—'}</span>

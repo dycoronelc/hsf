@@ -11,7 +11,7 @@ import {
 } from './dto/auth.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { AgentState } from '../common/enums';
-import { AuditService } from '../audit/audit.service';
+import { AuditService, clientIpFromRequest } from '../audit/audit.service';
 import { PermissionsService } from '../permissions/permissions.service';
 
 @Controller('auth')
@@ -24,25 +24,42 @@ export class AuthController {
   ) {}
 
   @Post('register')
-  async register(@Body() body: RegisterPublicUserDto): Promise<UserResponseDto> {
+  async register(@Body() body: RegisterPublicUserDto, @Request() req): Promise<UserResponseDto> {
     const user = await this.usersService.registerPublicPatient(body);
     await this.auditService.log('user_registered', {
       entityType: 'user',
       entityId: user.id,
       userId: user.id,
+      ipAddress: clientIpFromRequest(req),
+      module: 'auth',
     });
     return user;
   }
 
   @Post('login')
-  async login(@Body() loginDto: LoginDto): Promise<TokenResponseDto> {
-    return this.authService.login(loginDto);
+  async login(@Body() loginDto: LoginDto, @Request() req): Promise<TokenResponseDto> {
+    return this.authService.login(loginDto, { ipAddress: clientIpFromRequest(req) });
+  }
+
+  @Post('logout')
+  @UseGuards(JwtAuthGuard)
+  async logout(@Request() req) {
+    await this.auditService.log('user_logout', {
+      entityType: 'user',
+      entityId: req.user.id,
+      userId: req.user.id,
+      ipAddress: clientIpFromRequest(req),
+      module: 'auth',
+    });
+    return { ok: true };
   }
 
   @Post('refresh-session')
   @UseGuards(JwtAuthGuard)
   async refreshSession(@Request() req): Promise<TokenResponseDto> {
-    return this.authService.refreshSession(req.user);
+    return this.authService.refreshSession(req.user, {
+      ipAddress: clientIpFromRequest(req),
+    });
   }
 
   @Post('forgot-password')
@@ -74,6 +91,8 @@ export class AuthController {
       entityId: req.user.id,
       userId: req.user.id,
       details: agentState ?? 'null',
+      ipAddress: clientIpFromRequest(req),
+      module: 'staff',
     });
     return { agentState: agentState ?? null };
   }
