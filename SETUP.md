@@ -23,7 +23,7 @@ npm run backend:init
 Esto creará:
 - Usuario admin: `admin@hospitalsantafe.com` / `admin123`
 - Usuario recepción: `reception@hospitalsantafe.com` / `reception123`
-- Servicios básicos (Laboratorio, Radiología, etc.)
+- Servicios básicos (Toma de muestra, Radiología, etc.)
 
 ### 4. Ejecutar Aplicación
 

@@ -30,7 +30,7 @@ function normalizeHostArea(area: string): 'ADM' | 'LAB' | 'RAD' | null {
 
 const AREA_LABELS: Record<'ADM' | 'LAB' | 'RAD', string> = {
   ADM: 'Admisión',
-  LAB: 'Laboratorio',
+  LAB: 'Toma de muestra',
   RAD: 'Radiología',
 }
 
@@ -132,7 +132,7 @@ export default function HostTurnosPage() {
           <div>
             <h1 className="text-3xl font-bold text-gray-900">Crear turno en recepción</h1>
             <p className="text-gray-600 mt-2">
-              Genere turnos de Admisión, Laboratorio o Radiología. Al confirmar, se imprimirá el ticket.
+              Genere turnos de Admisión, Toma de muestra o Radiología. Al confirmar, se imprimirá el ticket.
             </p>
           </div>
           <Link href="/dashboard" className="text-hospital-blue hover:underline text-sm font-medium">
@@ -179,7 +179,7 @@ export default function HostTurnosPage() {
 
           {receptionServices.length === 0 && (
             <p className="text-sm text-amber-700">
-              No hay tipos de ticket activos para Admisión, Laboratorio o Radiología.
+              No hay tipos de ticket activos para Admisión, Toma de muestra o Radiología.
             </p>
           )}
 

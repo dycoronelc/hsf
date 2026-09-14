@@ -18,7 +18,7 @@ export const PREADMISSION_STATUS_LABELS: Record<string, string> = {
 
 export const DEPARTAMENTO_LABELS: Record<string, string> = {
   RAD: 'Radiología',
-  LAB: 'Laboratorio',
+  LAB: 'Toma de muestra',
 }
 
 export const ATTACHMENT_FIELD_LABELS: Record<string, string> = {

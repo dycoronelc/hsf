@@ -86,7 +86,7 @@ export class PreadmissionService {
   }
 
   private departamentoLabel(code: string): string {
-    if (code === 'LAB') return 'Laboratorio';
+    if (code === 'LAB') return 'Toma de muestra';
     if (code === 'RAD') return 'Radiología';
     return code;
   }
@@ -137,7 +137,7 @@ export class PreadmissionService {
 
   private duplicatePreadmissionMessage(departamento: string, fechaprobableatencion: string): string {
     const servicio = this.departamentoLabel(departamento.trim().toUpperCase());
-    return `Ya existe una preadmisión para ${servicio} con fecha de atención ${fechaprobableatencion.trim()}. Solo se permite una preadmisión por servicio y día. Puede registrar otro servicio distinto (por ejemplo, Laboratorio y Radiología) para la misma fecha.`;
+    return `Ya existe una preadmisión para ${servicio} con fecha de atención ${fechaprobableatencion.trim()}. Solo se permite una preadmisión por servicio y día. Puede registrar otro servicio distinto (por ejemplo, Toma de muestra y Radiología) para la misma fecha.`;
   }
 
   async checkActiveDocument(

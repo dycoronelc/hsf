@@ -261,7 +261,7 @@ export class NotificationsService {
       data.departamento === 'RAD'
         ? 'Radiología'
         : data.departamento === 'LAB'
-          ? 'Laboratorio'
+          ? 'Toma de muestra'
           : data.departamento;
     const fechaRegistro = data.fechapreadmision.toLocaleDateString('es-PA', {
       timeZone: 'America/Panama',

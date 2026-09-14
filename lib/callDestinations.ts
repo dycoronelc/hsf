@@ -6,7 +6,7 @@ export const CALL_DESTINATIONS = [
   'Ventanilla 4',
   'Ventanilla 5',
   'Triage',
-  'Laboratorio',
+  'Toma de muestra',
   'Radiología',
 ] as const
 

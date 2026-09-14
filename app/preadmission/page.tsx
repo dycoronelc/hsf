@@ -1162,7 +1162,7 @@ export default function PreadmissionPage() {
                 >
                   <option value="">Seleccione...</option>
                   <option value="RAD">Radiología</option>
-                  <option value="LAB">Laboratorio</option>
+                  <option value="LAB">Toma de muestra</option>
                 </select>
               </div>
               <DdMmYyyyDateField

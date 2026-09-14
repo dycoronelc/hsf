@@ -31,7 +31,7 @@ export default function NewTicketPage() {
         <div className="bg-white rounded-lg shadow-lg p-8 text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Turnos en recepción</h1>
           <p className="text-gray-600 mb-6">
-            Los turnos de Laboratorio y Radiología los genera el personal del hospital al momento de su
+            Los turnos de Toma de muestra y Radiología los genera el personal del hospital al momento de su
             llegada. No es necesario crearlos desde la plataforma.
           </p>
           <Link

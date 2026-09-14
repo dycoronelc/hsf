@@ -135,7 +135,7 @@ export class MonitorService {
     );
 
     const labels: Record<string, string> = {
-      LAB: 'Laboratorio',
+      LAB: 'Toma de muestra',
       RAD: 'Radiología',
       OTRO: 'Otros',
     };

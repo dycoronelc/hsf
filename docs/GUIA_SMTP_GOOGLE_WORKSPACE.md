@@ -211,7 +211,7 @@ Reiniciar el backend después de guardar.
 
 1. Completar y **enviar** una preadmisión de prueba.
 2. El paciente debe recibir un correo con asunto similar a: `Confirmación de preadmisión #123 - Hospital Santa Fe`.
-3. El cuerpo debe incluir referencia, área (Radiología/Laboratorio), fecha y código para llegada.
+3. El cuerpo debe incluir referencia, área (Radiología/Toma de muestra), fecha y código para llegada.
 
 ### 7.3 Si no llega el correo
 

@@ -85,7 +85,7 @@ export default function DashboardPage() {
                     </svg>
                   </div>
                   <h3 className="text-xl font-semibold mb-2">Crear turno recepción</h3>
-                  <p className="text-gray-600">Laboratorio y Radiología sin registro del paciente</p>
+                  <p className="text-gray-600">Toma de muestra y Radiología sin registro del paciente</p>
                 </Link>
               )}
 

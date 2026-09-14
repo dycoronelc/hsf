@@ -263,7 +263,7 @@ export default function AdminTicketTypesPage() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg"
               >
                 <option value="ADMISION">Admisión</option>
-                <option value="LAB">Laboratorio</option>
+                <option value="LAB">Toma de muestra</option>
                 <option value="RAD">Radiología</option>
               </select>
             </div>
@@ -406,7 +406,7 @@ export default function AdminTicketTypesPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg"
                 >
                   <option value="ADMISION">Admisión</option>
-                  <option value="LAB">Laboratorio</option>
+                  <option value="LAB">Toma de muestra</option>
                   <option value="RAD">Radiología</option>
                 </select>
               </div>

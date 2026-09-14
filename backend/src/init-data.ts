@@ -139,7 +139,7 @@ async function bootstrap() {
 
     // Crear servicios
     const servicesData = [
-      { name: 'Laboratorio Clínico', code: 'LAB', area: 'LAB', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 30 },
+      { name: 'Toma de muestra', code: 'LAB', area: 'LAB', estimatedTime: 30, ticketPrefix: 'LR', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 30 },
       { name: 'Radiología General', code: 'RAD', area: 'RAD', estimatedTime: 45, ticketPrefix: 'RD', priorityLevel: 2, slaWaitMinutes: 10, slaAttentionMinutes: 45 },
       { name: 'Tomografía', code: 'TOM', area: 'RAD', estimatedTime: 60, ticketPrefix: 'RD', priorityLevel: 2, slaWaitMinutes: 15, slaAttentionMinutes: 60 },
       {
@@ -175,32 +175,42 @@ async function bootstrap() {
         });
         await serviceRepository.save(service);
         console.log(`✓ Servicio creado: ${serviceData.name}`);
-      } else if (
-        serviceData.ticketPrefix &&
-        existing.ticketPrefix !== serviceData.ticketPrefix &&
-        (serviceData.code === 'RAD' ||
-          serviceData.code === 'TOM' ||
-          serviceData.code === 'RMN' ||
-          serviceData.code === 'ECO')
-      ) {
-        // Alinear prefijo de Radiología a RD (transferencias y nuevos turnos).
-        existing.ticketPrefix = serviceData.ticketPrefix;
-        await serviceRepository.save(existing);
-        console.log(`✓ Prefijo actualizado ${serviceData.code}: ${serviceData.ticketPrefix}`);
-      }
-      if (existing && (existing.slaWaitMinutes == null || existing.slaAttentionMinutes == null)) {
-        const data = serviceData as {
-          slaWaitMinutes?: number;
-          slaAttentionMinutes?: number;
-        };
-        if (existing.slaWaitMinutes == null && data.slaWaitMinutes != null) {
-          existing.slaWaitMinutes = data.slaWaitMinutes;
+      } else {
+        let changed = false;
+        if (
+          serviceData.ticketPrefix &&
+          existing.ticketPrefix !== serviceData.ticketPrefix &&
+          (serviceData.code === 'RAD' ||
+            serviceData.code === 'TOM' ||
+            serviceData.code === 'RMN' ||
+            serviceData.code === 'ECO')
+        ) {
+          // Alinear prefijo de Radiología a RD (transferencias y nuevos turnos).
+          existing.ticketPrefix = serviceData.ticketPrefix;
+          changed = true;
+          console.log(`✓ Prefijo actualizado ${serviceData.code}: ${serviceData.ticketPrefix}`);
         }
-        if (existing.slaAttentionMinutes == null && data.slaAttentionMinutes != null) {
-          existing.slaAttentionMinutes = data.slaAttentionMinutes;
+        if (serviceData.code === 'LAB' && existing.name !== serviceData.name) {
+          existing.name = serviceData.name;
+          changed = true;
+          console.log(`✓ Nombre actualizado LAB: ${serviceData.name}`);
         }
-        await serviceRepository.save(existing);
-        console.log(`✓ SLA por defecto aplicado a ${serviceData.code}`);
+        if (existing.slaWaitMinutes == null || existing.slaAttentionMinutes == null) {
+          const data = serviceData as {
+            slaWaitMinutes?: number;
+            slaAttentionMinutes?: number;
+          };
+          if (existing.slaWaitMinutes == null && data.slaWaitMinutes != null) {
+            existing.slaWaitMinutes = data.slaWaitMinutes;
+            changed = true;
+          }
+          if (existing.slaAttentionMinutes == null && data.slaAttentionMinutes != null) {
+            existing.slaAttentionMinutes = data.slaAttentionMinutes;
+            changed = true;
+          }
+          if (changed) console.log(`✓ SLA por defecto aplicado a ${serviceData.code}`);
+        }
+        if (changed) await serviceRepository.save(existing);
       }
     }
 

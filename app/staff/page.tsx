@@ -908,7 +908,7 @@ export default function StaffConsolePage() {
                               <option value="ADM">Admisión / Ventanilla</option>
                               <option value="URG">Urgencias</option>
                               <option value="RAD">Radiología</option>
-                              <option value="LAB">Laboratorio</option>
+                              <option value="LAB">Toma de muestra</option>
                               <option value="BOTH">Lab + Rad</option>
                             </select>
                             {canRecallTicket(ticket) && (
@@ -975,7 +975,7 @@ export default function StaffConsolePage() {
                               <option value="ADM">Admisión / Ventanilla</option>
                               <option value="URG">Urgencias</option>
                               <option value="RAD">Radiología</option>
-                              <option value="LAB">Laboratorio</option>
+                              <option value="LAB">Toma de muestra</option>
                               <option value="BOTH">Lab + Rad</option>
                             </select>
                             <button

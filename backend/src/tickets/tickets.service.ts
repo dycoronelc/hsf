@@ -92,7 +92,7 @@ export class TicketsService {
     const rad =
       (await this.serviceRepository.findOne({ where: { code: 'RAD', isActive: true } })) ||
       (await this.serviceRepository.findOne({ where: { area: 'RAD', isActive: true } }));
-    if (!lab) throw new NotFoundException('No se encontró el servicio de Laboratorio (LAB)');
+    if (!lab) throw new NotFoundException('No se encontró el servicio de Toma de muestra (LAB)');
     if (!rad) throw new NotFoundException('No se encontró el servicio de Radiología (RAD)');
     return { lab, rad };
   }
@@ -324,7 +324,7 @@ export class TicketsService {
     const allowedAreas = ['LAB', 'RAD', 'ADM', 'ADMISION'];
     if (!allowedAreas.includes(String(service.area || '').toUpperCase())) {
       throw new BadRequestException(
-        'Solo se permiten turnos de Admisión, Laboratorio o Radiología en recepción',
+        'Solo se permiten turnos de Admisión, Toma de muestra o Radiología en recepción',
       );
     }
 
@@ -856,7 +856,7 @@ export class TicketsService {
     };
   }
 
-  /** Transferir ticket a Radiología, Laboratorio, Admisión u Urgencias (post-triage).
+  /** Transferir ticket a Radiología, Toma de muestra, Admisión u Urgencias (post-triage).
    * Conserva el mismo número/código del ticket; solo cambia el servicio destino.
    */
   async transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>) {

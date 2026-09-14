@@ -395,7 +395,7 @@ export default function AdminPermissionsPage() {
               </button>
               <p className="text-xs text-gray-500 leading-relaxed">
                 Recomendado hospital: Oficial de admisión y Anfitrión → Llegadas + Staff; Supervisor →
-                Llegadas + Staff + Reportes; Recepción, Laboratorio y Radiología → solo Staff.
+                Llegadas + Staff + Reportes; Recepción, Toma de muestra y Radiología → solo Staff.
               </p>
             </div>
           </div>

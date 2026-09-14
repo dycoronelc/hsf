@@ -37,7 +37,8 @@ export class CallTicketDto {
     'Ventanilla 4',
     'Ventanilla 5',
     'Triage',
-    'Laboratorio',
+    'Toma de muestra',
+    'Laboratorio', // legado (tickets/ventanillas anteriores)
     'Radiología',
   ])
   windowNumber: string;
@@ -83,7 +84,8 @@ export class ReleaseDestinationDto {
     'Ventanilla 4',
     'Ventanilla 5',
     'Triage',
-    'Laboratorio',
+    'Toma de muestra',
+    'Laboratorio', // legado
     'Radiología',
   ])
   windowNumber: string;

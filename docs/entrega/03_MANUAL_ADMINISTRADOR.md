@@ -45,7 +45,7 @@ Subsecciones:
 | `oficial_admision` | Oficial de Admisión |
 | `reception` | Recepción |
 | `supervisor` | Supervisor |
-| `laboratorio` | Laboratorio |
+| `laboratorio` | Toma de muestra |
 | `radiologia` | Radiología |
 | `auditor` | Auditor |
 | `technician` | Técnico |

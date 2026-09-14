@@ -4,7 +4,7 @@ Sistema completo de gestión de flujo de pacientes con módulo de preadmisión d
 
 ## Características Principales
 
-- **Preadmisión Digital**: Wizard completo para preadmisión de Laboratorio y Radiología según estructura JSON del hospital
+- **Preadmisión Digital**: Wizard completo para preadmisión de Toma de muestra y Radiología según estructura JSON del hospital
 - **Gestión de Turnos**: Sistema de colas virtuales con códigos QR
 - **Pantalla de Llamados**: Monitor en tiempo real para visualizar listas de espera
 - **Portal del Paciente**: Interfaz para pacientes para gestionar turnos y preadmisiones

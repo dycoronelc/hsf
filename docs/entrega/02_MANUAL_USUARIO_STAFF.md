@@ -11,7 +11,7 @@
 |-----|-------------------|
 | **Recepción** | Consola staff, llegadas, preadmisiones |
 | **Anfitrión** | Lista de llegadas (`/host`) |
-| **Técnico / Laboratorio / Radiología** | Consola staff |
+| **Técnico / Toma de muestra / Radiología** | Consola staff |
 | **Supervisor** | Staff + reportes |
 | **Auditor** | Reportes (solo lectura) |
 
@@ -70,7 +70,7 @@ La lista se actualiza automáticamente cada ~15 segundos.
 | **Llamar** | Pasa ticket a `llamado` (aparece en monitor) |
 | **Iniciar atención** | Estado `en_atencion` |
 | **Finalizar** | Estado `finalizado` |
-| **Transferir** | A Radiología, Laboratorio o ambos |
+| **Transferir** | A Radiología, Toma de muestra o ambos |
 
 ### Estado del agente
 

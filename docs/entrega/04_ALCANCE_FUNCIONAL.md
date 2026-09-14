@@ -9,7 +9,7 @@
 
 Se entrega una plataforma web compuesta por **frontend Next.js 14** y **backend NestJS 10** con **PostgreSQL**, orientada a:
 
-- Preadmisión digital (Radiología y Laboratorio)
+- Preadmisión digital (Radiología y Toma de muestra)
 - Gestión de turnos y colas
 - Monitor público de llamados
 - Portal paciente y consola operativa staff

@@ -53,7 +53,7 @@ const REPORT_PERMS: AdminPermissionKey[] = ['view_reports', 'export_reports'];
  * Matriz recomendada Hospital Santa Fe:
  * - Oficial de Admisión y Anfitriones → Llegadas + Consola Staff
  * - Supervisor → Llegadas + Consola Staff + Reportes
- * - Radiología, Laboratorio y Recepción → solo Consola Staff
+ * - Radiología, Toma de muestra y Recepción → solo Consola Staff
  */
 export const DEFAULT_ROLE_PERMISSIONS: Record<string, AdminPermissionKey[]> = {
   [UserRole.ANFITRION]: [...HOST_PERMS, ...STAFF_PERMS, 'view_monitor'],

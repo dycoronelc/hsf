@@ -22,13 +22,13 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     image: {
       src: '/Santa Fe 2.jpg',
       alt: 'Instalaciones Hospital Santa Fe',
-      caption: 'Complete la preadmisión antes de su cita en Radiología o Laboratorio.',
+      caption: 'Complete la preadmisión antes de su cita en Radiología o Toma de muestra.',
     },
     paragraphs: [
       'Debe tener una cuenta registrada e iniciar sesión antes de completar la preadmisión. El proceso tiene 8 pasos: área y fecha, identificación, datos personales, contacto, emergencia, seguro, documentos y confirmación.',
     ],
     bullets: [
-      'Seleccione departamento RAD (Radiología) o LAB (Laboratorio).',
+      'Seleccione departamento RAD (Radiología) o LAB (Toma de muestra).',
       'La fecha probable de atención no puede ser anterior a hoy.',
       'Verifique su correo con el código de 6 dígitos en el paso 4.',
       'Adjunte imagen de cédula y orden médica (obligatorios) en formatos JPG, PNG o PDF.',
@@ -90,7 +90,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Consola operativa (Staff)',
     audience: 'staff',
     paragraphs: [
-      'Desde /staff el equipo llama turnos, inicia y finaliza atención, transfiere a Radiología/Laboratorio y registra check-in por QR.',
+      'Desde /staff el equipo llama turnos, inicia y finaliza atención, transfiere a Radiología/Toma de muestra y registra check-in por QR.',
     ],
     bullets: [
       'Indique su estado de agente (en línea, almuerzo, etc.) antes de operar turnos.',
@@ -239,7 +239,7 @@ export const CONTEXTUAL_HELP: ContextualHelpBlock[] = [
     routePrefixes: ['/preadmission'],
     preadmissionSteps: [1],
     title: 'Paso 1 — Área y fecha',
-    summary: 'Seleccione Radiología o Laboratorio y la fecha de su cita.',
+    summary: 'Seleccione Radiología o Toma de muestra y la fecha de su cita.',
     tips: [
       'La fecha no puede ser anterior a hoy.',
       'RAD = estudios de imagen; LAB = análisis clínicos.',
@@ -323,7 +323,7 @@ export const CONTEXTUAL_HELP: ContextualHelpBlock[] = [
     id: 'preadmission-general',
     routePrefixes: ['/preadmission'],
     title: 'Preadmisión digital',
-    summary: 'Asistente de 8 pasos para Radiología o Laboratorio.',
+    summary: 'Asistente de 8 pasos para Radiología o Toma de muestra.',
     tips: [
       'Use «Siguiente» solo cuando el paso actual esté completo.',
       'Puede volver con «Anterior» sin perder datos ya ingresados.',

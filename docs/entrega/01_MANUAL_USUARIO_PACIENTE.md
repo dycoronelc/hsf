@@ -9,7 +9,7 @@
 
 Este manual describe cómo usar el portal web del Hospital Santa Fe para:
 
-- Completar una **preadmisión digital** (Radiología o Laboratorio)
+- Completar una **preadmisión digital** (Radiología o Toma de muestra)
 - Crear una **cuenta de paciente** (opcional)
 - Gestionar **turnos virtuales**
 
