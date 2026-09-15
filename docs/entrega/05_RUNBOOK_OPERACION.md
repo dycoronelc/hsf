@@ -201,6 +201,10 @@ Confirme que la ruta apunta al volumen persistente.
 - UI: `/admin/audit` (permiso `view_audit`)
 - Tras actualizar el catálogo de permisos, en **Permisos por rol** use «Aplicar recomendados» para supervisor/auditor si no ven Bitácora.
 
+### Llamados de días anteriores
+
+Turnos en **Llamado** / **En atención** de un día calendario anterior (América/Panama) se liberan solos (estado `no_show` + nota automática) al consultar monitor o staff, para que no queden fantasma en pantalla. El monitor solo muestra llamados del **día actual**.
+
 ### Compatibilidad móvil (pendiente)
 
 Algunos modelos de celular reportan UI incompleta. Hasta recibir la lista de modelos afectados del hospital, no hay cambios de layout móvil adicionales en este ciclo.

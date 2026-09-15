@@ -427,6 +427,7 @@ export class TicketsService {
   }
 
   async findAll(user: User, serviceId?: number, status?: TicketStatus) {
+    await this.releaseStalePriorDayActiveTickets();
     const query = this.ticketRepository
       .createQueryBuilder('ticket')
       .leftJoinAndSelect('ticket.service', 'service');
@@ -566,10 +567,18 @@ export class TicketsService {
       status: string;
     }>;
   }> {
-    const rows = await this.ticketRepository.find({
-      where: [{ status: TicketStatus.LLAMADO }, { status: TicketStatus.EN_ATENCION }],
-      select: ['id', 'windowNumber', 'ticketNumber', 'status'],
-    });
+    await this.releaseStalePriorDayActiveTickets();
+    const rows = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .select(['ticket.id', 'ticket.windowNumber', 'ticket.ticketNumber', 'ticket.status'])
+      .where('ticket.status IN (:...statuses)', {
+        statuses: [TicketStatus.LLAMADO, TicketStatus.EN_ATENCION],
+      })
+      .andWhere(
+        `to_char(timezone('America/Panama', COALESCE(ticket.calledAt, ticket.createdAt) AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+         = to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')`,
+      )
+      .getMany();
     const items = rows
       .map((r) => ({
         destination: (r.windowNumber || '').trim(),
@@ -580,6 +589,63 @@ export class TicketsService {
       .filter((i) => i.destination.length > 0);
     const destinations = [...new Set(items.map((i) => i.destination))];
     return { destinations, items };
+  }
+
+  /**
+   * Turnos en llamado/en atención de un día anterior (Panamá) no deben
+   * bloquear destinos ni aparecer en el monitor. Se marcan no_show y se liberan.
+   * Throttle: como máximo una pasada por minuto (polls de staff/monitor).
+   */
+  private staleReleaseLastRunMs = 0;
+
+  async releaseStalePriorDayActiveTickets(): Promise<{ released: number; tickets: string[] }> {
+    const now = Date.now();
+    if (now - this.staleReleaseLastRunMs < 60_000) {
+      return { released: 0, tickets: [] };
+    }
+    this.staleReleaseLastRunMs = now;
+
+    const stale = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where('ticket.status IN (:...statuses)', {
+        statuses: [TicketStatus.LLAMADO, TicketStatus.EN_ATENCION],
+      })
+      .andWhere(
+        `to_char(timezone('America/Panama', COALESCE(ticket.calledAt, ticket.createdAt) AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+         < to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')`,
+      )
+      .getMany();
+
+    if (!stale.length) {
+      return { released: 0, tickets: [] };
+    }
+
+    const numbers: string[] = [];
+    for (const ticket of stale) {
+      numbers.push(ticket.ticketNumber);
+      const note =
+        'Liberado automáticamente: turno activo de un día anterior (cambio de día América/Panama)';
+      ticket.notes = ticket.notes?.trim()
+        ? `${ticket.notes.trim()}; ${note}`
+        : note;
+      ticket.status = TicketStatus.NO_SHOW;
+      ticket.windowNumber = null;
+      ticket.calledAt = null;
+      ticket.calledBy = null;
+      ticket.startedAt = null;
+      ticket.callCount = 0;
+      ticket.completedAt = new Date();
+      await this.ticketRepository.save(ticket);
+    }
+
+    await this.auditService.log('stale_prior_day_tickets_released', {
+      entityType: 'ticket',
+      entityId: stale[0]?.id,
+      details: `tickets=${numbers.join(',')}; count=${numbers.length}`,
+      module: 'tickets',
+    });
+
+    return { released: numbers.length, tickets: numbers };
   }
 
   /** Devuelve a cola los turnos activos del agente (p. ej. cierre de sesión o expiración). */
@@ -691,7 +757,11 @@ export class TicketsService {
       .where('ticket.status IN (:...statuses)', {
         statuses: [TicketStatus.LLAMADO, TicketStatus.EN_ATENCION],
       })
-      .andWhere('TRIM(ticket.windowNumber) = :dest', { dest });
+      .andWhere('TRIM(ticket.windowNumber) = :dest', { dest })
+      .andWhere(
+        `to_char(timezone('America/Panama', COALESCE(ticket.calledAt, ticket.createdAt) AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+         = to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')`,
+      );
     if (exceptTicketId != null) {
       qb.andWhere('ticket.id != :exceptTicketId', { exceptTicketId });
     }

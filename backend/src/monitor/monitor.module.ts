@@ -8,11 +8,13 @@ import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { MonitorMedia } from './entities/monitor-media.entity';
 import { SettingsModule } from '../settings/settings.module';
+import { TicketsModule } from '../tickets/tickets.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Ticket, Service, Preadmission, MonitorMedia]),
     SettingsModule,
+    TicketsModule,
   ],
   controllers: [MonitorController],
   providers: [MonitorService, MonitorMediaService],

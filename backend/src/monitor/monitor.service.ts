@@ -5,6 +5,7 @@ import { Ticket } from '../tickets/entities/ticket.entity';
 import { Service } from '../services/entities/service.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { TicketStatus, PreadmissionStatus } from '../common/enums';
+import { TicketsService } from '../tickets/tickets.service';
 
 @Injectable()
 export class MonitorService {
@@ -15,6 +16,7 @@ export class MonitorService {
     private serviceRepository: Repository<Service>,
     @InjectRepository(Preadmission)
     private preadmissionRepository: Repository<Preadmission>,
+    private readonly ticketsService: TicketsService,
   ) {}
 
   async getQueue(serviceId: number) {
@@ -25,16 +27,21 @@ export class MonitorService {
       throw new NotFoundException('Servicio no encontrado');
     }
 
-    // Ticket actualmente llamado o en atención (permanece en monitor sin parpadear al iniciar)
-    const current = await this.ticketRepository.findOne({
-      where: [
-        { serviceId, status: TicketStatus.LLAMADO },
-        { serviceId, status: TicketStatus.EN_ATENCION },
-      ],
-      order: { calledAt: 'DESC' },
-    });
+    // Ticket actualmente llamado o en atención (solo día calendario Panamá)
+    const current = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where('ticket.serviceId = :serviceId', { serviceId })
+      .andWhere('ticket.status IN (:...statuses)', {
+        statuses: [TicketStatus.LLAMADO, TicketStatus.EN_ATENCION],
+      })
+      .andWhere(
+        `to_char(timezone('America/Panama', COALESCE(ticket.calledAt, ticket.createdAt) AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+         = to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')`,
+      )
+      .orderBy('ticket.calledAt', 'DESC')
+      .getOne();
 
-    // Cola de espera
+    // Cola de espera (pendientes; no se filtra por día para no ocultar arribos aún en cola)
     const queueTickets = await this.ticketRepository.find({
       where: [
         { serviceId, status: TicketStatus.CREADO },
@@ -91,6 +98,7 @@ export class MonitorService {
   }
 
   async getAllQueues() {
+    await this.ticketsService.releaseStalePriorDayActiveTickets();
     const services = await this.serviceRepository.find({
       where: { isActive: true },
     });
