@@ -201,6 +201,14 @@ Confirme que la ruta apunta al volumen persistente.
 - UI: `/admin/audit` (permiso `view_audit`)
 - Tras actualizar el catálogo de permisos, en **Permisos por rol** use «Aplicar recomendados» para supervisor/auditor si no ven Bitácora.
 
+### Monitor operativo
+
+- UI: `/admin/ops` (permiso `view_ops`)
+- API: `GET /api/ops/status`
+- Muestra RAM, load, disco, systemd (`hospitalsantafe-api` / `hospitalsantafe-web` / `postgresql`), RSS de Next/API, latencia de BD y alertas por umbral.
+- En Windows de desarrollo algunas métricas de host/systemd serán limitadas; en Linux (QA/prod) están completas.
+- Variables opcionales: `OPS_API_SERVICE`, `OPS_WEB_SERVICE`, `OPS_DB_SERVICE`.
+
 ### Llamados de días anteriores
 
 Turnos en **Llamado** / **En atención** de un día calendario anterior (América/Panama) se liberan solos (estado `no_show` + nota automática) al consultar monitor o staff, para que no queden fantasma en pantalla. El monitor solo muestra llamados del **día actual**.

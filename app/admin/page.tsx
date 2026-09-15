@@ -18,6 +18,12 @@ const adminCards = [
     description: 'Consulte auditoría de acciones (quién, cuándo, IP, módulo) y exporte a Excel.',
   },
   {
+    href: '/admin/ops',
+    title: 'Monitor operativo',
+    description:
+      'Salud del servidor: memoria, servicios, disco, latencia de BD y alertas para diagnóstico.',
+  },
+  {
     href: '/admin/permissions',
     title: 'Permisos por rol',
     description: 'Configure qué acciones puede realizar cada rol operativo.',

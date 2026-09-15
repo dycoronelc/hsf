@@ -36,6 +36,7 @@ import { AdminRoleMatrixRow } from './admin/entities/admin-role-matrix-row.entit
 import { MonitorMedia } from './monitor/entities/monitor-media.entity';
 import { AppSetting } from './settings/entities/app-setting.entity';
 import { SettingsModule } from './settings/settings.module';
+import { OpsModule } from './ops/ops.module';
 
 @Module({
   imports: [
@@ -84,6 +85,7 @@ import { SettingsModule } from './settings/settings.module';
     }),
     AuditModule,
     SettingsModule,
+    OpsModule,
     AuthModule,
     UsersModule,
     PreadmissionModule,
