@@ -434,6 +434,12 @@ export class TicketsService {
 
     if (user.role === 'patient') {
       query.where('ticket.patientId = :patientId', { patientId: user.id });
+    } else {
+      // Consola staff / ops: solo día calendario Panamá (evita cargar histórico completo cada poll).
+      query.andWhere(
+        `to_char(timezone('America/Panama', ticket.createdAt AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+         = to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')`,
+      );
     }
 
     if (serviceId) {

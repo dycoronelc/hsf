@@ -178,7 +178,7 @@ export default function AdminOpsPage() {
       return
     }
     load()
-    const interval = setInterval(load, 10000)
+    const interval = setInterval(load, 15000)
     return () => clearInterval(interval)
   }, [authHydrated, isAuthenticated, user, router, load])
 
@@ -422,7 +422,7 @@ export default function AdminOpsPage() {
               <p className="text-xs text-gray-500 mt-4">
                 Latencia de red medida desde el navegador hacia <code>/api/ops/status</code>:{' '}
                 <strong>{apiLatencyMs != null ? `${apiLatencyMs} ms` : '—'}</strong>. Se actualiza
-                cada 10 s.
+                cada 15 s.
               </p>
             </Card>
           </div>

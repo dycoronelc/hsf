@@ -1104,8 +1104,8 @@ export default function StaffConsolePage() {
             <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
             <p className="text-sm text-gray-600 mb-4">
               {isTransferOnlyCallDestination(myDestination)
-                ? 'Solo tickets transferidos a este destino, ordenados por llegada.'
-                : 'Ordenada por llegada (Triage antes que Consulta). Incluye tickets transferidos.'}
+                ? 'Solo tickets transferidos a este destino, del día actual, ordenados por llegada.'
+                : 'Del día actual, ordenada por llegada (Triage antes que Consulta). Incluye tickets transferidos.'}
             </p>
             {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">

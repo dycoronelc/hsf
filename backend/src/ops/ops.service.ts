@@ -108,12 +108,34 @@ export class OpsService {
   ) {}
 
   async getStatus(): Promise<OpsStatusPayload> {
+    // Timeouts cortos: el monitor no debe agravar picos de latencia.
     const [database, disk, systemd, processes, queue] = await Promise.all([
-      this.checkDatabase(),
-      this.checkDisk(),
-      this.checkSystemdServices(),
-      this.checkNodeProcesses(),
-      this.checkQueueSnapshot(),
+      this.withTimeout(this.checkDatabase(), 2000, {
+        ok: false,
+        latencyMs: 2000,
+        error: 'timeout 2000ms',
+      }),
+      this.withTimeout(this.checkDisk(), 2000, {
+        available: false,
+        mounts: [] as OpsStatusPayload['disk']['mounts'],
+        error: 'timeout 2000ms',
+      }),
+      this.withTimeout(this.checkSystemdServices(), 2500, {
+        available: false,
+        services: [] as OpsStatusPayload['systemd']['services'],
+        error: 'timeout 2500ms',
+      }),
+      this.withTimeout(this.checkNodeProcesses(), 2000, {
+        available: false,
+        items: [] as OpsStatusPayload['processes']['items'],
+        error: 'timeout 2000ms',
+      }),
+      this.withTimeout(this.checkQueueSnapshot(), 2000, {
+        ok: false,
+        activeCallsToday: null,
+        waitingQueue: null,
+        error: 'timeout 2000ms',
+      }),
     ]);
 
     const payload: OpsStatusPayload = {
@@ -138,6 +160,22 @@ export class OpsService {
 
     payload.alerts = this.buildAlerts(payload);
     return payload;
+  }
+
+  private async withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    try {
+      return await Promise.race([
+        promise,
+        new Promise<T>((_, reject) => {
+          timer = setTimeout(() => reject(new Error(`timeout ${ms}ms`)), ms);
+        }),
+      ]);
+    } catch {
+      return fallback;
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
   }
 
   private getProcessSnapshot() {
@@ -186,7 +224,10 @@ export class OpsService {
   private async checkDatabase() {
     const started = Date.now();
     try {
-      await this.dataSource.query('SELECT 1');
+      await this.dataSource.transaction(async (manager) => {
+        await manager.query(`SET LOCAL statement_timeout = '1500ms'`);
+        await manager.query('SELECT 1');
+      });
       return {
         ok: true,
         latencyMs: Date.now() - started,
@@ -210,7 +251,7 @@ export class OpsService {
       };
     }
     try {
-      const { stdout } = await execFileAsync('df', ['-kP'], { timeout: 4000 });
+      const { stdout } = await execFileAsync('df', ['-kP'], { timeout: 1500 });
       const lines = stdout.trim().split('\n').slice(1);
       const mounts = lines
         .map((line) => line.trim().split(/\s+/))
@@ -263,7 +304,7 @@ export class OpsService {
     for (const name of names) {
       try {
         const { stdout } = await execFileAsync('systemctl', ['is-active', name], {
-          timeout: 3000,
+          timeout: 1500,
         });
         const active = stdout.trim();
         services.push({ name, active, ok: active === 'active' });
@@ -301,8 +342,8 @@ export class OpsService {
     }
     try {
       const { stdout } = await execFileAsync('ps', ['-eo', 'pid=,rss=,args='], {
-        timeout: 4000,
-        maxBuffer: 2 * 1024 * 1024,
+        timeout: 1500,
+        maxBuffer: 1024 * 1024,
       });
       const items: OpsStatusPayload['processes']['items'] = [];
 
@@ -349,6 +390,10 @@ export class OpsService {
         .where('ticket.status IN (:...statuses)', {
           statuses: [TicketStatus.CREADO, TicketStatus.CHECK_IN, TicketStatus.EN_COLA],
         })
+        .andWhere(
+          `to_char(timezone('America/Panama', ticket.createdAt AT TIME ZONE 'UTC'), 'YYYY-MM-DD')
+           = to_char(timezone('America/Panama', now()), 'YYYY-MM-DD')`,
+        )
         .getCount();
 
       return {
@@ -376,7 +421,7 @@ export class OpsService {
         code: 'db_down',
         message: `Base de datos no responde: ${payload.database.error || 'error'}`,
       });
-    } else if (payload.database.latencyMs > 500) {
+    } else if (payload.database.latencyMs > 1000) {
       alerts.push({
         level: 'warn',
         code: 'db_slow',
@@ -398,7 +443,7 @@ export class OpsService {
       });
     }
 
-    if (payload.process.rssMb >= 1500) {
+    if (payload.process.rssMb >= 1200) {
       alerts.push({
         level: 'warn',
         code: 'api_rss_high',
@@ -407,13 +452,13 @@ export class OpsService {
     }
 
     for (const proc of payload.processes.items) {
-      if (proc.label === 'next-web' && proc.rssMb != null && proc.rssMb >= 2048) {
+      if (proc.label === 'next-web' && proc.rssMb != null && proc.rssMb >= 1500) {
         alerts.push({
           level: 'critical',
           code: 'next_rss_critical',
-          message: `Next.js (~${proc.rssMb} MB) está muy alto; considere reiniciar hospitalsantafe-web`,
+          message: `Next.js (~${proc.rssMb} MB) está muy alto; reinicie hospitalsantafe-web`,
         });
-      } else if (proc.label === 'next-web' && proc.rssMb != null && proc.rssMb >= 1200) {
+      } else if (proc.label === 'next-web' && proc.rssMb != null && proc.rssMb >= 1000) {
         alerts.push({
           level: 'warn',
           code: 'next_rss_high',

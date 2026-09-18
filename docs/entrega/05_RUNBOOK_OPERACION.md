@@ -206,8 +206,27 @@ Confirme que la ruta apunta al volumen persistente.
 - UI: `/admin/ops` (permiso `view_ops`)
 - API: `GET /api/ops/status`
 - Muestra RAM, load, disco, systemd (`hospitalsantafe-api` / `hospitalsantafe-web` / `postgresql`), RSS de Next/API, latencia de BD y alertas por umbral.
+- Checks con **timeout ~1.5–2.5 s** para no agravar picos; poll UI cada **15 s**.
+- Alertas Next: warn ≥ 1 GB RSS, critical ≥ 1.5 GB.
 - En Windows de desarrollo algunas métricas de host/systemd serán limitadas; en Linux (QA/prod) están completas.
 - Variables opcionales: `OPS_API_SERVICE`, `OPS_WEB_SERVICE`, `OPS_DB_SERVICE`.
+
+### Reinicio programado de Next.js (memoria)
+
+Next puede crecer durante el día. En prod se recomienda cron de **root** (hora Panamá):
+
+```cron
+# 01:00 — API + Web
+0 1 * * * /usr/bin/systemctl restart hospitalsantafe-web hospitalsantafe-api >> /var/log/hsf-nightly-restart.log 2>&1
+# 12:00 — solo Web (corta el crecimiento diurno de next-server)
+0 12 * * * /usr/bin/systemctl restart hospitalsantafe-web >> /var/log/hsf-nightly-restart.log 2>&1
+```
+
+Verificar: `sudo crontab -l` y `timedatectl` (timezone `America/Panama`).
+
+### Cola Staff
+
+`GET /api/tickets` para roles operativos filtra al **día calendario Panamá** (el paciente sigue viendo su historial completo).
 
 ### Llamados de días anteriores
 
