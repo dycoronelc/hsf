@@ -21,7 +21,8 @@ Este índice agrupa la documentación oficial entregada al Hospital Santa Fe Pan
 | 02 | [Manual de usuario — Staff](./02_MANUAL_USUARIO_STAFF.md) | Recepción, anfitrión, técnicos | Llegadas, turnos, monitor, consola |
 | 03 | [Manual de administrador](./03_MANUAL_ADMINISTRADOR.md) | Administrador TI / sistema | Usuarios, permisos, tipos de ticket |
 | 04 | [Alcance funcional entregado](./04_ALCANCE_FUNCIONAL.md) | Gerencia, PM, aceptación | Módulos, límites, integraciones |
-| 05 | [Runbook de operación y soporte](./05_RUNBOOK_OPERACION.md) | Soporte N1/N2, TI | Incidentes, logs, backup, redeploy |
+| 05 | [Runbook de operación y soporte](./05_RUNBOOK_OPERACION.md) | Soporte N1/N2, TI | Instalación, deploy, backup/restore, ops, cron, incidentes |
+| — | [Rollback Lab+Rad secuencial](./ROLLBACK_SEQUENTIAL_LAB_RAD.md) | TI / desarrollo | Tag `pre-sequential-lab-rad-transfer` |
 | 06 | [Guía de integración Cellbyte](./06_GUIA_INTEGRACION_CELLBYTE.md) | TI + proveedor Cellbyte | Auth, payload, pruebas Postman |
 | 07 | [Referencia de API REST](./07_REFERENCIA_API.md) | Desarrollo / integraciones | Endpoints, auth, permisos |
 | 08 | [Acta de aceptación UAT](./08_ACTA_ACEPTACION_UAT.md) | Gerencia + proveedor | Checklist firmable |

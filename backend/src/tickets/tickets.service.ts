@@ -21,6 +21,17 @@ import { AuditService } from '../audit/audit.service';
 import { SettingsService } from '../settings/settings.service';
 import { toIsoUtc, toPanamaOffsetIso } from '../common/timezone';
 
+/**
+ * ROLLBACK Lab+Rad secuencial:
+ * - Tag git previo: `pre-sequential-lab-rad-transfer`
+ * - Doc: docs/entrega/ROLLBACK_SEQUENTIAL_LAB_RAD.md
+ * - `false` = comportamiento legacy (BOTH clona un 2º ticket con el mismo número).
+ */
+const SEQUENTIAL_LAB_RAD_TRANSFER = true;
+
+/** Metadato en notes: segunda etapa pendiente tras Lab+Rad secuencial. */
+const HSF_PENDING_STAGE_RE = /\[HSF_PENDING_STAGE:(RAD|LAB)\]/;
+
 @Injectable()
 export class TicketsService {
   constructor(
@@ -119,9 +130,71 @@ export class TicketsService {
       return [await this.resolveServiceByCodes(['URG'], 'Urgencias')];
     }
     const { lab, rad } = await this.resolveLabRadServices();
-    if (targetArea === 'BOTH') return [lab, rad];
+    // Secuencial: BOTH = solo primer destino (LAB). Flag off = [lab, rad] para clonado legacy.
+    if (targetArea === 'BOTH') {
+      return SEQUENTIAL_LAB_RAD_TRANSFER ? [lab] : [lab, rad];
+    }
     if (targetArea === 'LAB') return [lab];
     return [rad];
+  }
+
+  private parsePendingSecondStage(notes?: string | null): 'RAD' | 'LAB' | null {
+    const m = HSF_PENDING_STAGE_RE.exec(notes || '');
+    if (!m) return null;
+    return m[1] === 'LAB' ? 'LAB' : 'RAD';
+  }
+
+  private stripPendingSecondStage(notes?: string | null): string {
+    return String(notes || '')
+      .replace(HSF_PENDING_STAGE_RE, '')
+      .replace(/\n{2,}/g, '\n')
+      .trim();
+  }
+
+  private withPendingSecondStage(notes: string, stage: 'RAD' | 'LAB'): string {
+    const base = this.stripPendingSecondStage(notes);
+    return `${base}\n[HSF_PENDING_STAGE:${stage}]`.trim();
+  }
+
+  private isLabOrRadService(service?: Pick<Service, 'code' | 'area' | 'name'> | null): boolean {
+    const code = String(service?.code || '').toUpperCase();
+    const area = String(service?.area || '').toUpperCase();
+    if (code === 'LAB' || code === 'RAD' || area === 'LAB' || area === 'RAD') return true;
+    return /radiolog|toma de muestra|laboratorio/i.test(service?.name || '');
+  }
+
+  private isVentanillaLikeService(service?: Pick<Service, 'code' | 'area' | 'name'> | null): boolean {
+    if (!service) return true;
+    if (this.isLabOrRadService(service)) return false;
+    const code = String(service.code || '').toUpperCase();
+    if (code === 'TRIAGE' || code === 'URG') return false;
+    if (/triage|urgenc/i.test(service.name || '')) return false;
+    return true;
+  }
+
+  private async assertNoActiveDuplicateNumber(
+    ticketNumber: string,
+    serviceId: number,
+    excludeId: number,
+  ) {
+    const existing = await this.ticketRepository.findOne({
+      where: {
+        ticketNumber,
+        serviceId,
+        status: In([
+          TicketStatus.CREADO,
+          TicketStatus.CHECK_IN,
+          TicketStatus.EN_COLA,
+          TicketStatus.LLAMADO,
+          TicketStatus.EN_ATENCION,
+        ]),
+      },
+    });
+    if (existing && existing.id !== excludeId) {
+      throw new BadRequestException(
+        `Ya existe el turno ${ticketNumber} activo en ese servicio (evite duplicar Lab+Rad).`,
+      );
+    }
   }
 
   /** Marca un ticket como proveniente de transferencia (mismo número/código). */
@@ -129,10 +202,15 @@ export class TicketsService {
     sourceServiceName: string;
     targetService: Pick<Service, 'name' | 'code'>;
     ticketNumber: string;
+    pendingSecondStage?: 'RAD' | 'LAB' | null;
   }): string {
     const from = params.sourceServiceName || 'servicio anterior';
     const to = params.targetService.name || params.targetService.code || 'destino';
-    return `Transferido a ${to} (desde ${from}); ticket ${params.ticketNumber}`;
+    let notes = `Transferido a ${to} (desde ${from}); ticket ${params.ticketNumber}`;
+    if (params.pendingSecondStage) {
+      notes = this.withPendingSecondStage(notes, params.pendingSecondStage);
+    }
+    return notes;
   }
 
   private resetTicketForTransferQueue(ticket: Ticket, targetServiceId: number, notes: string) {
@@ -147,7 +225,10 @@ export class TicketsService {
     ticket.completedAt = null;
   }
 
-  /** Clona el ticket hacia otro servicio conservando el mismo número/código. */
+  /**
+   * Clona el ticket hacia otro servicio conservando el mismo número/código.
+   * Solo se usa si SEQUENTIAL_LAB_RAD_TRANSFER === false (rollback legacy BOTH).
+   */
   private async createTransferredQueueTicket(params: {
     source: Ticket;
     targetService: Service;
@@ -481,6 +562,7 @@ export class TicketsService {
         called_at: toPanamaOffsetIso(ticket.calledAt),
         called_by: ticket.calledBy ?? null,
         notes: ticket.notes ?? null,
+        pending_second_stage: this.parsePendingSecondStage(ticket.notes),
         ...this.formatElapsedWaitLabel(ticket.checkInAt ?? ticket.createdAt),
         ...qi,
       };
@@ -913,11 +995,18 @@ export class TicketsService {
 
   async complete(id: number, agent?: Pick<User, 'id' | 'agentState'>, windowNumber?: string) {
     this.assertAgentCanOperate(agent);
-    const ticket = await this.ticketRepository.findOne({ where: { id } });
+    const ticket = await this.ticketRepository.findOne({ where: { id }, relations: ['service'] });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
     this.assertTicketOwnedByAgent(ticket, agent, windowNumber);
+
+    const pendingBefore = this.parsePendingSecondStage(ticket.notes);
+    // Si finalizan sin enviar a la 2ª etapa, limpiar marcador.
+    if (pendingBefore) {
+      ticket.notes = this.stripPendingSecondStage(ticket.notes) || null;
+    }
+
     ticket.status = TicketStatus.FINALIZADO;
     ticket.completedAt = new Date();
     await this.ticketRepository.save(ticket);
@@ -925,16 +1014,38 @@ export class TicketsService {
       entityType: 'ticket',
       entityId: ticket.id,
       userId: agent?.id,
+      details: pendingBefore ? `cleared_pending_stage=${pendingBefore}` : undefined,
     });
-    
+
     // Crear encuesta automática si el paciente está autenticado
     if (ticket.patientId && ticket.patientId > 0) {
       this.surveysService.createForTicket(ticket.id).catch((error) => {
         console.error('Error creating survey for ticket:', error);
       });
     }
-    
-    return { message: 'Atención finalizada' };
+
+    const suggest =
+      SEQUENTIAL_LAB_RAD_TRANSFER && pendingBefore
+        ? {
+            targetArea: pendingBefore,
+            label:
+              pendingBefore === 'RAD'
+                ? 'Radiología'
+                : 'Toma de muestra',
+            hint: 'Había una segunda etapa pendiente (Lab+Rad secuencial). El turno se finalizó sin transferir.',
+          }
+        : null;
+
+    return {
+      message: 'Atención finalizada',
+      ticket_id: ticket.id,
+      ticket_number: ticket.ticketNumber,
+      pending_second_stage_cleared: pendingBefore,
+      // La UI pregunta ANTES de completar; este campo es informativo si ya se completó.
+      suggest_next_transfer: suggest,
+      offer_lab_rad_menu:
+        SEQUENTIAL_LAB_RAD_TRANSFER && this.isVentanillaLikeService(ticket.service),
+    };
   }
 
   async update(id: number, updateDto: UpdateTicketDto) {
@@ -966,6 +1077,7 @@ export class TicketsService {
 
   /** Transferir ticket a Radiología, Toma de muestra, Admisión u Urgencias (post-triage).
    * Conserva el mismo número/código del ticket; solo cambia el servicio destino.
+   * Lab+Rad secuencial (SEQUENTIAL_LAB_RAD_TRANSFER): un solo ticket → LAB + pending RAD.
    */
   async transfer(id: number, dto: TransferTicketDto, agent?: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
@@ -997,52 +1109,70 @@ export class TicketsService {
     const keepNumber = ticket.ticketNumber;
     const queueTickets: Ticket[] = [];
 
+    const sequentialBoth = SEQUENTIAL_LAB_RAD_TRANSFER && dto.targetArea === 'BOTH';
+    const pendingSecondStage: 'RAD' | 'LAB' | null = sequentialBoth ? 'RAD' : null;
+
     // Primer destino: reutiliza el mismo ticket (sin cambiar número/código).
     const primary = targets[0];
-    this.resetTicketForTransferQueue(
-      ticket,
-      primary.id,
-      this.buildTransferNotes({
-        sourceServiceName,
-        targetService: primary,
-        ticketNumber: keepNumber,
-      }),
-    );
+    await this.assertNoActiveDuplicateNumber(keepNumber, primary.id, ticket.id);
+
+    let notes = this.buildTransferNotes({
+      sourceServiceName,
+      targetService: primary,
+      ticketNumber: keepNumber,
+      pendingSecondStage,
+    });
+    // Si transfieren explícitamente a la etapa pendiente, limpiar marcador.
+    if (
+      !pendingSecondStage &&
+      ((dto.targetArea === 'RAD' && this.parsePendingSecondStage(ticket.notes) === 'RAD') ||
+        (dto.targetArea === 'LAB' && this.parsePendingSecondStage(ticket.notes) === 'LAB'))
+    ) {
+      notes = this.stripPendingSecondStage(notes);
+    }
+
+    this.resetTicketForTransferQueue(ticket, primary.id, notes);
     queueTickets.push(await this.ticketRepository.save(ticket));
 
-    // Destinos adicionales (p. ej. BOTH): clona con el mismo número/código.
-    for (const target of targets.slice(1)) {
-      queueTickets.push(
-        await this.createTransferredQueueTicket({
-          source: ticket,
-          targetService: target,
-          sourceServiceName,
-        }),
-      );
+    // Destinos adicionales solo en modo legacy (clonado BOTH).
+    if (!SEQUENTIAL_LAB_RAD_TRANSFER) {
+      for (const target of targets.slice(1)) {
+        queueTickets.push(
+          await this.createTransferredQueueTicket({
+            source: ticket,
+            targetService: target,
+            sourceServiceName,
+          }),
+        );
+      }
     }
 
     const createdSummary = queueTickets.map((t) => ({
       id: t.id,
       ticket_number: t.ticketNumber,
       service_id: t.serviceId,
+      pending_second_stage: this.parsePendingSecondStage(t.notes),
     }));
 
     await this.auditService.log('ticket_transferred', {
       entityType: 'ticket',
       entityId: ticket.id,
       userId: agent?.id,
-      details: `targetArea=${dto.targetArea}; color=${ticket.triageColor ?? ''}; keptNumber=${keepNumber}; queue=${createdSummary
+      details: `targetArea=${dto.targetArea}; sequential=${sequentialBoth}; color=${ticket.triageColor ?? ''}; keptNumber=${keepNumber}; queue=${createdSummary
         .map((c) => `${c.ticket_number}@${c.service_id}`)
         .join(',')}`,
     });
 
     return {
-      message:
-        dto.targetArea === 'BOTH'
+      message: sequentialBoth
+        ? `Ticket ${keepNumber} enviado a Toma de muestra (secuencia Lab→Rad; mismo número)`
+        : dto.targetArea === 'BOTH' && !SEQUENTIAL_LAB_RAD_TRANSFER
           ? `Ticket ${keepNumber} transferido a ambos servicios (mismo número)`
           : `Ticket ${keepNumber} transferido (mismo número)`,
       original_id: id,
       original_ticket_number: keepNumber,
+      sequential_lab_rad: sequentialBoth,
+      pending_second_stage: pendingSecondStage,
       created_tickets: createdSummary,
     };
   }

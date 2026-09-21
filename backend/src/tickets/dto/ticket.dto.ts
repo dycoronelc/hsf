@@ -50,7 +50,11 @@ export class CheckInByCodeDto {
 }
 
 export class TransferTicketDto {
-  /** RAD/LAB/BOTH (estudios) o ADM/URG (post-triage hacia ventanilla de admisión/urgencias). */
+  /**
+   * RAD/LAB/BOTH (estudios) o ADM/URG (post-triage).
+   * BOTH = secuencia Lab→Rad (un solo ticket) si SEQUENTIAL_LAB_RAD_TRANSFER;
+   * con el flag en false vuelve a clonar (rollback).
+   */
   @IsIn(['RAD', 'LAB', 'BOTH', 'ADM', 'URG'])
   targetArea: 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG';
 }
