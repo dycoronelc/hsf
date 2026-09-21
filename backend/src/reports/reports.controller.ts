@@ -176,6 +176,37 @@ export class ReportsController {
     res.send(buffer);
   }
 
+  @Get('export-csv')
+  @RequirePermissions('export_reports')
+  async exportTabCsv(
+    @Res() res: Response,
+    @Query('tab') tab: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('serviceId') serviceId?: string,
+    @Query('serviceCode') serviceCode?: string,
+    @Query('windowNumber') windowNumber?: string,
+    @Query('agentId') agentId?: string,
+    @Query('tipo') tipo?: string,
+    @Query('documento') documento?: string,
+    @Query('arrivalState') arrivalState?: string,
+  ) {
+    const state = this.parseArrivalState(arrivalState);
+    const { csv, filename } = await this.reportsService.exportTabCsv({
+      tab: tab || 'summary',
+      startDate,
+      endDate,
+      filters: this.parseTicketFilters({ serviceId, serviceCode, windowNumber, agentId }),
+      tipo,
+      documento,
+      arrivalState: state,
+    });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    // BOM for Excel-friendly UTF-8
+    res.send('\uFEFF' + csv);
+  }
+
   @Get('preadmissions/export')
   @RequirePermissions('export_reports')
   async exportPreadmissions(

@@ -1,0 +1,44 @@
+Fecha/hora,Usuario,Email,IP,Módulo,Acción,Entidad,ID entidad,Detalle
+2026-09-21T17:21:36-05:00,Administrador,admin@hospitalsantafe.com,10.212.134.200,auth,user_login,user,1,
+2026-09-21T17:21:32-05:00,Administrador,admin@hospitalsantafe.com,10.212.134.200,auth,user_logout,user,1,
+2026-09-21T11:56:04-05:00,Administrador,admin@hospitalsantafe.com,192.168.66.89,auth,user_login,user,1,
+2026-09-21T11:46:05-05:00,Administrador,admin@hospitalsantafe.com,192.168.66.89,auth,user_logout,user,1,
+2026-09-21T11:45:54-05:00,Administrador,admin@hospitalsantafe.com,,,agent_session_released,user,1,tickets=OT-001
+2026-09-21T11:45:54-05:00,Administrador,admin@hospitalsantafe.com,192.168.66.89,auth,user_logout,user,1,
+2026-09-21T11:25:59-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,50,window=Toma de muestra
+2026-09-21T11:25:22-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,50,"targetArea=BOTH; color=; keptNumber=OT-001; queue=OT-001@1,OT-001@2"
+2026-09-21T11:25:20-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,50,
+2026-09-21T11:25:19-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,50,window=Toma de muestra
+2026-09-21T11:25:09-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,47,targetArea=RAD; color=; keptNumber=OT-001; queue=OT-001@2
+2026-09-21T11:25:06-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,47,
+2026-09-21T11:25:04-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,47,window=Toma de muestra
+2026-09-21T11:24:58-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,47,targetArea=ADM; color=; keptNumber=OT-001; queue=OT-001@6
+2026-09-21T11:24:53-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,47,
+2026-09-21T11:24:52-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,47,window=Toma de muestra
+2026-09-21T11:24:42-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,50,targetArea=RAD; color=; keptNumber=OT-001; queue=OT-001@2
+2026-09-21T11:24:39-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,50,window=Toma de muestra
+2026-09-21T11:24:08-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,47,targetArea=LAB; color=; keptNumber=OT-001; queue=OT-001@1
+2026-09-21T11:24:06-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,47,
+2026-09-21T11:24:05-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,47,window=Radiología
+2026-09-21T11:23:30-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,47,targetArea=LAB; color=; keptNumber=OT-001; queue=OT-001@1
+2026-09-21T11:23:26-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,47,
+2026-09-21T11:23:25-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,47,window=Radiología
+2026-09-21T11:23:18-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,48,targetArea=LAB; color=; keptNumber=OT-001; queue=OT-001@1
+2026-09-21T11:23:16-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,48,
+2026-09-21T11:23:15-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,48,window=Radiología
+2026-09-21T11:23:04-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,49,targetArea=LAB; color=; keptNumber=OT-001; queue=OT-001@1
+2026-09-21T11:22:59-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,49,
+2026-09-21T11:22:46-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,49,window=Radiología
+2026-09-21T11:21:06-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,48,"targetArea=BOTH; color=; keptNumber=OT-001; queue=OT-001@1,OT-001@2"
+2026-09-21T11:21:04-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,48,
+2026-09-21T11:21:02-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,48,window=Radiología
+2026-09-21T11:20:49-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,48,"targetArea=BOTH; color=; keptNumber=OT-001; queue=OT-001@1,OT-001@2"
+2026-09-21T11:20:47-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_started,ticket,48,
+2026-09-21T11:20:38-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,48,window=Ventanilla 1
+2026-09-21T11:19:52-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_transferred,ticket,47,"targetArea=BOTH; color=; keptNumber=OT-001; queue=OT-001@1,OT-001@2"
+2026-09-21T11:19:48-05:00,Administrador,admin@hospitalsantafe.com,,,ticket_called,ticket,47,window=Ventanilla 1
+2026-09-21T11:19:45-05:00,Administrador,admin@hospitalsantafe.com,192.168.66.89,staff,agent_state_changed,user,1,en_linea
+2026-09-21T11:15:35-05:00,Administrador,admin@hospitalsantafe.com,,,host_walk_in_ticket_created,ticket,47,"{""ticketNumber"":""OT-001"",""serviceId"":13,""serviceCode"":""OT""}"
+2026-09-21T11:15:14-05:00,Administrador,admin@hospitalsantafe.com,192.168.66.89,auth,user_login,user,1,
+2026-09-21T09:00:55-05:00,Toma de muestra,muestra@hospitalsantafe.com,192.168.57.9,auth,user_logout,user,18,
+2026-09-21T09:00:16-05:00,Toma de muestra,muestra@hospitalsantafe.com,192.168.57.9,auth,user_login,user,18,

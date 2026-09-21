@@ -392,7 +392,10 @@ export const CONTEXTUAL_HELP: ContextualHelpBlock[] = [
     routePrefixes: ['/reports'],
     title: 'Reportes',
     summary: 'Indicadores operativos y exportaciones.',
-    tips: ['Use filtros de fecha para acotar resultados.', 'Exporte CSV cuando necesite análisis externo.'],
+    tips: [
+      'Use filtros de fecha para acotar resultados.',
+      'Excel exporta todas las hojas; CSV exporta solo la pestaña activa.',
+    ],
   },
   {
     id: 'forgot-password',

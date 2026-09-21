@@ -259,6 +259,7 @@ export default function ReportsPage() {
   const [preDocumento, setPreDocumento] = useState('')
   const [preArrivalState, setPreArrivalState] = useState('')
   const [exporting, setExporting] = useState(false)
+  const [exportingCsv, setExportingCsv] = useState(false)
 
   const appendSharedParams = useCallback(
     (params: URLSearchParams, opts?: { includeDates?: boolean }) => {
@@ -518,6 +519,52 @@ export default function ReportsPage() {
     }
   }
 
+  const exportActiveTabCsv = async () => {
+    if (!token) return
+    setExportingCsv(true)
+    try {
+      const params = new URLSearchParams()
+      params.append('tab', activeTab)
+      appendSharedParams(params)
+      const tipo = resolvePreadTipoFromService(applied.serviceId)
+      if (tipo === 'RAD' || tipo === 'LAB') params.append('tipo', tipo)
+      if (applied.preDocumento.trim()) params.append('documento', applied.preDocumento.trim())
+      if (applied.preArrivalState) params.append('arrivalState', applied.preArrivalState)
+
+      const response = await fetch(`/api/reports/export-csv?${params.toString()}`, {
+        headers: authHeaders(token),
+      })
+      if (
+        handleAuthFailure(
+          response.status,
+          notifySessionExpired,
+          'Su sesión ha expirado o no tiene permiso para exportar reportes. Debe iniciar sesión de nuevo.',
+        )
+      ) {
+        return
+      }
+      if (!response.ok) {
+        alert('No se pudo generar el CSV de la pestaña actual')
+        return
+      }
+      const disposition = response.headers.get('Content-Disposition') || ''
+      const match = /filename="([^"]+)"/.exec(disposition)
+      const filename =
+        match?.[1] || `reportes_${activeTab}_${new Date().toISOString().slice(0, 10)}.csv`
+      const blob = await response.blob()
+      const link = document.createElement('a')
+      link.href = URL.createObjectURL(blob)
+      link.download = filename
+      link.click()
+      URL.revokeObjectURL(link.href)
+    } catch (e) {
+      console.error('Export CSV failed:', e)
+      alert('Error al exportar CSV')
+    } finally {
+      setExportingCsv(false)
+    }
+  }
+
   const applyFilters = () => {
     if (startDate && !isValidDdMmYyyy(startDate)) {
       alert('Fecha de inicio inválida. Use DD/MM/YYYY.')
@@ -771,19 +818,29 @@ export default function ReportsPage() {
                 Limpiar
               </button>
               {canExportReports(user) && (
-                <button
-                  type="button"
-                  onClick={() => void exportFullExcel()}
-                  disabled={exporting}
-                  className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 text-sm disabled:opacity-50"
-                >
-                  {exporting ? 'Generando…' : 'Exportar Excel'}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => void exportFullExcel()}
+                    disabled={exporting || exportingCsv}
+                    className="px-4 py-2 bg-green-700 text-white rounded-lg hover:bg-green-800 text-sm disabled:opacity-50"
+                  >
+                    {exporting ? 'Generando…' : 'Exportar Excel'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void exportActiveTabCsv()}
+                    disabled={exporting || exportingCsv}
+                    className="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 text-sm disabled:opacity-50"
+                  >
+                    {exportingCsv ? 'Generando…' : 'Exportar CSV'}
+                  </button>
+                </>
               )}
             </div>
             <p className="text-xs text-gray-500 mt-3">
-              Exportar Excel genera un archivo .xlsx con varias hojas (Dashboard, Resumen, Detalle,
-              Diario, Eficiencia, SLA, Preadmisiones) según los filtros aplicados.
+              Excel: todas las hojas (Dashboard, Resumen, Detalle, Diario, Eficiencia, SLA,
+              Preadmisiones). CSV: solo la pestaña seleccionada, con los mismos filtros.
             </p>
             {(applied.windowNumber || applied.agentId) && activeTab === 'preadmissions' && (
               <p className="text-xs text-amber-700 mt-2">

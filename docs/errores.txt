@@ -1,63 +1,124 @@
-qapread@qapread:~$ sudo journalctl -u hospitalsantafe-api -n 30 --no-pager
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM     LOG [RouterExplorer] Mapped {/api/reports/efficiency, GET} route +1ms
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM     LOG [RouterExplorer] Mapped {/api/reports/service/:serviceId, GET} route +0ms
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM     LOG [RouterExplorer] Mapped {/api/reports/preadmissions, GET} route +0ms
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM     LOG [RouterExplorer] Mapped {/api/reports/preadmissions/export, GET} route +0ms
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM     LOG [PreadmissionSchemaBootstrap] Parche de esquema preadmissions verificado
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM     LOG [NestApplication] Nest application successfully started +25ms
-Jun 23 20:48:57 qapread node[36577]: [Nest] 36577  - 06/23/2026, 8:48:57 PM   ERROR [NestApplication] Error: listen EADDRINUSE: address already in use :::8000 +3ms
-Jun 23 20:48:57 qapread node[36577]: node:net:1908
-Jun 23 20:48:57 qapread node[36577]:     const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
-Jun 23 20:48:57 qapread node[36577]:                ^
-Jun 23 20:48:57 qapread node[36577]: Error: listen EADDRINUSE: address already in use :::8000
-Jun 23 20:48:57 qapread node[36577]:     at Server.setupListenHandle [as _listen2] (node:net:1908:16)
-Jun 23 20:48:57 qapread node[36577]:     at listenInCluster (node:net:1965:12)
-Jun 23 20:48:57 qapread node[36577]:     at Server.listen (node:net:2067:7)
-Jun 23 20:48:57 qapread node[36577]:     at ExpressAdapter.listen (/opt/hospitalsantafe/node_modules/@nestjs/platform-express/adapters/express-adapter.js:95:32)
-Jun 23 20:48:57 qapread node[36577]:     at /opt/hospitalsantafe/node_modules/@nestjs/core/nest-application.js:183:30
-Jun 23 20:48:57 qapread node[36577]:     at new Promise (<anonymous>)
-Jun 23 20:48:57 qapread node[36577]:     at NestApplication.listen (/opt/hospitalsantafe/node_modules/@nestjs/core/nest-application.js:173:16)
-Jun 23 20:48:57 qapread node[36577]:     at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
-Jun 23 20:48:57 qapread node[36577]:     at async bootstrap (/opt/hospitalsantafe/backend/dist/main.js:24:5) {
-Jun 23 20:48:57 qapread node[36577]:   code: 'EADDRINUSE',
-Jun 23 20:48:57 qapread node[36577]:   errno: -98,
-Jun 23 20:48:57 qapread node[36577]:   syscall: 'listen',
-Jun 23 20:48:57 qapread node[36577]:   address: '::',
-Jun 23 20:48:57 qapread node[36577]:   port: 8000
-Jun 23 20:48:57 qapread node[36577]: }
-Jun 23 20:48:57 qapread node[36577]: Node.js v20.20.2
-Jun 23 20:48:57 qapread systemd[1]: hospitalsantafe-api.service: Main process exited, code=exited, status=1/FAILURE
-Jun 23 20:48:57 qapread systemd[1]: hospitalsantafe-api.service: Failed with result 'exit-code'.
-Jun 23 20:48:57 qapread systemd[1]: hospitalsantafe-api.service: Consumed 1.403s CPU time.
-qapread@qapread:~$ sudo journalctl -u hospitalsantafe-web -n 30 --no-pager
-Jun 23 20:46:27 qapread npm[36328]:   path: '/opt/hospitalsantafe/.env'
-Jun 23 20:46:27 qapread npm[36328]: }
-Jun 23 20:46:27 qapread npm[36328]:  ✓ Ready in 451ms
-Jun 23 20:47:00 qapread systemd[1]: Stopping Hospital Santa Fe Web (Next.js)...
-Jun 23 20:47:00 qapread systemd[1]: hospitalsantafe-web.service: Killing process 36334 (node) with signal SIGKILL.
-Jun 23 20:47:00 qapread systemd[1]: hospitalsantafe-web.service: Deactivated successfully.
-Jun 23 20:47:00 qapread systemd[1]: Stopped Hospital Santa Fe Web (Next.js).
-Jun 23 20:47:00 qapread systemd[1]: hospitalsantafe-web.service: Consumed 1.128s CPU time.
-Jun 23 20:47:00 qapread systemd[1]: Started Hospital Santa Fe Web (Next.js).
-Jun 23 20:47:00 qapread npm[36425]: > hospital-santa-fe-platform@1.0.0 start
-Jun 23 20:47:00 qapread npm[36425]: > next start
-Jun 23 20:47:00 qapread npm[36438]:   ▲ Next.js 14.2.35
-Jun 23 20:47:00 qapread npm[36438]:   - Local:        http://localhost:8000
-Jun 23 20:47:00 qapread npm[36438]:  ✓ Starting...
-Jun 23 20:47:00 qapread npm[36438]:  ⨯ Failed to load env from .env Error: EACCES: permission denied, open '/opt/hospitalsantafe/.env'
-Jun 23 20:47:00 qapread npm[36438]:     at Object.readFileSync (node:fs:448:20)
-Jun 23 20:47:00 qapread npm[36438]:     at loadEnvConfig (/opt/hospitalsantafe/node_modules/@next/env/dist/index.js:1:9649)
-Jun 23 20:47:00 qapread npm[36438]:     at loadConfig (/opt/hospitalsantafe/node_modules/next/dist/server/config.js:683:28)
-Jun 23 20:47:00 qapread npm[36438]:     at initialize (/opt/hospitalsantafe/node_modules/next/dist/server/lib/router-server.js:57:46)
-Jun 23 20:47:00 qapread npm[36438]:     at getRequestHandlers (/opt/hospitalsantafe/node_modules/next/dist/server/lib/start-server.js:94:41)
-Jun 23 20:47:00 qapread npm[36438]:     at Server.<anonymous> (/opt/hospitalsantafe/node_modules/next/dist/server/lib/start-server.js:249:42)
-Jun 23 20:47:00 qapread npm[36438]:     at Server.emit (node:events:536:35)
-Jun 23 20:47:00 qapread npm[36438]:     at emitListeningNT (node:net:1951:10)
-Jun 23 20:47:00 qapread npm[36438]:     at process.processTicksAndRejections (node:internal/process/task_queues:81:21) {
-Jun 23 20:47:00 qapread npm[36438]:   errno: -13,
-Jun 23 20:47:00 qapread npm[36438]:   code: 'EACCES',
-Jun 23 20:47:00 qapread npm[36438]:   syscall: 'open',
-Jun 23 20:47:00 qapread npm[36438]:   path: '/opt/hospitalsantafe/.env'
-Jun 23 20:47:00 qapread npm[36438]: }
-Jun 23 20:47:01 qapread npm[36438]:  ✓ Ready in 403ms
-qapread@qapread:~$
+prodpreadinex@prodpreadhsf:~$ sudo -u postgres psql -c "SELECT state, count(*) FROM pg_stat_activity GROUP BY 1;"
+[sudo] password for prodpreadinex:
+ state  | count
+--------+-------
+        |     5
+ active |     1
+ idle   |    10
+(3 rows)
+
+prodpreadinex@prodpreadhsf:~$ sudo -u postgres psql -c "SELECT pid, now()-query_start AS dur, state, left(query,120) FROM pg_stat_activity WHERE state <> 'idle' ORDER BY 2 DESC LIMIT 15;"
+prodpreadinex@prodpreadhsf:~$ sudo -u postgres psql -c "SELECT pid, now()-query_start AS dur, state, left(query,120) FROM pg_stat_activity WHERE state <> 'idle' ORDER BY 2 DESC LIMIT 15;"
+prodpreadinex@prodpreadhsf:~$
+prodpreadinex@prodpreadhsf:~$ free -h
+               total        used        free      shared  buff/cache   available
+Mem:           7.8Gi       2.9Gi       1.8Gi        50Mi       3.0Gi       4.5Gi
+Swap:          3.8Gi        26Mi       3.8Gi
+prodpreadinex@prodpreadhsf:~$ iostat -xz 1 5   # si está instalado
+Linux 5.15.0-94-generic (prodpreadhsf)  09/18/2026      _x86_64_        (4 CPU)
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           2.07    0.01    0.22    0.00    0.00   97.70
+
+Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz     f/s f_await  aqu-sz  %util
+loop0            0.00      0.00     0.00   0.00    0.17     5.74    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop1            0.00      0.00     0.00   0.00    0.16     7.53    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop2            0.00      0.00     0.00   0.00    0.10    30.25    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop3            0.00      0.00     0.00   0.00    0.10    30.52    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop4            0.00      0.01     0.00   0.00    0.14    31.28    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop5            0.00      0.00     0.00   0.00    0.11    23.73    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop6            0.00      0.00     0.00   0.00    0.13    31.66    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop7            0.00      0.00     0.00   0.00    0.18    10.37    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop8            0.00      0.01     0.00   0.00    0.27    35.50    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+loop9            0.00      0.00     0.00   0.00    0.00     1.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+sda              0.03      0.69     0.01  26.27    0.29    21.94    0.47     47.39     1.11  70.37    2.27   101.26    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.05
+sdb              0.00      0.00     0.00  13.41    0.28    17.77    0.02      0.23     0.01  34.20    0.48     9.50    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+sr0              0.00      0.00     0.00   0.00    1.64     0.19    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.00
+
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           4.27    0.00    0.50    0.00    0.00   95.23
+
+Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz     f/s f_await  aqu-sz  %util
+sda              0.00      0.00     0.00   0.00    0.00     0.00    2.00     40.00     8.00  80.00    0.50    20.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.40
+sdb              0.00      0.00     0.00   0.00    0.00     0.00    2.00     56.00     0.00   0.00    0.00    28.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.80
+
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           2.24    0.00    3.23    0.00    0.00   94.53
+
+Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz     f/s f_await  aqu-sz  %util
+
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           1.25    0.00    0.25    0.00    0.00   98.50
+
+Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz     f/s f_await  aqu-sz  %util
+
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           0.00    0.00    0.00    0.00    0.00  100.00
+
+Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz     f/s f_await  aqu-sz  %util
+sdb              0.00      0.00     0.00   0.00    0.00     0.00    1.00      8.00     0.00   0.00    1.00     8.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00    0.00    0.00   0.40
+
+
+prodpreadinex@prodpreadhsf:~$ sudo systemctl status postgresql hospitalsantafe-api hospitalsantafe-web --no-pager
+● postgresql.service - PostgreSQL RDBMS
+     Loaded: loaded (/lib/systemd/system/postgresql.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Tue 2026-06-16 15:13:33 EST; 3 months 2 days ago
+   Main PID: 967 (code=exited, status=0/SUCCESS)
+        CPU: 1ms
+
+Jun 16 15:13:33 prodpreadhsf systemd[1]: Starting PostgreSQL RDBMS...
+Jun 16 15:13:33 prodpreadhsf systemd[1]: Finished PostgreSQL RDBMS.
+
+● hospitalsantafe-api.service - Hospital Santa Fe API (NestJS)
+     Loaded: loaded (/etc/systemd/system/hospitalsantafe-api.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/hospitalsantafe-api.service.d
+             └─timezone.conf
+     Active: active (running) since Thu 2026-09-17 20:00:01 EST; 19h ago
+   Main PID: 857765 (node)
+      Tasks: 11 (limit: 9388)
+     Memory: 495.4M
+        CPU: 9h 50min 42.978s
+     CGroup: /system.slice/hospitalsantafe-api.service
+             └─857765 /usr/bin/node dist/main.js
+
+Sep 18 14:47:21 prodpreadhsf node[857765]:     at Socket.emit (node:events:536:35)
+Sep 18 14:47:21 prodpreadhsf node[857765]:     at TCP.<anonymous> (node:net:343:12)
+Sep 18 15:01:52 prodpreadhsf node[857765]: [Nest] 857765  - 09/18/2026, 3:01:52 PM   ERROR [StreamableFile] Premature close
+Sep 18 15:01:52 prodpreadhsf node[857765]: Error [ERR_STREAM_PREMATURE_CLOSE]: Premature close
+Sep 18 15:01:52 prodpreadhsf node[857765]:     at ServerResponse.onclose (node:internal/streams/end-of-stream:159:30)
+Sep 18 15:01:52 prodpreadhsf node[857765]:     at ServerResponse.emit (node:events:536:35)
+Sep 18 15:01:52 prodpreadhsf node[857765]:     at emitCloseNT (node:_http_server:1019:10)
+Sep 18 15:01:52 prodpreadhsf node[857765]:     at Socket.onServerResponseClose (node:_http_server:277:5)
+Sep 18 15:01:52 prodpreadhsf node[857765]:     at Socket.emit (node:events:536:35)
+Sep 18 15:01:52 prodpreadhsf node[857765]:     at TCP.<anonymous> (node:net:343:12)
+
+● hospitalsantafe-web.service - Hospital Santa Fe Web (Next.js)
+     Loaded: loaded (/etc/systemd/system/hospitalsantafe-web.service; enabled; vendor preset: enabled)
+    Drop-In: /etc/systemd/system/hospitalsantafe-web.service.d
+             └─timezone.conf
+     Active: active (running) since Thu 2026-09-17 20:00:01 EST; 19h ago
+   Main PID: 857766 (npm run start -)
+      Tasks: 23 (limit: 9388)
+     Memory: 1.9G
+        CPU: 1h 17min 39.579s
+     CGroup: /system.slice/hospitalsantafe-web.service
+             ├─857766 "npm run start -p 3000" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" ""
+             ├─857784 sh -c "next start -p 3000"
+             └─857785 "next-server (v14.2.35)" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "" "…
+
+Sep 18 14:19:13 prodpreadhsf npm[857785]:   [cause]: HeadersTimeoutError: Headers Timeout Error
+Sep 18 14:19:13 prodpreadhsf npm[857785]:       at FastTimer.onParserTimeout [as _onTimeout] (node:internal/deps/un…6391:32)
+Sep 18 14:19:13 prodpreadhsf npm[857785]:       at Timeout.onTick [as _onTimeout] (node:internal/deps/undici/undici:2354:17)
+Sep 18 14:19:13 prodpreadhsf npm[857785]:       at listOnTimeout (node:internal/timers:581:17)
+Sep 18 14:19:13 prodpreadhsf npm[857785]:       at process.processTimers (node:internal/timers:519:7) {
+Sep 18 14:19:13 prodpreadhsf npm[857785]:     code: 'UND_ERR_HEADERS_TIMEOUT',
+Sep 18 14:19:13 prodpreadhsf npm[857785]:     [Symbol(undici.error.UND_ERR)]: true,
+Sep 18 14:19:13 prodpreadhsf npm[857785]:     [Symbol(undici.error.UND_ERR_HEADERS_TIMEOUT)]: true
+Sep 18 14:19:13 prodpreadhsf npm[857785]:   }
+Sep 18 14:19:13 prodpreadhsf npm[857785]: }
+Hint: Some lines were ellipsized, use -l to show in full.
+prodpreadinex@prodpreadhsf:~$

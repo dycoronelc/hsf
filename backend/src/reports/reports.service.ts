@@ -1018,6 +1018,19 @@ export class ReportsService {
     return qb.getMany();
   }
 
+  private buildCsv(
+    headers: string[],
+    rows: Array<Array<string | number | null | undefined>>,
+  ): string {
+    const esc = (v: unknown) => {
+      if (v == null) return '';
+      const s = String(v);
+      if (/[",\r\n]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+      return s;
+    };
+    return [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\r\n');
+  }
+
   async exportPreadmissionsCSV(
     startDate?: string | null,
     endDate?: string | null,
@@ -1047,7 +1060,6 @@ export class ReportsService {
       'qrCode',
       'fechapreadmision',
     ];
-    const escape = (v: unknown) => (v == null ? '' : String(v).replace(/"/g, '""'));
     const cell = (p: Preadmission, h: string) => {
       if (h === 'confirmedArrivalAt' || h === 'fechapreadmision') {
         const d = (p as any)[h] as Date | string | null | undefined;
@@ -1056,8 +1068,248 @@ export class ReportsService {
       }
       return (p as any)[h];
     };
-    const rows = list.map((p) => headers.map((h) => `"${escape(cell(p, h))}"`).join(','));
-    return [headers.join(','), ...rows].join('\r\n');
+    return this.buildCsv(
+      headers,
+      list.map((p) => headers.map((h) => cell(p, h))),
+    );
+  }
+
+  /**
+   * CSV de una sola pestaña de reportes (misma lógica/filtros que la UI).
+   */
+  async exportTabCsv(params: {
+    tab: string;
+    startDate?: string | null;
+    endDate?: string | null;
+    filters?: TicketReportFilters;
+    tipo?: string;
+    documento?: string;
+    arrivalState?: PreadmissionArrivalState;
+  }): Promise<{ csv: string; filename: string }> {
+    const tab = String(params.tab || '')
+      .trim()
+      .toLowerCase();
+    const dateStamp = new Date().toISOString().slice(0, 10);
+    const filters = params.filters || {};
+
+    const valid = new Set([
+      'dashboard',
+      'summary',
+      'daily',
+      'realtime',
+      'efficiency',
+      'preadmissions',
+      'sla',
+    ]);
+    if (!valid.has(tab)) {
+      throw new BadRequestException(
+        `Pestaña inválida para CSV. Use: ${[...valid].join(', ')}`,
+      );
+    }
+
+    if (tab === 'preadmissions') {
+      let preadTipo = params.tipo;
+      let skip = Boolean(filters.windowNumber || filters.agentId != null);
+      if (!skip && filters.serviceId != null) {
+        const svc = await this.serviceRepository.findOne({ where: { id: filters.serviceId } });
+        const area = String(svc?.area || svc?.code || '').toUpperCase();
+        if (area === 'RAD' || area === 'LAB') {
+          preadTipo = area;
+        } else if (!params.tipo) {
+          skip = true;
+        }
+      }
+      const csv = skip
+        ? this.buildCsv(
+            [
+              'id',
+              'departamento',
+              'cedula',
+              'name1',
+              'apellido1',
+              'status',
+              'arrivalState',
+              'ticketId',
+              'fechapreadmision',
+            ],
+            [],
+          )
+        : await this.exportPreadmissionsCSV(
+            params.startDate,
+            params.endDate,
+            preadTipo,
+            params.documento,
+            params.arrivalState,
+          );
+      return { csv, filename: `reportes_preadmisiones_${dateStamp}.csv` };
+    }
+
+    if (tab === 'sla') {
+      const slaParams = await this.listSlaParameters();
+      const csv = this.buildCsv(
+        ['Área / Servicio', 'Código', 'SLA Espera (min)', 'SLA Atención (min)'],
+        slaParams.map((s) => [
+          s.service_name,
+          s.service_code,
+          s.sla_wait_minutes,
+          s.sla_attention_minutes,
+        ]),
+      );
+      return { csv, filename: `reportes_parametros_sla_${dateStamp}.csv` };
+    }
+
+    if (tab === 'realtime') {
+      const rt = await this.getRealTimeReport(filters);
+      const byService = Object.values(rt.byService || {}) as Array<{
+        serviceName: string;
+        serviceCode?: string;
+        inQueue: number;
+        inService: number;
+        todayTickets: number;
+        activeTickets: number;
+      }>;
+      const csv = this.buildCsv(
+        [
+          'Área / Servicio',
+          'Código',
+          'En cola',
+          'En atención',
+          'Activos',
+          'Hoy',
+          'Snapshot',
+          'Turnos activos total',
+        ],
+        byService.map((s) => [
+          s.serviceName,
+          s.serviceCode || '',
+          s.inQueue,
+          s.inService,
+          s.activeTickets,
+          s.todayTickets,
+          rt.timestamp,
+          rt.activeTickets,
+        ]),
+      );
+      return { csv, filename: `reportes_tiempo_real_${dateStamp}.csv` };
+    }
+
+    if (tab === 'dashboard' || tab === 'efficiency') {
+      const [summary, efficiency] = await Promise.all([
+        this.getSummaryReport(params.startDate, params.endDate, filters),
+        this.getEfficiencyReport(params.startDate, params.endDate, filters),
+      ]);
+      const k = efficiency.kpis;
+      const kpiRows: Array<Array<string | number>> = [
+        ['Período inicio', summary.period.start || ''],
+        ['Período fin', summary.period.end || ''],
+        ['Tickets generados', k?.tickets_generated ?? 0],
+        ['Tickets atendidos', k?.tickets_attended ?? 0],
+        ['No presentados', k?.no_shows ?? 0],
+        ['Transferidos', k?.transferred ?? 0],
+        ['Espera promedio', k?.avg_wait_label ?? ''],
+        ['Espera máxima', k?.max_wait_label ?? ''],
+        ['Atención promedio', k?.avg_attention_label ?? ''],
+        ['% SLA atención', k?.sla_met_percent ?? 0],
+        ['% SLA espera', k?.sla_wait_met_percent ?? 0],
+      ];
+
+      if (tab === 'dashboard') {
+        const csv = this.buildCsv(['Indicador', 'Valor'], kpiRows);
+        return { csv, filename: `reportes_dashboard_${dateStamp}.csv` };
+      }
+
+      const byWindow = Object.values(efficiency.byWindow || {}) as Array<{
+        windowNumber: string;
+        totalTickets: number;
+        averageServiceTime: number;
+      }>;
+      const byAgent = Object.values(efficiency.byAgent || {}) as Array<{
+        agentName: string;
+        totalTickets: number;
+        averageServiceTime: number;
+      }>;
+      const rows: Array<Array<string | number>> = [
+        ...kpiRows.map(([a, b]) => ['KPI', String(a), String(b), '']),
+        ...byWindow.map((w) => [
+          'Ventanilla',
+          w.windowNumber,
+          w.totalTickets,
+          Math.round((w.averageServiceTime || 0) * 10) / 10,
+        ]),
+        ...byAgent.map((a) => [
+          'Agente',
+          a.agentName,
+          a.totalTickets,
+          Math.round((a.averageServiceTime || 0) * 10) / 10,
+        ]),
+      ];
+      const csv = this.buildCsv(
+        ['Sección', 'Nombre / Indicador', 'Valor / Turnos', 'Tiempo prom. (min)'],
+        rows,
+      );
+      return { csv, filename: `reportes_eficiencia_${dateStamp}.csv` };
+    }
+
+    // summary | daily
+    const summary = await this.getSummaryReport(params.startDate, params.endDate, filters);
+
+    if (tab === 'daily') {
+      const daily = summary.management?.daily_attention;
+      const dailyServices = daily?.services || [];
+      const headers = [
+        'Fecha',
+        ...dailyServices.map((s) => s.service_name),
+        'Promedio total general',
+      ];
+      const rows: Array<Array<string | number>> = [
+        ...(daily?.rows || []).map((row) => [
+          row.date,
+          ...dailyServices.map((s) => row.values[String(s.service_id)]?.label || ''),
+          row.day_average_label || '',
+        ]),
+      ];
+      if (daily) {
+        rows.push([
+          'PROMEDIO TOTAL DE ATENCIÓN GENERAL',
+          ...dailyServices.map(() => ''),
+          daily.overall_average_label || '',
+        ]);
+      }
+      const csv = this.buildCsv(headers, rows);
+      return { csv, filename: `reportes_resumen_diario_${dateStamp}.csv` };
+    }
+
+    // summary: detalle individual (tabla principal exportable de la pestaña Resumen)
+    const details = summary.management?.ticket_details || [];
+    const csv = this.buildCsv(
+      [
+        'Fecha',
+        'Área / Servicio',
+        'N° Ticket',
+        'Hora Entrada',
+        'Hora Inicio Atención',
+        'Hora Salida',
+        'T. Espera',
+        'T. Atención',
+        'Estado',
+        'SLA Atención (min)',
+        'Cumple SLA',
+      ],
+      details.map((d) => [
+        d.date,
+        d.service_name,
+        d.ticket_number,
+        d.entry_time,
+        d.start_time,
+        d.exit_time,
+        d.wait_label,
+        d.attention_label,
+        d.status_label,
+        d.sla_attention_minutes,
+        d.meets_sla_label,
+      ]),
+    );
+    return { csv, filename: `reportes_resumen_${dateStamp}.csv` };
   }
 
   async exportPreadmissionsExcel(
