@@ -55,6 +55,20 @@ function isTransferOriginTicket(ticket: Ticket): boolean {
   return Boolean(ticket.notes?.startsWith('Transferido'))
 }
 
+/** Cola Lab/Rad: solo el servicio de ese destino (al pasar a Rad sale de Toma). */
+function ticketMatchesTransferDestination(ticket: Ticket, destination: string): boolean {
+  const dest = destination.trim().toLowerCase()
+  const code = (ticket.service_code || '').toUpperCase()
+  const name = (ticket.service_name || '').toLowerCase()
+  if (dest === 'toma de muestra' || dest === 'laboratorio') {
+    return code === 'LAB' || name.includes('toma de muestra') || name.includes('laboratorio')
+  }
+  if (dest === 'radiología' || dest === 'radiologia') {
+    return code === 'RAD' || name.includes('radiolog')
+  }
+  return true
+}
+
 /** Triage + Consulta se atienden juntos en destino Triage. */
 function isTriageQueueService(service: { code?: string | null; name?: string | null }): boolean {
   const code = (service.code || '').toUpperCase()
@@ -669,7 +683,8 @@ export default function StaffConsolePage() {
     })
     .filter((t) => {
       if (!isTransferOnlyCallDestination(myDestination)) return true
-      return isTransferOriginTicket(t)
+      if (!isTransferOriginTicket(t)) return false
+      return ticketMatchesTransferDestination(t, myDestination)
     })
     .filter(matchesQueueSearch)
     .sort((a, b) => {
@@ -861,9 +876,8 @@ export default function StaffConsolePage() {
             {destinationUnlocked && isTransferOnlyCallDestination(myDestination) && (
               <p className="text-sm text-blue-700 mt-2">
                 En <strong>{myDestination}</strong> la cola muestra solo tickets{' '}
-                <strong>transferidos</strong> y permite múltiples llamados concurrentes.
-                El filtro de servicio no se aplica en este destino (así no se ocultan turnos
-                Lab/Rad).
+                <strong>transferidos de este destino</strong> y permite múltiples llamados
+                concurrentes. Al transferir a Radiología el turno sale de Toma de muestra.
               </p>
             )}
             {destinationUnlocked && occupiedSet.size > 0 && (
