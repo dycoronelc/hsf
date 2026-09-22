@@ -57,6 +57,11 @@ export class TransferTicketDto {
    */
   @IsIn(['RAD', 'LAB', 'BOTH', 'ADM', 'URG'])
   targetArea: 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG';
+
+  /** Destino actual del agente (para validar propiedad del turno en atención). */
+  @IsOptional()
+  @IsString()
+  windowNumber?: string;
 }
 
 export class NoShowTicketDto {

@@ -19,7 +19,7 @@ import { SurveysService } from '../surveys/surveys.service';
 import { isAgentOperational } from '../common/agent-utils';
 import { AuditService } from '../audit/audit.service';
 import { SettingsService } from '../settings/settings.service';
-import { toIsoUtc, toPanamaOffsetIso } from '../common/timezone';
+import { panamaTodayYmd, toIsoUtc, toPanamaOffsetIso } from '../common/timezone';
 
 /**
  * ROLLBACK Lab+Rad secuencial:
@@ -177,20 +177,27 @@ export class TicketsService {
     serviceId: number,
     excludeId: number,
   ) {
-    const existing = await this.ticketRepository.findOne({
-      where: {
-        ticketNumber,
-        serviceId,
-        status: In([
+    const todayYmd = panamaTodayYmd();
+    const existing = await this.ticketRepository
+      .createQueryBuilder('ticket')
+      .where('ticket.ticketNumber = :ticketNumber', { ticketNumber })
+      .andWhere('ticket.serviceId = :serviceId', { serviceId })
+      .andWhere('ticket.id != :excludeId', { excludeId })
+      .andWhere('ticket.status IN (:...statuses)', {
+        statuses: [
           TicketStatus.CREADO,
           TicketStatus.CHECK_IN,
           TicketStatus.EN_COLA,
           TicketStatus.LLAMADO,
           TicketStatus.EN_ATENCION,
-        ]),
-      },
-    });
-    if (existing && existing.id !== excludeId) {
+        ],
+      })
+      .andWhere(
+        `to_char(timezone('America/Panama', ticket.createdAt AT TIME ZONE 'UTC'), 'YYYY-MM-DD') = :todayYmd`,
+        { todayYmd },
+      )
+      .getOne();
+    if (existing) {
       throw new BadRequestException(
         `Ya existe el turno ${ticketNumber} activo en ese servicio (evite duplicar Lab+Rad).`,
       );
@@ -213,8 +220,15 @@ export class TicketsService {
     return notes;
   }
 
-  private resetTicketForTransferQueue(ticket: Ticket, targetServiceId: number, notes: string) {
-    ticket.serviceId = targetServiceId;
+  private resetTicketForTransferQueue(
+    ticket: Ticket,
+    targetService: Service,
+    notes: string,
+  ) {
+    // Importante: actualizar también la relación `service`. Si solo se cambia
+    // serviceId con relations cargadas, TypeORM puede persistir el servicio viejo.
+    ticket.service = targetService;
+    ticket.serviceId = targetService.id;
     ticket.status = ticket.checkInAt ? TicketStatus.CHECK_IN : TicketStatus.CREADO;
     ticket.notes = notes;
     ticket.callCount = 0;
@@ -1085,7 +1099,7 @@ export class TicketsService {
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
-    this.assertTicketOwnedByAgent(ticket, agent, null);
+    this.assertTicketOwnedByAgent(ticket, agent, dto.windowNumber ?? null);
     if (
       ticket.status === TicketStatus.FINALIZADO ||
       ticket.status === TicketStatus.CANCELADO ||
@@ -1131,8 +1145,39 @@ export class TicketsService {
       notes = this.stripPendingSecondStage(notes);
     }
 
-    this.resetTicketForTransferQueue(ticket, primary.id, notes);
-    queueTickets.push(await this.ticketRepository.save(ticket));
+    this.resetTicketForTransferQueue(ticket, primary, notes);
+    const saved = await this.ticketRepository.save(ticket);
+    // Releer: TypeORM + relación previa podía dejar serviceId viejo en memoria/BD.
+    const reloaded = await this.ticketRepository.findOne({
+      where: { id: saved.id },
+      relations: ['service'],
+    });
+    if (!reloaded || reloaded.serviceId !== primary.id) {
+      // Forzar persistencia del destino correcto.
+      await this.ticketRepository.update(saved.id, {
+        serviceId: primary.id,
+        status: saved.status,
+        notes: notes,
+        callCount: 0,
+        windowNumber: null,
+        calledAt: null,
+        calledBy: null,
+        startedAt: null,
+        completedAt: null,
+      });
+      const forced = await this.ticketRepository.findOne({
+        where: { id: saved.id },
+        relations: ['service'],
+      });
+      if (!forced || forced.serviceId !== primary.id) {
+        throw new BadRequestException(
+          `No se pudo asignar el servicio destino (${primary.name}). Reintente la transferencia.`,
+        );
+      }
+      queueTickets.push(forced);
+    } else {
+      queueTickets.push(reloaded);
+    }
 
     // Destinos adicionales solo en modo legacy (clonado BOTH).
     if (!SEQUENTIAL_LAB_RAD_TRANSFER) {
@@ -1151,6 +1196,7 @@ export class TicketsService {
       id: t.id,
       ticket_number: t.ticketNumber,
       service_id: t.serviceId,
+      service_name: t.service?.name ?? null,
       pending_second_stage: this.parsePendingSecondStage(t.notes),
     }));
 
@@ -1168,7 +1214,7 @@ export class TicketsService {
         ? `Ticket ${keepNumber} enviado a Toma de muestra (secuencia Lab→Rad; mismo número)`
         : dto.targetArea === 'BOTH' && !SEQUENTIAL_LAB_RAD_TRANSFER
           ? `Ticket ${keepNumber} transferido a ambos servicios (mismo número)`
-          : `Ticket ${keepNumber} transferido (mismo número)`,
+          : `Ticket ${keepNumber} transferido a ${primary.name} (mismo número)`,
       original_id: id,
       original_ticket_number: keepNumber,
       sequential_lab_rad: sequentialBoth,

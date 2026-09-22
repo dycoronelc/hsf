@@ -177,9 +177,12 @@ export default function StaffConsolePage() {
     if (!token) return
 
     try {
-      // Triage + Consulta: misma cola operativa → cargar todos y filtrar en cliente
+      // En destinos Lab/Rad la cola es por transferidos: no filtrar por servicio OT/etc.
+      // (si se filtra OT tras Lab+Rad, el ticket ya es LAB y “desaparece” de la vista).
+      const ignoreServiceFilter =
+        Boolean(myDestination) && isTransferOnlyCallDestination(myDestination)
       const url =
-        selectedService && !selectedIsTriageGroup
+        selectedService && !selectedIsTriageGroup && !ignoreServiceFilter
           ? `/api/tickets/?service_id=${selectedService}`
           : '/api/tickets/'
       const response = await fetch(url, { headers: authHeaders(token) })
@@ -250,7 +253,7 @@ export default function StaffConsolePage() {
       fetchOccupiedDestinations()
     }, 3000)
     return () => clearInterval(interval)
-  }, [canUseStaff, selectedService, token])
+  }, [canUseStaff, selectedService, token, windowNumber])
 
   // Si el agente tenía un turno activo (p. ej. volvió tras expirar sesión), restaurar destino.
   useEffect(() => {
@@ -364,16 +367,25 @@ export default function StaffConsolePage() {
       const response = await fetch(`/api/tickets/${ticketId}/transfer`, {
         method: 'POST',
         headers: authHeaders(token, { 'Content-Type': 'application/json' }),
-        body: JSON.stringify({ targetArea }),
+        body: JSON.stringify({
+          targetArea,
+          windowNumber: windowNumber.trim() || undefined,
+        }),
       })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         const data = await response.json().catch(() => ({}))
+        const destName =
+          Array.isArray(data.created_tickets) && data.created_tickets[0]?.service_name
+            ? String(data.created_tickets[0].service_name)
+            : null
         if (data.sequential_lab_rad) {
           setTransferNotice(
             data.message ||
               `Enviado a Toma de muestra (secuencia Lab→Rad). Al finalizar podrá enviar a Radiología.`,
           )
+        } else if (destName) {
+          setTransferNotice(data.message || `Transferido a ${destName} (mismo número)`)
         } else {
           const created = Array.isArray(data.created_tickets)
             ? data.created_tickets
@@ -396,6 +408,7 @@ export default function StaffConsolePage() {
       }
     } catch (err) {
       console.error('Error transferring ticket:', err)
+      setApiError('Error de red al transferir el turno')
     } finally {
       setTransferringId(null)
     }
@@ -849,6 +862,8 @@ export default function StaffConsolePage() {
               <p className="text-sm text-blue-700 mt-2">
                 En <strong>{myDestination}</strong> la cola muestra solo tickets{' '}
                 <strong>transferidos</strong> y permite múltiples llamados concurrentes.
+                El filtro de servicio no se aplica en este destino (así no se ocultan turnos
+                Lab/Rad).
               </p>
             )}
             {destinationUnlocked && occupiedSet.size > 0 && (
@@ -1297,6 +1312,11 @@ export default function StaffConsolePage() {
               {finalizeModal.suggested === 'LAB' ? 'Toma de muestra' : 'Radiología'} con el
               mismo número de turno.
             </p>
+            {apiError && (
+              <div className="mb-3 bg-red-50 border border-red-200 text-red-700 px-3 py-2 rounded-lg text-sm">
+                {apiError}
+              </div>
+            )}
             <div className="space-y-2">
               <button
                 type="button"
