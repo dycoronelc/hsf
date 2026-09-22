@@ -3,11 +3,15 @@
 **Fecha del cambio:** 2026-09-21  
 **Tag git (estado *antes* del cambio):** `pre-sequential-lab-rad-transfer`
 
-## Qué cambió
+## Flujo operativo (cliente)
 
-- `Transferir → Lab + Rad` **ya no clona** un segundo ticket con el mismo número.
-- Flujo secuencial: primero **Toma de muestra**; al Finalizar, pop-up para enviar a **Radiología** (mismo número).
-- Flag en código: `SEQUENTIAL_LAB_RAD_TRANSFER` en `backend/src/tickets/tickets.service.ts`.
+1. Anfitrión genera turno → espera Ventanilla  
+2. Llamado + Iniciar atención en Ventanilla  
+3. **Transferir → Lab + Rad** (mismo número; va a Toma; sin clonar)  
+4–5. Llamado / atención en Toma de muestra  
+6. **Finalizar** → pop-up obligatorio «Debe transferir a Radiología» **solo** si venía de Lab+Rad; si no, finaliza directo.
+
+Flag y tag de rollback: ver abajo.
 
 ## Rollback rápido (sin git)
 

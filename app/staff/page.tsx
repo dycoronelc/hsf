@@ -39,8 +39,8 @@ type TransferArea = 'RAD' | 'LAB' | 'BOTH' | 'ADM' | 'URG'
 
 type FinalizeModalState = {
   ticket: Ticket
-  mode: 'pending_second' | 'ventanilla_menu'
-  suggested?: 'RAD' | 'LAB'
+  /** Segunda etapa pendiente tras Lab+Rad (solo este caso muestra pop-up al Finalizar). */
+  suggested: 'RAD' | 'LAB'
 }
 
 const HSF_PENDING_STAGE_RE = /\[HSF_PENDING_STAGE:(RAD|LAB)\]/
@@ -49,20 +49,6 @@ function parsePendingSecondStage(notes?: string | null): 'RAD' | 'LAB' | null {
   const m = HSF_PENDING_STAGE_RE.exec(notes || '')
   if (!m) return null
   return m[1] === 'LAB' ? 'LAB' : 'RAD'
-}
-
-function isLabOrRadTicket(ticket: Ticket): boolean {
-  const c = (ticket.service_code || '').toUpperCase()
-  if (c === 'LAB' || c === 'RAD') return true
-  return /radiolog|toma de muestra|laboratorio/i.test(ticket.service_name || '')
-}
-
-function isVentanillaLikeTicket(ticket: Ticket): boolean {
-  if (isLabOrRadTicket(ticket)) return false
-  const c = (ticket.service_code || '').toUpperCase()
-  if (c === 'TRIAGE' || c === 'URG') return false
-  if (/triage|urgenc/i.test(ticket.service_name || '')) return false
-  return true
 }
 
 function isTransferOriginTicket(ticket: Ticket): boolean {
@@ -442,14 +428,12 @@ export default function StaffConsolePage() {
   const requestFinalizeTicket = (ticket: Ticket) => {
     const pending =
       ticket.pending_second_stage || parsePendingSecondStage(ticket.notes)
+    // Solo si Ventanilla usó Lab+Rad: exigir transferencia a la 2ª etapa (Radiología).
     if (pending) {
-      setFinalizeModal({ ticket, mode: 'pending_second', suggested: pending })
+      setFinalizeModal({ ticket, suggested: pending })
       return
     }
-    if (isVentanillaLikeTicket(ticket)) {
-      setFinalizeModal({ ticket, mode: 'ventanilla_menu' })
-      return
-    }
+    // Cualquier otro caso: finalizar el turno directamente.
     void handleCompleteTicket(ticket.id)
   }
 
@@ -928,6 +912,12 @@ export default function StaffConsolePage() {
                           {(ticket.call_count ?? 0) > 0 && (
                             <span className="text-xs text-gray-500">Llamados: {ticket.call_count}</span>
                           )}
+                          {(ticket.pending_second_stage || parsePendingSecondStage(ticket.notes)) ===
+                            'RAD' && (
+                            <span className="text-xs font-semibold uppercase tracking-wide text-teal-800 bg-teal-50 px-2 py-0.5 rounded">
+                              Luego → Radiología
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-wrap items-center gap-2 shrink-0">
@@ -976,7 +966,7 @@ export default function StaffConsolePage() {
                               <option value="URG">Urgencias</option>
                               <option value="RAD">Radiología</option>
                               <option value="LAB">Toma de muestra</option>
-                              <option value="BOTH">Lab + Rad (1º Toma → luego Rad)</option>
+                              <option value="BOTH">Lab + Rad</option>
                             </select>
                             {canRecallTicket(ticket) && (
                               <button
@@ -1040,7 +1030,7 @@ export default function StaffConsolePage() {
                               <option value="URG">Urgencias</option>
                               <option value="RAD">Radiología</option>
                               <option value="LAB">Toma de muestra</option>
-                              <option value="BOTH">Lab + Rad (1º Toma → luego Rad)</option>
+                              <option value="BOTH">Lab + Rad</option>
                             </select>
                             <button
                               type="button"
@@ -1293,82 +1283,39 @@ export default function StaffConsolePage() {
       {finalizeModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Finalizar atención</h3>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">
+              Debe transferir a{' '}
+              {finalizeModal.suggested === 'LAB' ? 'Toma de muestra' : 'Radiología'}
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
               Turno <strong>{finalizeModal.ticket.ticket_number}</strong>
               {finalizeModal.ticket.service_name
                 ? ` · ${finalizeModal.ticket.service_name}`
                 : ''}
-              . Elija cómo continuar (se mantiene el mismo número):
+              . Este paciente fue transferido desde Ventanilla con{' '}
+              <strong>Lab + Rad</strong>. Debe enviarlo a{' '}
+              {finalizeModal.suggested === 'LAB' ? 'Toma de muestra' : 'Radiología'} con el
+              mismo número de turno.
             </p>
             <div className="space-y-2">
-              {finalizeModal.mode === 'pending_second' && (
-                <>
-                  <button
-                    type="button"
-                    disabled={loading || transferringId === finalizeModal.ticket.id}
-                    onClick={() =>
-                      void handleTransferTicket(
-                        finalizeModal.ticket.id,
-                        finalizeModal.suggested === 'LAB' ? 'LAB' : 'RAD',
-                      )
-                    }
-                    className="w-full px-4 py-3 bg-teal-700 text-white rounded-lg text-sm font-medium hover:bg-teal-800 disabled:opacity-50"
-                  >
-                    {finalizeModal.suggested === 'LAB'
-                      ? 'Enviar a Toma de muestra'
-                      : 'Enviar a Radiología'}
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => void handleCompleteTicket(finalizeModal.ticket.id)}
-                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Finalizar sin segunda etapa
-                  </button>
-                </>
-              )}
-              {finalizeModal.mode === 'ventanilla_menu' && (
-                <>
-                  <button
-                    type="button"
-                    disabled={loading || transferringId === finalizeModal.ticket.id}
-                    onClick={() => void handleTransferTicket(finalizeModal.ticket.id, 'LAB')}
-                    className="w-full px-4 py-3 bg-slate-700 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    Transferir a Toma de muestra
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading || transferringId === finalizeModal.ticket.id}
-                    onClick={() => void handleTransferTicket(finalizeModal.ticket.id, 'RAD')}
-                    className="w-full px-4 py-3 bg-slate-700 text-white rounded-lg text-sm font-medium hover:bg-slate-800 disabled:opacity-50"
-                  >
-                    Transferir a Radiología
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading || transferringId === finalizeModal.ticket.id}
-                    onClick={() => void handleTransferTicket(finalizeModal.ticket.id, 'BOTH')}
-                    className="w-full px-4 py-3 bg-teal-700 text-white rounded-lg text-sm font-medium hover:bg-teal-800 disabled:opacity-50"
-                  >
-                    Lab + Rad (1º Toma → luego pop-up a Rad)
-                  </button>
-                  <button
-                    type="button"
-                    disabled={loading}
-                    onClick={() => void handleCompleteTicket(finalizeModal.ticket.id)}
-                    className="w-full px-4 py-3 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:opacity-50"
-                  >
-                    Solo finalizar (sin transferir)
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                disabled={loading || transferringId === finalizeModal.ticket.id}
+                onClick={() =>
+                  void handleTransferTicket(
+                    finalizeModal.ticket.id,
+                    finalizeModal.suggested === 'LAB' ? 'LAB' : 'RAD',
+                  )
+                }
+                className="w-full px-4 py-3 bg-teal-700 text-white rounded-lg text-sm font-medium hover:bg-teal-800 disabled:opacity-50"
+              >
+                Transferir a{' '}
+                {finalizeModal.suggested === 'LAB' ? 'Toma de muestra' : 'Radiología'}
+              </button>
               <button
                 type="button"
                 onClick={() => setFinalizeModal(null)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm mt-2"
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg text-sm"
               >
                 Cancelar
               </button>

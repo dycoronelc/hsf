@@ -69,9 +69,8 @@ La lista se actualiza automáticamente cada ~15 segundos.
 | **Check-in QR** | Escanear o ingresar código → estado `check_in` |
 | **Llamar** | Pasa ticket a `llamado` (aparece en monitor) |
 | **Iniciar atención** | Estado `en_atencion` |
-| **Finalizar** | Estado `finalizado` |
-| **Transferir** | A Radiología, Toma de muestra o **Lab+Rad secuencial** (1º Toma; al Finalizar, pop-up a Rad). No duplica el ticket. |
-| **Finalizar** | En Ventanilla ofrece transferir; si el turno viene de Lab+Rad, pregunta por Radiología antes de cerrar |
+| **Transferir** | A Radiología, Toma de muestra o **Lab + Rad** (secuencia: 1º Toma, mismo número; no clona). |
+| **Finalizar** | Cierra el turno. **Solo** si el paciente vino de Lab+Rad, muestra pop-up obligatorio «Debe transferir a Radiología». |
 
 ### Estado del agente
 
