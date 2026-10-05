@@ -61,6 +61,7 @@ type PreadmissionDetail = {
   qrCode?: string | null
   ticketId?: number | null
   confirmedArrivalAt?: string | null
+  cellbyteSentAt?: string | null
   attachmentUrls?: Record<string, string | null>
 }
 
@@ -94,6 +95,7 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
   const [message, setMessage] = useState('')
   const [associateRef, setAssociateRef] = useState('')
   const [associateLoading, setAssociateLoading] = useState(false)
+  const [resendingCellbyte, setResendingCellbyte] = useState(false)
 
   const load = useCallback(async () => {
     if (!token) return
@@ -204,6 +206,45 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
     }
   }
 
+  const resendCellbyte = async () => {
+    if (!token || !detail) return
+    const alreadySent = Boolean(detail.cellbyteSentAt)
+    const ok = window.confirm(
+      alreadySent
+        ? 'Esta preadmisión ya fue enviada a Cellbyte. ¿Reenviarla de nuevo?'
+        : '¿Enviar esta preadmisión a Cellbyte?',
+    )
+    if (!ok) return
+    setResendingCellbyte(true)
+    setMessage('')
+    setError('')
+    try {
+      const response = await fetch(`/api/preadmission/${detail.id}/resend-cellbyte`, {
+        method: 'POST',
+        headers: authHeaders(token),
+      })
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok || data.success === false || data.skipped) {
+        throw new Error(
+          apiErrorMessage(
+            data,
+            data.errorMessage || 'Cellbyte no aceptó el reenvío',
+          ),
+        )
+      }
+      setMessage(
+        data.cellbyteSentAt
+          ? `Enviada a Cellbyte (${formatPreadmissionDate(data.cellbyteSentAt)}).`
+          : 'Enviada a Cellbyte.',
+      )
+      await load()
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'No se pudo reenviar a Cellbyte')
+    } finally {
+      setResendingCellbyte(false)
+    }
+  }
+
   const fullName = detail
     ? [detail.name1, detail.name2, detail.apellido1, detail.apellido2].filter(Boolean).join(' ')
     : ''
@@ -252,7 +293,33 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
               <DetailRow label="Ticket vinculado" value={detail.ticketId ? `#${detail.ticketId}` : '—'} />
               <DetailRow label="Código QR" value={detail.qrCode} />
               <DetailRow label="Llegada confirmada" value={formatPreadmissionDate(detail.confirmedArrivalAt)} />
+              <DetailRow
+                label="Envío a Cellbyte"
+                value={
+                  detail.cellbyteSentAt
+                    ? formatPreadmissionDate(detail.cellbyteSentAt)
+                    : 'Aún no enviada'
+                }
+              />
             </Section>
+
+            <section className="bg-white rounded-lg shadow-lg p-5 sm:p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-2 pb-2 border-b border-gray-100">
+                Reenviar a Cellbyte
+              </h2>
+              <p className="text-sm text-gray-600 mb-4">
+                Vuelve a enviar esta preadmisión al sistema Cellbyte. Si el estado civil quedó
+                guardado como viudo (VD), se envía como VP.
+              </p>
+              <button
+                type="button"
+                onClick={() => void resendCellbyte()}
+                disabled={resendingCellbyte}
+                className="px-4 py-2 bg-teal-700 text-white rounded-lg hover:bg-teal-800 disabled:opacity-50"
+              >
+                {resendingCellbyte ? 'Enviando…' : 'Reenviar a Cellbyte'}
+              </button>
+            </section>
 
             {detail.arrivalState === 'paciente_presente' && !detail.ticketId && (
               <section className="bg-white rounded-lg shadow-lg p-5 sm:p-6">
