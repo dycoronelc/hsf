@@ -9,6 +9,16 @@ export type CellbyteAttachmentBase64 = {
   ssimagen: string;
 };
 
+/**
+ * Cellbyte acepta ST, CS, DV, UN, SP, VP.
+ * El formulario antiguo guardaba viudo como VD.
+ */
+export function cellbyteEstadoCivil(code: string | null | undefined): string {
+  const value = String(code || '').trim().toUpperCase();
+  if (value === 'VD') return 'VP';
+  return value;
+}
+
 function formatDdMmYyyy(date: Date): string {
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -44,7 +54,7 @@ export function buildCellbytePayload(
     sexo: p.sexo,
     fechanac: p.fechanac,
     nacionalidad: p.nacionalidad,
-    estadocivil: p.estadocivil,
+    estadocivil: cellbyteEstadoCivil(p.estadocivil),
     tiposangre: p.tiposangre,
     email: p.email,
     celular: formatCellbytePhone(p.celular, p.celularPrefix),

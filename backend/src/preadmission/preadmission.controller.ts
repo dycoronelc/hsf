@@ -200,6 +200,13 @@ export class PreadmissionController {
     return stream;
   }
 
+  @Post(':id/resend-cellbyte')
+  @UseGuards(JwtAuthGuard, PermissionsGuard)
+  @RequirePermissions('review_preadmissions')
+  async resendCellbyte(@Param('id') id: string) {
+    return this.preadmissionService.resendToCellbyte(+id);
+  }
+
   @Get(':id/cellbyte-payload')
   @UseGuards(JwtAuthGuard, PermissionsGuard)
   @RequirePermissions('review_preadmissions')

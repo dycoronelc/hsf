@@ -415,7 +415,10 @@ export default function PreadmissionPage() {
       sexo: patientField(patient.sexo),
       fechanac: patientField(patient.fechanac),
       nacionalidad: patientField(patient.nacionalidad),
-      estadocivil: patientField(patient.estadocivil),
+      estadocivil:
+        patientField(patient.estadocivil).toUpperCase() === 'VD'
+          ? 'VP'
+          : patientField(patient.estadocivil),
       tiposangre: patientField(patient.tiposangre),
       email: patientField(patient.email) || base.email,
       celularPrefix: patientField(patient.celularPrefix, '507'),
@@ -1393,7 +1396,7 @@ export default function PreadmissionPage() {
                     <option value="DV">Divorciado</option>
                     <option value="UN">Unión Libre</option>
                     <option value="SP">Separado</option>
-                    <option value="VD">Viudo</option>
+                    <option value="VP">Viudo</option>
                   </select>
                 </div>
                 <div>

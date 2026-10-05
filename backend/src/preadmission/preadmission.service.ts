@@ -590,6 +590,28 @@ export class PreadmissionService {
     return toPreadmissionResponse(preadmission);
   }
 
+  /** Reenvía una preadmisión ya guardada. VD se traduce a VP en el payload. */
+  async resendToCellbyte(id: number) {
+    const saved = await this.preadmissionRepository.findOne({ where: { id } });
+    if (!saved) {
+      throw new NotFoundException('Preadmisión no encontrada');
+    }
+    const result = await this.cellbyteService.sendPreadmission(saved);
+    if (result.success && !result.skipped) {
+      saved.cellbyteSentAt = new Date();
+      await this.preadmissionRepository.save(saved);
+    }
+    return {
+      id: saved.id,
+      cedula: saved.cedula,
+      estadocivil: saved.estadocivil,
+      success: result.success,
+      skipped: result.skipped,
+      errorMessage: result.errorMessage ?? null,
+      cellbyteSentAt: saved.cellbyteSentAt,
+    };
+  }
+
   async getCellbytePayload(id: number, user: User) {
     const preadmission = await this.preadmissionRepository.findOne({ where: { id } });
     if (!preadmission) {
