@@ -308,8 +308,7 @@ export default function AdminPreadmissionDetailPage({ params }: { params: { id: 
                 Reenviar a Cellbyte
               </h2>
               <p className="text-sm text-gray-600 mb-4">
-                Vuelve a enviar esta preadmisión al sistema Cellbyte. Si el estado civil quedó
-                guardado como viudo (VD), se envía como VP.
+                Vuelve a enviar esta preadmisión al sistema Cellbyte.
               </p>
               <button
                 type="button"
