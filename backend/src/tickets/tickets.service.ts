@@ -833,16 +833,34 @@ export class TicketsService {
     return Boolean(ticket.notes?.startsWith('Transferido'));
   }
 
+  /** Toma de muestra atiende LAB; Radiología atiende RAD (transferidos o de preadmisión). */
+  private serviceMatchesCallDestination(
+    dest: string,
+    service: { code?: string | null; name?: string | null } | null,
+  ): boolean {
+    const d = dest.trim().toLowerCase();
+    const code = String(service?.code || '').toUpperCase();
+    const name = String(service?.name || '').toLowerCase();
+    if (d === 'toma de muestra' || d === 'laboratorio') {
+      return code === 'LAB' || name.includes('toma de muestra') || name.includes('laboratorio');
+    }
+    if (d === 'radiología' || d === 'radiologia') {
+      return code === 'RAD' || name.includes('radiolog');
+    }
+    return false;
+  }
+
   private assertTransferEligibleForDestination(
     windowNumber: string,
     ticket: Pick<Ticket, 'notes' | 'ticketNumber'>,
+    service: { code?: string | null; name?: string | null } | null,
   ) {
     if (!this.isTransferOnlyDestination(windowNumber)) return;
-    if (!this.isTransferOriginTicket(ticket)) {
-      throw new BadRequestException(
-        `En «${windowNumber.trim()}» solo se pueden llamar tickets transferidos (turno ${ticket.ticketNumber}).`,
-      );
-    }
+    if (this.serviceMatchesCallDestination(windowNumber, service)) return;
+    if (this.isTransferOriginTicket(ticket)) return;
+    throw new BadRequestException(
+      `En «${windowNumber.trim()}» solo se atienden turnos de ese servicio (turno ${ticket.ticketNumber}).`,
+    );
   }
 
   private async assertDestinationAvailable(windowNumber: string, exceptTicketId?: number) {
@@ -877,11 +895,14 @@ export class TicketsService {
 
   async call(id: number, windowNumber: string, agent: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
-    const ticket = await this.ticketRepository.findOne({ where: { id } });
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['service'],
+    });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
-    this.assertTransferEligibleForDestination(windowNumber, ticket);
+    this.assertTransferEligibleForDestination(windowNumber, ticket, ticket.service);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
@@ -912,7 +933,10 @@ export class TicketsService {
 
   async recall(id: number, windowNumber: string, agent: Pick<User, 'id' | 'agentState'>) {
     this.assertAgentCanOperate(agent);
-    const ticket = await this.ticketRepository.findOne({ where: { id } });
+    const ticket = await this.ticketRepository.findOne({
+      where: { id },
+      relations: ['service'],
+    });
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
@@ -930,7 +954,7 @@ export class TicketsService {
         `Espere ${Math.ceil(recallWaitSeconds - elapsed)} segundos antes de volver a llamar`,
       );
     }
-    this.assertTransferEligibleForDestination(windowNumber, ticket);
+    this.assertTransferEligibleForDestination(windowNumber, ticket, ticket.service);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
     ticket.calledAt = new Date();
@@ -1266,7 +1290,7 @@ export class TicketsService {
     };
   }
 
-  /** Cola de admisión (servicio ADM) desde preadmisión con paciente presente (PDF requisitos). */
+  /** Ticket del mismo servicio de la preadmisión (LAB o RAD) cuando el paciente ya está presente. */
   async createTicketForPreadmission(preadmissionId: number) {
     const pre = await this.preadmissionRepository.findOne({ where: { id: preadmissionId } });
     if (!pre) {
@@ -1279,19 +1303,30 @@ export class TicketsService {
       throw new BadRequestException('Ya existe un ticket asociado a esta preadmisión');
     }
 
-    const admService = await this.serviceRepository.findOne({
-      where: { code: 'ADM', isActive: true },
+    const dept = String(pre.departamento || '').trim().toUpperCase();
+    if (dept !== 'LAB' && dept !== 'RAD') {
+      throw new BadRequestException(
+        'La preadmisión no tiene un servicio válido (Toma de muestra o Radiología)',
+      );
+    }
+    const queueService = await this.serviceRepository.findOne({
+      where: { code: dept, isActive: true },
     });
-    if (!admService) {
-      throw new NotFoundException('Servicio de Admisión (ADM) no configurado');
+    if (!queueService) {
+      throw new NotFoundException(
+        dept === 'LAB'
+          ? 'Servicio Toma de muestra (LAB) no configurado'
+          : 'Servicio Radiología (RAD) no configurado',
+      );
     }
 
     const ticket = this.ticketRepository.create({
-      ticketNumber: await this.generateTicketNumber(admService),
+      ticketNumber: await this.generateTicketNumber(queueService),
       patientId: pre.patientId ?? null,
-      serviceId: admService.id,
+      serviceId: queueService.id,
       priority: Priority.NORMAL,
       status: TicketStatus.CHECK_IN,
+      checkInAt: new Date(),
       qrCode: this.generateQrCode(),
       preadmissionId: pre.id,
     });
@@ -1314,7 +1349,7 @@ export class TicketsService {
       id: savedTicket.id,
       ticket_number: savedTicket.ticketNumber,
       service_id: savedTicket.serviceId,
-      service_name: admService.name,
+      service_name: queueService.name,
       status: savedTicket.status,
       priority: savedTicket.priority,
       created_at: toPanamaOffsetIso(savedTicket.createdAt) ?? toIsoUtc(new Date())!,

@@ -530,7 +530,10 @@ export class PreadmissionService {
     return rows.map(toHostWorkListItem);
   }
 
-  async confirmArrival(id: number, user: User): Promise<PreadmissionResponse> {
+  async confirmArrival(
+    id: number,
+    user: User,
+  ): Promise<PreadmissionResponse & { generated_ticket: unknown }> {
     const pre = await this.preadmissionRepository.findOne({ where: { id } });
     if (!pre) {
       throw new NotFoundException('Preadmisión no encontrada');
@@ -556,7 +559,13 @@ export class PreadmissionService {
       details: 'arrivalState:espera_llegada|registrado→paciente_presente',
       module: 'host',
     });
-    return toPreadmissionResponse(saved);
+
+    const generatedTicket = await this.ticketsService.createTicketForPreadmission(saved.id);
+    const updated = await this.preadmissionRepository.findOne({ where: { id: saved.id } });
+    return {
+      ...toPreadmissionResponse(updated ?? saved),
+      generated_ticket: generatedTicket,
+    };
   }
 
   async activateTicket(id: number, user: User): Promise<unknown> {

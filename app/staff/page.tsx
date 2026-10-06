@@ -683,7 +683,6 @@ export default function StaffConsolePage() {
     })
     .filter((t) => {
       if (!isTransferOnlyCallDestination(myDestination)) return true
-      if (!isTransferOriginTicket(t)) return false
       return ticketMatchesTransferDestination(t, myDestination)
     })
     .filter(matchesQueueSearch)
@@ -875,9 +874,9 @@ export default function StaffConsolePage() {
             )}
             {destinationUnlocked && isTransferOnlyCallDestination(myDestination) && (
               <p className="text-sm text-blue-700 mt-2">
-                En <strong>{myDestination}</strong> la cola muestra solo tickets{' '}
-                <strong>transferidos de este destino</strong> y permite múltiples llamados
-                concurrentes. Al transferir a Radiología el turno sale de Toma de muestra.
+                En <strong>{myDestination}</strong> la cola muestra los turnos de este servicio
+                (llegada de preadmisión o transferidos) y permite múltiples llamados concurrentes.
+                Al transferir a Radiología el turno sale de Toma de muestra.
               </p>
             )}
             {destinationUnlocked && occupiedSet.size > 0 && (

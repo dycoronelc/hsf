@@ -78,7 +78,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Lista de llegadas (Anfitrión)',
     audience: 'staff',
     paragraphs: [
-      'En /host se gestionan preadmisiones en espera de llegada: confirmar presencia del paciente y activar ticket de admisión.',
+      'En /host se gestionan preadmisiones en espera de llegada: al confirmar la presencia se genera el ticket del mismo servicio de la preadmisión (Toma de muestra o Radiología).',
     ],
     bullets: [
       'Filtre por estado de llegada o busque por nombre/documento.',
@@ -194,7 +194,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: 'Staff',
     question: '¿Qué hace el anfitrión en la lista de llegadas?',
     answer:
-      'Confirma que el paciente llegó al hospital y activa el ticket de admisión vinculado a la preadmisión.',
+      'Confirma que el paciente llegó al hospital y genera el ticket del servicio registrado en la preadmisión (Toma de muestra o Radiología).',
   },
   {
     id: 'faq-monitor',
@@ -351,7 +351,7 @@ export const CONTEXTUAL_HELP: ContextualHelpBlock[] = [
     routePrefixes: ['/host'],
     title: 'Llegadas — Anfitrión',
     summary: 'Gestione llegada de pacientes con preadmisión.',
-    tips: ['Confirme llegada antes de activar ticket.', 'Use filtros para encontrar pacientes rápido.'],
+    tips: ['Al confirmar la llegada se genera el ticket del servicio de la preadmisión.', 'Use filtros para encontrar pacientes rápido.'],
   },
   {
     id: 'staff',

@@ -87,7 +87,22 @@ export default function HostPage() {
       headers: authHeaders(token),
     })
     if (res.ok) {
-      setMsg('Llegada confirmada.')
+      const data = await res.json().catch(() => ({}))
+      const ticket = data.generated_ticket
+      if (ticket?.ticket_number) {
+        setMsg(`Llegada confirmada. Ticket generado: ${ticket.ticket_number}`)
+        setPrintTicket({
+          ticketNumber: ticket.ticket_number,
+          serviceName:
+            ticket.service_name ||
+            (String(data.departamento || '').toUpperCase() === 'RAD' ? 'Radiología' : 'Toma de muestra'),
+          qrCode: ticket.qr_code,
+          queuePosition: ticket.queue_position,
+          createdAt: ticket.created_at ?? new Date().toISOString(),
+        })
+      } else {
+        setMsg('Llegada confirmada.')
+      }
       await load()
     } else if (handleAuthFailure(res.status, notifySessionExpired)) {
       return
@@ -108,7 +123,7 @@ export default function HostPage() {
       setMsg(`Ticket generado: ${data.ticket_number ?? data.id}`)
       setPrintTicket({
         ticketNumber: data.ticket_number,
-        serviceName: data.service_name ?? 'Admisión',
+        serviceName: data.service_name ?? 'Servicio',
         qrCode: data.qr_code,
         queuePosition: data.queue_position,
         createdAt: data.created_at ?? new Date().toISOString(),
@@ -267,7 +282,7 @@ export default function HostPage() {
                           onClick={() => activate(row.id)}
                           className="text-green-700 font-medium hover:underline"
                         >
-                          Generar ticket admisión
+                          Generar ticket del servicio
                         </button>
                         {associateForId === row.id ? (
                           <div className="flex flex-wrap items-center gap-2">
