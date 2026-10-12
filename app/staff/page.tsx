@@ -103,6 +103,22 @@ function isTriageTicket(ticket: { service_code?: string | null; service_name?: s
   return /triage/i.test(ticket.service_name || '')
 }
 
+function isTriageCallDestination(destination: string): boolean {
+  return destination.trim().toLowerCase() === 'triage'
+}
+
+function isVentanillaCallDestination(destination: string): boolean {
+  return destination.trim().toLowerCase().startsWith('ventanilla')
+}
+
+/** Ticket tipo Toma de muestra (LR / LAB) o Radiología (RAD). */
+function isLabOrRadTicket(ticket: { service_code?: string | null; service_name?: string | null }): boolean {
+  const code = (ticket.service_code || '').toUpperCase()
+  const name = (ticket.service_name || '').toLowerCase()
+  if (code === 'LAB' || code === 'RAD') return true
+  return name.includes('toma de muestra') || name.includes('laboratorio') || name.includes('radiolog')
+}
+
 interface Service {
   id: number
   name: string
@@ -683,6 +699,17 @@ export default function StaffConsolePage() {
     })
     .filter((t) => {
       if (!isTransferOnlyCallDestination(myDestination)) return true
+      if (!isTransferOriginTicket(t)) return false
+      return ticketMatchesTransferDestination(t, myDestination)
+    })
+    .filter((t) => {
+      if (!isTriageTicket(t)) return true
+      return isTriageCallDestination(myDestination)
+    })
+    .filter((t) => {
+      if (!isLabOrRadTicket(t)) return true
+      if (!isTransferOriginTicket(t)) return isVentanillaCallDestination(myDestination)
+      if (!isTransferOnlyCallDestination(myDestination)) return false
       return ticketMatchesTransferDestination(t, myDestination)
     })
     .filter(matchesQueueSearch)
@@ -874,8 +901,8 @@ export default function StaffConsolePage() {
             )}
             {destinationUnlocked && isTransferOnlyCallDestination(myDestination) && (
               <p className="text-sm text-blue-700 mt-2">
-                En <strong>{myDestination}</strong> la cola muestra los turnos de este servicio
-                (llegada de preadmisión o transferidos) y permite múltiples llamados concurrentes.
+                En <strong>{myDestination}</strong> la cola muestra solo turnos ya atendidos en
+                ventanilla y transferidos a este servicio. Permite múltiples llamados concurrentes.
                 Al transferir a Radiología el turno sale de Toma de muestra.
               </p>
             )}
@@ -960,23 +987,16 @@ export default function StaffConsolePage() {
                               Iniciar Atención
                             </button>
                             {isTriageTicket(ticket) && (
-                              <select
-                                value={ticket.triage_color || ''}
-                                onChange={(e) => {
-                                  const v = e.target.value
-                                  if (v) handleSetTriageColor(ticket.id, v)
-                                }}
-                                disabled={loading || !agentCanOperate}
-                                className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
-                              >
-                                <option value="">Asignar color…</option>
-                                {TRIAGE_COLOR_OPTIONS.map((c) => (
-                                  <option key={c.value} value={c.value}>
-                                    {c.label}
-                                  </option>
-                                ))}
-                              </select>
+                              <span className="text-sm text-amber-800">
+                                Inicie la atención para asignar color y transferir.
+                              </span>
                             )}
+                            {isLabOrRadTicket(ticket) && (
+                              <span className="text-sm text-amber-800">
+                                Inicie la atención para transferir a Toma de muestra o Radiología.
+                              </span>
+                            )}
+                            {!isTriageTicket(ticket) && !isLabOrRadTicket(ticket) && (
                             <select
                               value=""
                               onChange={(e) => {
@@ -996,6 +1016,7 @@ export default function StaffConsolePage() {
                               <option value="LAB">Toma de muestra</option>
                               <option value="BOTH">Lab + Rad</option>
                             </select>
+                            )}
                             {canRecallTicket(ticket) && (
                               <button
                                 type="button"
@@ -1041,6 +1062,12 @@ export default function StaffConsolePage() {
                                 ))}
                               </select>
                             )}
+                            {isTriageTicket(ticket) && !ticket.triage_color && (
+                              <span className="text-sm text-amber-800">
+                                Asigne el color antes de transferir.
+                              </span>
+                            )}
+                            {(!isTriageTicket(ticket) || ticket.triage_color) && (
                             <select
                               value=""
                               onChange={(e) => {
@@ -1060,6 +1087,7 @@ export default function StaffConsolePage() {
                               <option value="LAB">Toma de muestra</option>
                               <option value="BOTH">Lab + Rad</option>
                             </select>
+                            )}
                             <button
                               type="button"
                               onClick={() => requestFinalizeTicket(ticket)}
@@ -1171,9 +1199,13 @@ export default function StaffConsolePage() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
             <p className="text-sm text-gray-600 mb-4">
-              {isTransferOnlyCallDestination(myDestination)
-                ? 'Solo tickets transferidos a este destino, del día actual, ordenados por llegada.'
-                : 'Del día actual, ordenada por llegada (Triage antes que Consulta). Incluye tickets transferidos.'}
+              {isTriageCallDestination(myDestination)
+                ? 'Turnos de Triage del día. Después de atender, asignar color y transferir, el turno pasa a la cola de ventanillas.'
+                : isTransferOnlyCallDestination(myDestination)
+                  ? 'Solo turnos ya atendidos en ventanilla y transferidos a este destino, del día actual.'
+                  : isVentanillaCallDestination(myDestination)
+                    ? 'Del día actual. Los turnos de Toma de muestra (LR) y Radiología se atienden aquí y pasan a ese destino al transferirlos. Triage no aparece en esta cola.'
+                    : 'Del día actual. Triage se atiende en Triage. Toma de muestra y Radiología se atienden primero en una ventanilla.'}
             </p>
             {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">

@@ -156,7 +156,9 @@ export class TicketsService {
     return `${base}\n[HSF_PENDING_STAGE:${stage}]`.trim();
   }
 
-  private isLabOrRadService(service?: Pick<Service, 'code' | 'area' | 'name'> | null): boolean {
+  private isLabOrRadService(
+    service?: { code?: string | null; area?: string | null; name?: string | null } | null,
+  ): boolean {
     const code = String(service?.code || '').toUpperCase();
     const area = String(service?.area || '').toUpperCase();
     if (code === 'LAB' || code === 'RAD' || area === 'LAB' || area === 'RAD') return true;
@@ -833,7 +835,7 @@ export class TicketsService {
     return Boolean(ticket.notes?.startsWith('Transferido'));
   }
 
-  /** Toma de muestra atiende LAB; Radiología atiende RAD (transferidos o de preadmisión). */
+  /** Toma de muestra atiende LAB; Radiología atiende RAD. Solo después de transferir desde ventanilla. */
   private serviceMatchesCallDestination(
     dest: string,
     service: { code?: string | null; name?: string | null } | null,
@@ -850,16 +852,70 @@ export class TicketsService {
     return false;
   }
 
+  private isTriageService(
+    service?: { code?: string | null; name?: string | null } | null,
+  ): boolean {
+    const code = String(service?.code || '').toUpperCase();
+    if (code === 'TRIAGE') return true;
+    return /triage/i.test(service?.name || '');
+  }
+
+  private isVentanillaDestination(dest: string): boolean {
+    return dest.trim().toLowerCase().startsWith('ventanilla');
+  }
+
+  /**
+   * RAD / LR se llaman primero en ventanilla.
+   * Tras atender y transferir, solo se llaman en Toma de muestra o Radiología.
+   */
+  private assertLabRadCalledAtVentanillaFirst(
+    windowNumber: string,
+    ticket: Pick<Ticket, 'notes' | 'ticketNumber'>,
+    service: { code?: string | null; name?: string | null } | null,
+  ) {
+    if (!this.isLabOrRadService(service)) return;
+    const dest = windowNumber.trim();
+    if (this.isTransferOriginTicket(ticket)) {
+      if (this.isVentanillaDestination(dest) || dest.toLowerCase() === 'triage') {
+        throw new BadRequestException(
+          `El turno ${ticket.ticketNumber} ya fue transferido. Se atiende en Toma de muestra o Radiología.`,
+        );
+      }
+      return;
+    }
+    if (this.isVentanillaDestination(dest)) return;
+    throw new BadRequestException(
+      `El turno ${ticket.ticketNumber} de Radiología o Toma de muestra se llama primero en ventanilla. Pasa a ese destino después de atenderlo y transferirlo.`,
+    );
+  }
+
+  /** Un turno de Triage solo se llama en el destino Triage, no en ventanillas. */
+  private assertTriageCalledAtTriageDestination(
+    windowNumber: string,
+    service: { code?: string | null; name?: string | null } | null,
+    ticketNumber: string,
+  ) {
+    if (!this.isTriageService(service)) return;
+    if (windowNumber.trim().toLowerCase() === 'triage') return;
+    throw new BadRequestException(
+      `El turno ${ticketNumber} es de Triage y solo se llama en el destino Triage. Pasa a ventanilla después de atenderlo, asignar color y transferirlo.`,
+    );
+  }
+
   private assertTransferEligibleForDestination(
     windowNumber: string,
     ticket: Pick<Ticket, 'notes' | 'ticketNumber'>,
     service: { code?: string | null; name?: string | null } | null,
   ) {
     if (!this.isTransferOnlyDestination(windowNumber)) return;
-    if (this.serviceMatchesCallDestination(windowNumber, service)) return;
-    if (this.isTransferOriginTicket(ticket)) return;
+    if (
+      this.isTransferOriginTicket(ticket) &&
+      this.serviceMatchesCallDestination(windowNumber, service)
+    ) {
+      return;
+    }
     throw new BadRequestException(
-      `En «${windowNumber.trim()}» solo se atienden turnos de ese servicio (turno ${ticket.ticketNumber}).`,
+      `En «${windowNumber.trim()}» solo se atienden turnos ya transferidos desde ventanilla (turno ${ticket.ticketNumber}).`,
     );
   }
 
@@ -902,6 +958,8 @@ export class TicketsService {
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
+    this.assertTriageCalledAtTriageDestination(windowNumber, ticket.service, ticket.ticketNumber);
+    this.assertLabRadCalledAtVentanillaFirst(windowNumber, ticket, ticket.service);
     this.assertTransferEligibleForDestination(windowNumber, ticket, ticket.service);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
@@ -954,6 +1012,8 @@ export class TicketsService {
         `Espere ${Math.ceil(recallWaitSeconds - elapsed)} segundos antes de volver a llamar`,
       );
     }
+    this.assertTriageCalledAtTriageDestination(windowNumber, ticket.service, ticket.ticketNumber);
+    this.assertLabRadCalledAtVentanillaFirst(windowNumber, ticket, ticket.service);
     this.assertTransferEligibleForDestination(windowNumber, ticket, ticket.service);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
     ticket.status = TicketStatus.LLAMADO;
@@ -1133,12 +1193,22 @@ export class TicketsService {
       throw new BadRequestException('Este ticket ya no se puede transferir');
     }
 
-    const isTriageSource =
-      (ticket.service?.code || '').toUpperCase() === 'TRIAGE' ||
-      /triage/i.test(ticket.service?.name || '');
-    if (isTriageSource && (dto.targetArea === 'ADM' || dto.targetArea === 'URG') && !ticket.triageColor) {
+    const isTriageSource = this.isTriageService(ticket.service);
+    if (isTriageSource && ticket.status !== TicketStatus.EN_ATENCION) {
       throw new BadRequestException(
-        'Asigne el color de triage antes de transferir a Admisión u Urgencias',
+        'Inicie la atención en Triage antes de transferir el turno',
+      );
+    }
+    if (isTriageSource && !ticket.triageColor) {
+      throw new BadRequestException(
+        'Asigne el color de triage antes de transferir el turno',
+      );
+    }
+    if (this.isLabOrRadService(ticket.service) && ticket.status !== TicketStatus.EN_ATENCION) {
+      throw new BadRequestException(
+        this.isTransferOriginTicket(ticket)
+          ? 'Inicie la atención antes de transferir el turno'
+          : 'Inicie la atención en ventanilla antes de transferir el turno a Toma de muestra o Radiología',
       );
     }
 
@@ -1258,18 +1328,12 @@ export class TicketsService {
     if (!ticket) {
       throw new NotFoundException('Ticket no encontrado');
     }
-    const isTriage =
-      (ticket.service?.code || '').toUpperCase() === 'TRIAGE' ||
-      /triage/i.test(ticket.service?.name || '');
-    if (!isTriage) {
+    if (!this.isTriageService(ticket.service)) {
       throw new BadRequestException('Solo se asigna color a tickets del servicio Triage');
     }
-    if (
-      ticket.status !== TicketStatus.LLAMADO &&
-      ticket.status !== TicketStatus.EN_ATENCION
-    ) {
+    if (ticket.status !== TicketStatus.EN_ATENCION) {
       throw new BadRequestException(
-        'El color se asigna cuando el paciente está llamado o en atención de Triage',
+        'El color se asigna cuando el paciente ya está en atención de Triage',
       );
     }
 
