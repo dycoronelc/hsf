@@ -19,7 +19,7 @@ import {
 } from '../../common/validators/person-field.validators';
 
 export class CreatePreadmissionDto {
-  @IsEnum(['RAD', 'LAB'])
+  @IsEnum(['RAD', 'LAB', 'OTR'])
   departamento: string;
 
   @IsEnum(['paciente', 'acompanante'])

@@ -23,7 +23,7 @@ export class Preadmission {
 
   // Datos del JSON
   @Column()
-  departamento: string; // RAD o LAB
+  departamento: string; // RAD, LAB u OTR
 
   /** Paciente o acompañante que completa el registro (PDF preadmisiones). */
   @Column({ default: 'paciente' })

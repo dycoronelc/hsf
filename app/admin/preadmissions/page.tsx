@@ -135,6 +135,7 @@ export default function AdminPreadmissionsPage() {
               <option value="">Todas</option>
               <option value="RAD">Radiología</option>
               <option value="LAB">Toma de muestra</option>
+              <option value="OTR">Otro (Urgencia, Cirugías, Hospitalización, otro)</option>
             </select>
           </div>
           <div>

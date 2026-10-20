@@ -145,6 +145,7 @@ export class MonitorService {
     const labels: Record<string, string> = {
       LAB: 'Toma de muestra',
       RAD: 'Radiología',
+      OTR: 'Otro (Urgencia, Cirugías, Hospitalización, otro)',
       OTRO: 'Otros',
     };
 

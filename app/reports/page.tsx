@@ -9,7 +9,7 @@ import { formatDateInput, ddMmYyyyToIso, isValidDdMmYyyy } from '@/lib/dateUtils
 import { canAccessReports, canExportReports } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
-import { formatPreadmissionDate } from '@/lib/preadmissionLabels'
+import { DEPARTAMENTO_LABELS, formatPreadmissionDate } from '@/lib/preadmissionLabels'
 import { CALL_DESTINATIONS } from '@/lib/callDestinations'
 import { ReportsDashboard } from './ReportsDashboard'
 
@@ -421,8 +421,11 @@ export default function ReportsPage() {
     (sid: string): string => {
       if (!sid) return ''
       const svc = services.find((s) => String(s.id) === sid)
-      const area = String(svc?.area || svc?.code || '').toUpperCase()
-      if (area === 'RAD' || area === 'LAB') return area
+      const area = String(svc?.area || '').toUpperCase()
+      const code = String(svc?.code || '').toUpperCase()
+      if (area === 'RAD' || code === 'RAD') return 'RAD'
+      if (area === 'LAB' || code === 'LAB') return 'LAB'
+      if (code === 'OT' || code === 'OTR') return 'OTR'
       return ''
     },
     [services],
@@ -449,7 +452,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams()
       appendSharedParams(params)
       const tipo = resolvePreadTipoFromService(applied.serviceId)
-      if (tipo === 'RAD' || tipo === 'LAB') params.append('tipo', tipo)
+      if (tipo === 'RAD' || tipo === 'LAB' || tipo === 'OTR') params.append('tipo', tipo)
       if (applied.preDocumento.trim()) params.append('documento', applied.preDocumento.trim())
       if (applied.preArrivalState) params.append('arrivalState', applied.preArrivalState)
 
@@ -485,7 +488,7 @@ export default function ReportsPage() {
       const params = new URLSearchParams()
       appendSharedParams(params)
       const tipo = resolvePreadTipoFromService(applied.serviceId)
-      if (tipo === 'RAD' || tipo === 'LAB') params.append('tipo', tipo)
+      if (tipo === 'RAD' || tipo === 'LAB' || tipo === 'OTR') params.append('tipo', tipo)
       if (applied.preDocumento.trim()) params.append('documento', applied.preDocumento.trim())
       if (applied.preArrivalState) params.append('arrivalState', applied.preArrivalState)
 
@@ -527,7 +530,7 @@ export default function ReportsPage() {
       params.append('tab', activeTab)
       appendSharedParams(params)
       const tipo = resolvePreadTipoFromService(applied.serviceId)
-      if (tipo === 'RAD' || tipo === 'LAB') params.append('tipo', tipo)
+      if (tipo === 'RAD' || tipo === 'LAB' || tipo === 'OTR') params.append('tipo', tipo)
       if (applied.preDocumento.trim()) params.append('documento', applied.preDocumento.trim())
       if (applied.preArrivalState) params.append('arrivalState', applied.preArrivalState)
 
@@ -1536,7 +1539,9 @@ export default function ReportsPage() {
                               {row.name1} {row.apellido1}
                             </td>
                             <td className="px-4 py-2 font-mono">{row.cedula}</td>
-                            <td className="px-4 py-2">{row.departamento}</td>
+                            <td className="px-4 py-2">
+                              {DEPARTAMENTO_LABELS[row.departamento] ?? row.departamento}
+                            </td>
                             <td className="px-4 py-2">
                               {ARRIVAL_LABELS[row.arrivalState ?? ''] ?? row.arrivalState ?? '—'}
                             </td>

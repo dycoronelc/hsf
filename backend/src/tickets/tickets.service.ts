@@ -451,11 +451,7 @@ export class TicketsService {
       entityType: 'ticket',
       entityId: savedTicket.id,
       userId: hostUserId,
-      details: JSON.stringify({
-        ticketNumber: savedTicket.ticketNumber,
-        serviceId: service.id,
-        serviceCode: service.code,
-      }),
+      details: `Turno ${savedTicket.ticketNumber}, servicio ${service.name || service.code}`,
     });
 
     return {
@@ -1354,7 +1350,7 @@ export class TicketsService {
     };
   }
 
-  /** Ticket del mismo servicio de la preadmisión (LAB o RAD) cuando el paciente ya está presente. */
+  /** Ticket del servicio de la preadmisión (LAB, RAD u Otro→OT) cuando el paciente ya está presente. */
   async createTicketForPreadmission(preadmissionId: number) {
     const pre = await this.preadmissionRepository.findOne({ where: { id: preadmissionId } });
     if (!pre) {
@@ -1368,19 +1364,22 @@ export class TicketsService {
     }
 
     const dept = String(pre.departamento || '').trim().toUpperCase();
-    if (dept !== 'LAB' && dept !== 'RAD') {
+    const serviceCode = dept === 'OTR' ? 'OT' : dept;
+    if (serviceCode !== 'LAB' && serviceCode !== 'RAD' && serviceCode !== 'OT') {
       throw new BadRequestException(
-        'La preadmisión no tiene un servicio válido (Toma de muestra o Radiología)',
+        'La preadmisión no tiene un servicio válido (Toma de muestra, Radiología u Otro)',
       );
     }
     const queueService = await this.serviceRepository.findOne({
-      where: { code: dept, isActive: true },
+      where: { code: serviceCode, isActive: true },
     });
     if (!queueService) {
       throw new NotFoundException(
-        dept === 'LAB'
+        serviceCode === 'LAB'
           ? 'Servicio Toma de muestra (LAB) no configurado'
-          : 'Servicio Radiología (RAD) no configurado',
+          : serviceCode === 'RAD'
+            ? 'Servicio Radiología (RAD) no configurado'
+            : 'Servicio Otros servicios (OT) no configurado',
       );
     }
 

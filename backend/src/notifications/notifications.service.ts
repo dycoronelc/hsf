@@ -262,7 +262,9 @@ export class NotificationsService {
         ? 'Radiología'
         : data.departamento === 'LAB'
           ? 'Toma de muestra'
-          : data.departamento;
+          : data.departamento === 'OTR'
+            ? 'Otro (Urgencia, Cirugías, Hospitalización, otro)'
+            : data.departamento;
     const fechaRegistro = data.fechapreadmision.toLocaleDateString('es-PA', {
       timeZone: 'America/Panama',
       day: '2-digit',

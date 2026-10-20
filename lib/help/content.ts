@@ -28,7 +28,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
       'Debe tener una cuenta registrada e iniciar sesión antes de completar la preadmisión. El proceso tiene 8 pasos: área y fecha, identificación, datos personales, contacto, emergencia, seguro, documentos y confirmación.',
     ],
     bullets: [
-      'Seleccione departamento RAD (Radiología) o LAB (Toma de muestra).',
+      'Seleccione Radiología, Laboratorio u Otro (urgencia, cirugías, hospitalización u otro).',
       'La fecha probable de atención no puede ser anterior a hoy.',
       'Verifique su correo con el código de 6 dígitos en el paso 4.',
       'Adjunte imagen de cédula y orden médica (obligatorios) en formatos JPG, PNG o PDF.',
@@ -139,7 +139,7 @@ export const FAQ_ITEMS: FaqItem[] = [
     category: 'Preadmisión',
     question: '¿Por qué me dice que ya existe una preadmisión?',
     answer:
-      'Solo se permite una preadmisión activa por documento, departamento (RAD/LAB) y fecha de atención. Puede registrar otro servicio distinto para la misma fecha si aplica.',
+      'Solo se permite una preadmisión activa por documento, departamento (Radiología, Laboratorio u Otro) y fecha de atención. Puede registrar otro servicio distinto para la misma fecha si aplica.',
   },
   {
     id: 'faq-date',
@@ -239,10 +239,10 @@ export const CONTEXTUAL_HELP: ContextualHelpBlock[] = [
     routePrefixes: ['/preadmission'],
     preadmissionSteps: [1],
     title: 'Paso 1 — Área y fecha',
-    summary: 'Seleccione Radiología o Toma de muestra y la fecha de su cita.',
+    summary: 'Seleccione Radiología, Laboratorio u Otro, y la fecha de su cita.',
     tips: [
       'La fecha no puede ser anterior a hoy.',
-      'RAD = estudios de imagen; LAB = análisis clínicos.',
+      'Radiología = estudios de imagen; Laboratorio = análisis clínicos; Otro = urgencia, cirugías, hospitalización u otro.',
     ],
   },
   {

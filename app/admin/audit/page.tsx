@@ -10,6 +10,59 @@ import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
 import { formatDateToDdMmYyyy, ddMmYyyyToIso, isValidDdMmYyyy } from '@/lib/dateUtils'
 
+const ACTION_LABELS: Record<string, string> = {
+  user_login: 'Inicio de sesión',
+  user_logout: 'Cierre de sesión',
+  user_registered: 'Registro de usuario',
+  session_refreshed: 'Sesión renovada',
+  password_reset: 'Contraseña restablecida',
+  agent_state_changed: 'Cambio de estado del agente',
+  host_walk_in_ticket_created: 'Turno creado en recepción',
+  stale_prior_day_tickets_released: 'Turnos de días anteriores liberados',
+  agent_session_released: 'Turnos liberados al cerrar sesión',
+  destination_released: 'Destino liberado',
+  ticket_called: 'Turno llamado',
+  ticket_recalled: 'Turno vuelto a llamar',
+  ticket_no_show: 'Paciente no se presentó',
+  ticket_started: 'Atención iniciada',
+  ticket_completed: 'Atención finalizada',
+  ticket_transferred: 'Turno transferido',
+  ticket_triage_color_set: 'Color de triage asignado',
+  ticket_associated_to_preadmission: 'Turno asociado a preadmisión',
+  role_permissions_updated: 'Permisos de rol actualizados',
+  role_matrix_role_added: 'Rol agregado',
+  role_matrix_role_patched: 'Rol actualizado',
+  role_matrix_role_removed: 'Rol eliminado',
+  ticket_type_created: 'Tipo de turno creado',
+  ticket_type_updated: 'Tipo de turno actualizado',
+  ticket_type_deleted: 'Tipo de turno eliminado',
+  patient_updated: 'Paciente actualizado',
+  staff_user_created: 'Usuario de personal creado',
+  staff_user_updated: 'Usuario de personal actualizado',
+  staff_user_deleted: 'Usuario de personal eliminado',
+  preadmission_created: 'Preadmisión creada',
+  preadmission_arrival_confirmed: 'Llegada confirmada',
+  preadmission_reviewed: 'Preadmisión revisada',
+}
+
+const ENTITY_LABELS: Record<string, string> = {
+  user: 'Usuario',
+  ticket: 'Turno',
+  preadmission: 'Preadmisión',
+  role: 'Rol',
+  service: 'Servicio',
+}
+
+function actionLabel(action: string): string {
+  return ACTION_LABELS[action] || action.split('_').join(' ')
+}
+
+function entityLabel(entityType: string | null, entityId: number | null): string {
+  if (!entityType && entityId == null) return '—'
+  const name = entityType ? ENTITY_LABELS[entityType] || entityType : 'Registro'
+  return entityId != null ? `${name} #${entityId}` : name
+}
+
 type AuditItem = {
   id: number
   action: string
@@ -244,11 +297,8 @@ export default function AdminAuditPage() {
                   </td>
                   <td className="px-3 py-2 font-mono text-xs">{row.ipAddress || '—'}</td>
                   <td className="px-3 py-2">{row.module || '—'}</td>
-                  <td className="px-3 py-2 font-medium">{row.action}</td>
-                  <td className="px-3 py-2 text-xs">
-                    {row.entityType || '—'}
-                    {row.entityId != null ? ` #${row.entityId}` : ''}
-                  </td>
+                  <td className="px-3 py-2 font-medium">{actionLabel(row.action)}</td>
+                  <td className="px-3 py-2 text-xs">{entityLabel(row.entityType, row.entityId)}</td>
                   <td className="px-3 py-2 text-xs text-gray-700 max-w-xs break-words">
                     {row.details || '—'}
                   </td>

@@ -9,6 +9,11 @@ export type CellbyteAttachmentBase64 = {
   ssimagen: string;
 };
 
+/** Laboratorio → LAB, Radiología → RAD, Otro → OTR. */
+export function cellbyteDepartamento(code: string | null | undefined): string {
+  return String(code || '').trim().toUpperCase();
+}
+
 /**
  * Cellbyte acepta ST, CS, DV, UN, SP, VP.
  * El formulario antiguo guardaba viudo como VD.
@@ -44,7 +49,7 @@ export function buildCellbytePayload(
   attachments: CellbyteAttachmentBase64,
 ): Record<string, string> {
   return {
-    departamento: p.departamento,
+    departamento: cellbyteDepartamento(p.departamento),
     name1: p.name1,
     name2: p.name2 ?? '',
     apellido1: p.apellido1,

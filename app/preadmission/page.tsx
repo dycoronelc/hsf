@@ -1166,6 +1166,7 @@ export default function PreadmissionPage() {
                   <option value="">Seleccione...</option>
                   <option value="RAD">Radiología</option>
                   <option value="LAB">Laboratorio</option>
+                  <option value="OTR">Otro (Urgencia, Cirugías, Hospitalización, otro)</option>
                 </select>
               </div>
               <DdMmYyyyDateField
@@ -1927,7 +1928,16 @@ export default function PreadmissionPage() {
                   Por favor revisa que toda la información sea correcta antes de enviar.
                 </p>
                 <div className="space-y-2 text-sm">
-                  <p><strong>Departamento:</strong> {formData.departamento}</p>
+                  <p>
+                    <strong>Departamento:</strong>{' '}
+                    {formData.departamento === 'RAD'
+                      ? 'Radiología'
+                      : formData.departamento === 'LAB'
+                        ? 'Laboratorio'
+                        : formData.departamento === 'OTR'
+                          ? 'Otro (Urgencia, Cirugías, Hospitalización, otro)'
+                          : formData.departamento}
+                  </p>
                   <p><strong>Paciente:</strong> {formData.name1} {formData.apellido1}</p>
                   <p><strong>Cédula:</strong> {formData.cedula}</p>
                   <p><strong>Email:</strong> {formData.email}</p>

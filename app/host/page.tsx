@@ -10,6 +10,7 @@ import { TicketPrintOverlay, type TicketPrintData } from '../components/TicketPr
 import { canAccessHost } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
+import { DEPARTAMENTO_LABELS } from '@/lib/preadmissionLabels'
 
 const ARRIVAL_LABELS: Record<string, string> = {
   registrado: 'Registrado',
@@ -260,7 +261,9 @@ export default function HostPage() {
                     {row.name1} {row.apellido1}
                   </td>
                   <td className="px-4 py-3 font-mono">{row.cedula}</td>
-                  <td className="px-4 py-3">{row.departamento}</td>
+                  <td className="px-4 py-3">
+                    {DEPARTAMENTO_LABELS[row.departamento] ?? row.departamento}
+                  </td>
                   <td className="px-4 py-3">{ARRIVAL_LABELS[row.arrivalState] ?? row.arrivalState}</td>
                   <td className="px-4 py-3 font-mono text-gray-700">
                     {row.fechaprobableatencion || '—'}

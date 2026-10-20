@@ -1,4 +1,36 @@
 import { Injectable } from '@nestjs/common';
+
+const SERVICE_LABELS: Record<string, string> = {
+  TRIAGE: 'Triage',
+  LAB: 'Toma de muestra',
+  LR: 'Toma de muestra',
+  RAD: 'Radiología',
+  RD: 'Radiología',
+  ADM: 'Admisión',
+  URG: 'Urgencias',
+  CTA: 'Consulta',
+  OT: 'Otros servicios',
+};
+
+/** Convierte detalles guardados como JSON en una frase legible para la bitácora. */
+export function formatAuditDetails(details: string | null | undefined): string | null {
+  if (!details) return details ?? null;
+  const trimmed = details.trim();
+  if (!trimmed.startsWith('{')) return details;
+  try {
+    const data = JSON.parse(trimmed) as Record<string, unknown>;
+    const ticketNumber = typeof data.ticketNumber === 'string' ? data.ticketNumber : '';
+    const rawService = data.serviceCode ?? data.service ?? data.serviceName;
+    const serviceCode = typeof rawService === 'string' ? rawService.trim().toUpperCase() : '';
+    if (!ticketNumber && !serviceCode) return details;
+    const serviceLabel = serviceCode ? SERVICE_LABELS[serviceCode] || serviceCode : '';
+    if (ticketNumber && serviceLabel) return `Turno ${ticketNumber}, servicio ${serviceLabel}`;
+    if (ticketNumber) return `Turno ${ticketNumber}`;
+    return `Servicio ${serviceLabel}`;
+  } catch {
+    return details;
+  }
+}
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { AuditLog } from './entities/audit-log.entity';
@@ -91,7 +123,7 @@ export class AuditService {
           userId: r.userId,
           userEmail: u?.email ?? null,
           userName: u?.fullName ?? null,
-          details: r.details,
+          details: formatAuditDetails(r.details),
           ipAddress: r.ipAddress,
           module: r.module,
           createdAt: toPanamaOffsetIso(r.createdAt) ?? r.createdAt,

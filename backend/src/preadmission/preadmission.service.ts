@@ -88,6 +88,7 @@ export class PreadmissionService {
   private departamentoLabel(code: string): string {
     if (code === 'LAB') return 'Toma de muestra';
     if (code === 'RAD') return 'Radiología';
+    if (code === 'OTR') return 'Otro (Urgencia, Cirugías, Hospitalización, otro)';
     return code;
   }
 
@@ -103,7 +104,7 @@ export class PreadmissionService {
     if (!isValidDocumentIdInput(cedula)) {
       throw new BadRequestException('Documento: solo letras, números y guiones');
     }
-    if (!departamento?.trim() || !['RAD', 'LAB'].includes(departamento.trim().toUpperCase())) {
+    if (!departamento?.trim() || !['RAD', 'LAB', 'OTR'].includes(departamento.trim().toUpperCase())) {
       throw new BadRequestException('Departamento inválido');
     }
     if (!fechaprobableatencion?.trim()) {
@@ -137,7 +138,7 @@ export class PreadmissionService {
 
   private duplicatePreadmissionMessage(departamento: string, fechaprobableatencion: string): string {
     const servicio = this.departamentoLabel(departamento.trim().toUpperCase());
-    return `Ya existe una preadmisión para ${servicio} con fecha de atención ${fechaprobableatencion.trim()}. Solo se permite una preadmisión por servicio y día. Puede registrar otro servicio distinto (por ejemplo, Toma de muestra y Radiología) para la misma fecha.`;
+    return `Ya existe una preadmisión para ${servicio} con fecha de atención ${fechaprobableatencion.trim()}. Solo se permite una preadmisión por servicio y día. Puede registrar otro servicio distinto (por ejemplo, Toma de muestra, Radiología u Otro) para la misma fecha.`;
   }
 
   async checkActiveDocument(
@@ -431,7 +432,7 @@ export class PreadmissionService {
       .skip(skip)
       .take(take);
 
-    if (opts.departamento === 'RAD' || opts.departamento === 'LAB') {
+    if (opts.departamento === 'RAD' || opts.departamento === 'LAB' || opts.departamento === 'OTR') {
       qb.andWhere('p.departamento = :departamento', { departamento: opts.departamento });
     }
 
@@ -522,7 +523,7 @@ export class PreadmissionService {
       .take(200);
 
     const dept = opts.departamento?.trim().toUpperCase();
-    if (dept === 'LAB' || dept === 'RAD') {
+    if (dept === 'LAB' || dept === 'RAD' || dept === 'OTR') {
       qb.andWhere('p.departamento = :dept', { dept });
     }
 

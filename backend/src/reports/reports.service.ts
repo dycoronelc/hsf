@@ -681,13 +681,17 @@ export class ReportsService {
     let tipo: string | undefined;
     if (filters.serviceId != null) {
       const svc = await this.serviceRepository.findOne({ where: { id: filters.serviceId } });
-      const area = String(svc?.area || svc?.code || '').toUpperCase();
-      if (area === 'RAD' || area === 'LAB') tipo = area;
+      const area = String(svc?.area || '').toUpperCase();
+      const code = String(svc?.code || '').toUpperCase();
+      if (area === 'RAD' || code === 'RAD') tipo = 'RAD';
+      else if (area === 'LAB' || code === 'LAB') tipo = 'LAB';
+      else if (code === 'OT' || code === 'OTR') tipo = 'OTR';
       else if (svc) return [];
     } else if (filters.serviceCode) {
       const code = filters.serviceCode.trim().toUpperCase();
       if (code === 'RAD' || code === 'RD') tipo = 'RAD';
       else if (code === 'LAB' || code === 'LR') tipo = 'LAB';
+      else if (code === 'OT' || code === 'OTR') tipo = 'OTR';
       else return [];
     }
     return this.getPreadmissionsReport(start, end, tipo, undefined, undefined);
@@ -1004,7 +1008,7 @@ export class ReportsService {
       .andWhere('p.fechapreadmision <= :end', { end })
       .orderBy('p.fechapreadmision', 'DESC');
 
-    if (tipo && (tipo === 'RAD' || tipo === 'LAB')) {
+    if (tipo && (tipo === 'RAD' || tipo === 'LAB' || tipo === 'OTR')) {
       qb.andWhere('p.departamento = :tipo', { tipo });
     }
     if (documento) {
@@ -1112,12 +1116,12 @@ export class ReportsService {
       let skip = Boolean(filters.windowNumber || filters.agentId != null);
       if (!skip && filters.serviceId != null) {
         const svc = await this.serviceRepository.findOne({ where: { id: filters.serviceId } });
-        const area = String(svc?.area || svc?.code || '').toUpperCase();
-        if (area === 'RAD' || area === 'LAB') {
-          preadTipo = area;
-        } else if (!params.tipo) {
-          skip = true;
-        }
+        const area = String(svc?.area || '').toUpperCase();
+        const code = String(svc?.code || '').toUpperCase();
+        if (area === 'RAD' || code === 'RAD') preadTipo = 'RAD';
+        else if (area === 'LAB' || code === 'LAB') preadTipo = 'LAB';
+        else if (code === 'OT' || code === 'OTR') preadTipo = 'OTR';
+        else if (!params.tipo) skip = true;
       }
       const csv = skip
         ? this.buildCsv(
@@ -1373,12 +1377,12 @@ export class ReportsService {
     let skipPreads = Boolean(filters.windowNumber || filters.agentId != null);
     if (!skipPreads && filters.serviceId != null) {
       const svc = await this.serviceRepository.findOne({ where: { id: filters.serviceId } });
-      const area = String(svc?.area || svc?.code || '').toUpperCase();
-      if (area === 'RAD' || area === 'LAB') {
-        preadTipo = area;
-      } else if (!params.tipo) {
-        skipPreads = true;
-      }
+      const area = String(svc?.area || '').toUpperCase();
+      const code = String(svc?.code || '').toUpperCase();
+      if (area === 'RAD' || code === 'RAD') preadTipo = 'RAD';
+      else if (area === 'LAB' || code === 'LAB') preadTipo = 'LAB';
+      else if (code === 'OT' || code === 'OTR') preadTipo = 'OTR';
+      else if (!params.tipo) skipPreads = true;
     }
     const preads = skipPreads
       ? []
