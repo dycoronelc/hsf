@@ -8,6 +8,7 @@ import { useAuth } from '../../providers'
 import { canAccessOps } from '@/lib/authRoles'
 import { authHeaders, handleAuthFailure } from '@/lib/authToken'
 import { apiErrorMessage } from '@/lib/apiErrorMessage'
+import { formatPreadmissionDate } from '@/lib/preadmissionLabels'
 
 type OpsAlert = {
   level: 'ok' | 'warn' | 'critical'
@@ -111,6 +112,41 @@ function statusPill(ok: boolean, label: string) {
   )
 }
 
+type OpsTab = 'server' | 'cellbyte'
+
+type CellbyteLogRow = {
+  id: number
+  preadmissionId: number | null
+  success: boolean
+  attempt: number
+  status: 'sent' | 'error' | 'skipped'
+  errorMessage: string | null
+  createdAt: string
+}
+
+type CellbyteLogDetail = CellbyteLogRow & {
+  requestPayload: unknown
+  responseBody: unknown
+}
+
+const CELLBYTE_STATUS_LABELS: Record<CellbyteLogRow['status'], string> = {
+  sent: 'Enviado',
+  error: 'Error',
+  skipped: 'No enviado',
+}
+
+function cellbyteStatusClass(status: CellbyteLogRow['status']): string {
+  if (status === 'sent') return 'bg-green-100 text-green-800'
+  if (status === 'error') return 'bg-red-100 text-red-800'
+  return 'bg-amber-100 text-amber-800'
+}
+
+function prettyJson(value: unknown): string {
+  if (value == null) return '—'
+  if (typeof value === 'string') return value
+  return JSON.stringify(value, null, 2)
+}
+
 function Card({
   title,
   children,
@@ -142,6 +178,16 @@ export default function AdminOpsPage() {
   const [loading, setLoading] = useState(false)
   const [apiLatencyMs, setApiLatencyMs] = useState<number | null>(null)
   const [lastFetchAt, setLastFetchAt] = useState<string>('')
+  const [tab, setTab] = useState<OpsTab>('server')
+  const [logs, setLogs] = useState<CellbyteLogRow[]>([])
+  const [logsTotal, setLogsTotal] = useState(0)
+  const [logsSkip, setLogsSkip] = useState(0)
+  const [logsStatus, setLogsStatus] = useState('')
+  const [logsLoading, setLogsLoading] = useState(false)
+  const [logsError, setLogsError] = useState('')
+  const [selectedLog, setSelectedLog] = useState<CellbyteLogDetail | null>(null)
+  const [detailLoading, setDetailLoading] = useState(false)
+  const logsLimit = 50
 
   const load = useCallback(async () => {
     if (!token) return
@@ -167,6 +213,56 @@ export default function AdminOpsPage() {
     }
   }, [token, notifySessionExpired])
 
+  const loadLogs = useCallback(
+    async (skip = logsSkip) => {
+      if (!token) return
+      setLogsLoading(true)
+      setLogsError('')
+      try {
+        const params = new URLSearchParams()
+        params.set('skip', String(skip))
+        params.set('limit', String(logsLimit))
+        if (logsStatus === 'true' || logsStatus === 'false') params.set('success', logsStatus)
+        const res = await fetch(`/api/ops/cellbyte-logs?${params.toString()}`, {
+          headers: authHeaders(token),
+        })
+        if (handleAuthFailure(res.status, notifySessionExpired)) return
+        if (!res.ok) {
+          const body = await res.json().catch(() => ({}))
+          throw new Error(apiErrorMessage(body, 'No se pudieron cargar los envíos a Cellbyte'))
+        }
+        const data = await res.json()
+        setLogs(Array.isArray(data.items) ? data.items : [])
+        setLogsTotal(Number(data.total) || 0)
+        setLogsSkip(skip)
+      } catch (err: unknown) {
+        setLogsError(err instanceof Error ? err.message : 'Error al cargar los envíos')
+      } finally {
+        setLogsLoading(false)
+      }
+    },
+    [token, notifySessionExpired, logsSkip, logsStatus],
+  )
+
+  const openLog = async (id: number) => {
+    if (!token) return
+    setDetailLoading(true)
+    setLogsError('')
+    try {
+      const res = await fetch(`/api/ops/cellbyte-logs/${id}`, { headers: authHeaders(token) })
+      if (handleAuthFailure(res.status, notifySessionExpired)) return
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(apiErrorMessage(body, 'No se pudo abrir el envío'))
+      }
+      setSelectedLog(await res.json())
+    } catch (err: unknown) {
+      setLogsError(err instanceof Error ? err.message : 'Error al abrir el envío')
+    } finally {
+      setDetailLoading(false)
+    }
+  }
+
   useEffect(() => {
     if (!authHydrated) return
     if (!isAuthenticated) {
@@ -177,10 +273,17 @@ export default function AdminOpsPage() {
       router.replace('/dashboard')
       return
     }
+    if (tab !== 'server') return
     load()
     const interval = setInterval(load, 15000)
     return () => clearInterval(interval)
-  }, [authHydrated, isAuthenticated, user, router, load])
+  }, [authHydrated, isAuthenticated, user, router, load, tab])
+
+  useEffect(() => {
+    if (!authHydrated || !isAuthenticated || !user || !canAccessOps(user)) return
+    if (tab !== 'cellbyte') return
+    void loadLogs(0)
+  }, [authHydrated, isAuthenticated, user, tab, logsStatus])
 
   if (!authHydrated || !isAuthenticated || !user || !canAccessOps(user)) {
     return null
@@ -215,22 +318,207 @@ export default function AdminOpsPage() {
             </span>
             <button
               type="button"
-              onClick={() => load()}
-              disabled={loading}
+              onClick={() => (tab === 'cellbyte' ? void loadLogs(logsSkip) : load())}
+              disabled={tab === 'cellbyte' ? logsLoading : loading}
               className="px-3 py-1.5 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
-              {loading ? 'Actualizando…' : 'Actualizar'}
+              {(tab === 'cellbyte' ? logsLoading : loading) ? 'Actualizando…' : 'Actualizar'}
             </button>
           </div>
         </div>
 
-        {error && (
+        <div className="mb-6 flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={() => setTab('server')}
+            className={`px-4 py-2 rounded-lg text-sm ${
+              tab === 'server' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'
+            }`}
+          >
+            Servidor
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSelectedLog(null)
+              setTab('cellbyte')
+            }}
+            className={`px-4 py-2 rounded-lg text-sm ${
+              tab === 'cellbyte' ? 'bg-hospital-blue text-white' : 'bg-gray-200 text-gray-800'
+            }`}
+          >
+            Envíos Cellbyte
+          </button>
+        </div>
+
+        {tab === 'server' && error && (
           <div className="mb-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
             {error}
           </div>
         )}
 
-        {status && (
+        {tab === 'cellbyte' && (
+          <div className="space-y-4">
+            {logsError && (
+              <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+                {logsError}
+              </div>
+            )}
+
+            {selectedLog ? (
+              <div className="bg-white rounded-lg shadow border border-gray-200 p-5">
+                <button
+                  type="button"
+                  onClick={() => setSelectedLog(null)}
+                  className="text-sm text-hospital-blue hover:underline font-medium mb-4"
+                >
+                  ← Volver a la lista
+                </button>
+                <div className="flex flex-wrap items-center gap-3 mb-4">
+                  <h2 className="text-xl font-semibold text-gray-900">Envío #{selectedLog.id}</h2>
+                  <span
+                    className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${cellbyteStatusClass(selectedLog.status)}`}
+                  >
+                    {CELLBYTE_STATUS_LABELS[selectedLog.status]}
+                  </span>
+                </div>
+                <dl className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm text-gray-700 mb-6">
+                  <div>
+                    <dt className="text-gray-500">Fecha</dt>
+                    <dd className="font-medium">{formatPreadmissionDate(selectedLog.createdAt)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Preadmisión</dt>
+                    <dd className="font-medium">
+                      {selectedLog.preadmissionId != null ? (
+                        <Link
+                          href={`/admin/preadmissions/${selectedLog.preadmissionId}`}
+                          className="text-hospital-blue hover:underline"
+                        >
+                          #{selectedLog.preadmissionId}
+                        </Link>
+                      ) : (
+                        '—'
+                      )}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Intento</dt>
+                    <dd className="font-medium">{selectedLog.attempt}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-gray-500">Error</dt>
+                    <dd className="font-medium break-words">{selectedLog.errorMessage || '—'}</dd>
+                  </div>
+                </dl>
+                <h3 className="text-sm font-semibold text-gray-900 mb-2">Payload enviado</h3>
+                <p className="text-xs text-gray-500 mb-2">
+                  Las imágenes adjuntas se guardan resumidas, no como el archivo completo.
+                </p>
+                <pre className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words">
+                  {prettyJson(selectedLog.requestPayload)}
+                </pre>
+                <h3 className="text-sm font-semibold text-gray-900 mt-6 mb-2">Respuesta</h3>
+                <pre className="text-xs bg-gray-50 border border-gray-200 rounded-lg p-4 overflow-x-auto whitespace-pre-wrap break-words">
+                  {prettyJson(selectedLog.responseBody)}
+                </pre>
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-end gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">Estado</label>
+                    <select
+                      value={logsStatus}
+                      onChange={(e) => setLogsStatus(e.target.value)}
+                      className="px-3 py-2 border border-gray-300 rounded-lg bg-white"
+                    >
+                      <option value="">Todos</option>
+                      <option value="true">Enviados</option>
+                      <option value="false">Con error</option>
+                    </select>
+                  </div>
+                  <p className="text-sm text-gray-500 pb-2">
+                    {logsTotal} envío{logsTotal === 1 ? '' : 's'}
+                    {detailLoading ? ' · Abriendo…' : ''}
+                  </p>
+                </div>
+                <div className="bg-white rounded-lg shadow overflow-x-auto">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-gray-50 border-b">
+                      <tr>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-700">Fecha</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-700">Preadmisión</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-700">Intento</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-700">Estado</th>
+                        <th className="text-left px-4 py-3 font-semibold text-gray-700">Detalle</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {logs.length === 0 && !logsLoading && (
+                        <tr>
+                          <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
+                            No hay envíos con este filtro.
+                          </td>
+                        </tr>
+                      )}
+                      {logs.map((row) => (
+                        <tr
+                          key={row.id}
+                          className="border-b border-gray-100 hover:bg-gray-50 cursor-pointer"
+                          onClick={() => void openLog(row.id)}
+                        >
+                          <td className="px-4 py-3 whitespace-nowrap">
+                            {formatPreadmissionDate(row.createdAt)}
+                          </td>
+                          <td className="px-4 py-3">
+                            {row.preadmissionId != null ? `#${row.preadmissionId}` : '—'}
+                          </td>
+                          <td className="px-4 py-3">{row.attempt}</td>
+                          <td className="px-4 py-3">
+                            <span
+                              className={`inline-flex px-2.5 py-0.5 rounded-full text-xs font-semibold ${cellbyteStatusClass(row.status)}`}
+                            >
+                              {CELLBYTE_STATUS_LABELS[row.status]}
+                            </span>
+                          </td>
+                          <td className="px-4 py-3 text-gray-600 max-w-md truncate">
+                            {row.errorMessage || 'Ver payload'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                {logsTotal > logsLimit && (
+                  <div className="flex items-center gap-3 text-sm">
+                    <button
+                      type="button"
+                      disabled={logsSkip === 0 || logsLoading}
+                      onClick={() => void loadLogs(Math.max(0, logsSkip - logsLimit))}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50"
+                    >
+                      Anterior
+                    </button>
+                    <span className="text-gray-600">
+                      {logsSkip + 1}–{Math.min(logsSkip + logs.length, logsTotal)} de {logsTotal}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={logsSkip + logsLimit >= logsTotal || logsLoading}
+                      onClick={() => void loadLogs(logsSkip + logsLimit)}
+                      className="px-3 py-1.5 border border-gray-300 rounded-lg disabled:opacity-50"
+                    >
+                      Siguiente
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        )}
+
+        {tab === 'server' && status && (
           <div className="space-y-6">
             {status.alerts.length > 0 && (
               <div className="space-y-2">

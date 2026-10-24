@@ -1,10 +1,11 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { IntegrationLog } from './entities/integration-log.entity';
 import { Preadmission } from '../preadmission/entities/preadmission.entity';
 import { PreadmissionStorageService } from '../preadmission/preadmission-storage.service';
 import { getCellbyteConfig, isCellbyteConfigured } from './cellbyte.config';
+import { toPanamaOffsetIso } from '../common/timezone';
 import {
   buildCellbyteAttachmentWarnings,
   buildCellbytePayload,
@@ -415,6 +416,74 @@ export class CellbyteService {
       return { response, bodyText };
     } finally {
       clearTimeout(timeoutId);
+    }
+  }
+
+  async listLogs(params: { skip?: number; limit?: number; success?: boolean }) {
+    const skip = Math.max(0, params.skip ?? 0);
+    const limit = Math.min(200, Math.max(1, params.limit ?? 50));
+    const qb = this.logRepository
+      .createQueryBuilder('log')
+      .where('log.integration = :integration', { integration: 'cellbyte' })
+      .orderBy('log.createdAt', 'DESC')
+      .skip(skip)
+      .take(limit);
+
+    if (params.success != null) {
+      qb.andWhere('log.success = :success', { success: params.success });
+    }
+
+    const [rows, total] = await qb.getManyAndCount();
+    return {
+      total,
+      skip,
+      limit,
+      items: rows.map((row) => ({
+        id: row.id,
+        preadmissionId: row.preadmissionId,
+        success: row.success,
+        attempt: row.attempt,
+        status: this.deliveryStatus(row),
+        errorMessage: row.errorMessage,
+        createdAt: toPanamaOffsetIso(row.createdAt) ?? row.createdAt,
+      })),
+    };
+  }
+
+  async getLog(id: number) {
+    const row = await this.logRepository.findOne({
+      where: { id, integration: 'cellbyte' },
+    });
+    if (!row) {
+      throw new NotFoundException('Envío a Cellbyte no encontrado');
+    }
+    return {
+      id: row.id,
+      preadmissionId: row.preadmissionId,
+      success: row.success,
+      attempt: row.attempt,
+      status: this.deliveryStatus(row),
+      errorMessage: row.errorMessage,
+      createdAt: toPanamaOffsetIso(row.createdAt) ?? row.createdAt,
+      requestPayload: this.parseStoredJson(row.requestPayload),
+      responseBody: this.parseStoredJson(row.responseBody),
+    };
+  }
+
+  private deliveryStatus(row: Pick<IntegrationLog, 'success' | 'responseBody'>): 'sent' | 'error' | 'skipped' {
+    if (!row.success) return 'error';
+    if (row.responseBody?.includes('"skipped":true') || row.responseBody?.includes('"skipped": true')) {
+      return 'skipped';
+    }
+    return 'sent';
+  }
+
+  private parseStoredJson(value: string | null): unknown {
+    if (!value) return null;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
     }
   }
 
