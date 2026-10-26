@@ -856,6 +856,14 @@ export class TicketsService {
     return /triage/i.test(service?.name || '');
   }
 
+  private isConsultaService(
+    service?: { code?: string | null; name?: string | null } | null,
+  ): boolean {
+    const code = String(service?.code || '').toUpperCase();
+    if (code === 'CTA') return true;
+    return /consulta/i.test(service?.name || '') && code !== 'TRIAGE';
+  }
+
   private isVentanillaDestination(dest: string): boolean {
     return dest.trim().toLowerCase().startsWith('ventanilla');
   }
@@ -882,6 +890,28 @@ export class TicketsService {
     if (this.isVentanillaDestination(dest)) return;
     throw new BadRequestException(
       `El turno ${ticket.ticketNumber} de Radiología o Toma de muestra se llama primero en ventanilla. Pasa a ese destino después de atenderlo y transferirlo.`,
+    );
+  }
+
+  /** Consulta se llama en Triage hasta que se transfiere; después, en ventanilla. */
+  private assertConsultaCalledAtTriageUntilTransfer(
+    windowNumber: string,
+    ticket: Pick<Ticket, 'notes' | 'ticketNumber'>,
+    service: { code?: string | null; name?: string | null } | null,
+  ) {
+    if (!this.isConsultaService(service)) return;
+    const dest = windowNumber.trim().toLowerCase();
+    if (this.isTransferOriginTicket(ticket)) {
+      if (dest === 'triage') {
+        throw new BadRequestException(
+          `El turno ${ticket.ticketNumber} de Consulta ya fue transferido. Se atiende en ventanilla.`,
+        );
+      }
+      return;
+    }
+    if (dest === 'triage') return;
+    throw new BadRequestException(
+      `El turno ${ticket.ticketNumber} de Consulta solo se llama en Triage. Pasa a ventanilla después de transferirlo.`,
     );
   }
 
@@ -955,6 +985,7 @@ export class TicketsService {
       throw new NotFoundException('Ticket no encontrado');
     }
     this.assertTriageCalledAtTriageDestination(windowNumber, ticket.service, ticket.ticketNumber);
+    this.assertConsultaCalledAtTriageUntilTransfer(windowNumber, ticket, ticket.service);
     this.assertLabRadCalledAtVentanillaFirst(windowNumber, ticket, ticket.service);
     this.assertTransferEligibleForDestination(windowNumber, ticket, ticket.service);
     await this.assertDestinationAvailable(windowNumber, ticket.id);
@@ -1009,6 +1040,7 @@ export class TicketsService {
       );
     }
     this.assertTriageCalledAtTriageDestination(windowNumber, ticket.service, ticket.ticketNumber);
+    this.assertConsultaCalledAtTriageUntilTransfer(windowNumber, ticket, ticket.service);
     this.assertLabRadCalledAtVentanillaFirst(windowNumber, ticket, ticket.service);
     this.assertTransferEligibleForDestination(windowNumber, ticket, ticket.service);
     await this.assertDestinationAvailable(windowNumber, ticket.id);

@@ -103,6 +103,12 @@ function isTriageTicket(ticket: { service_code?: string | null; service_name?: s
   return /triage/i.test(ticket.service_name || '')
 }
 
+function isConsultaTicket(ticket: { service_code?: string | null; service_name?: string | null }): boolean {
+  const code = (ticket.service_code || '').toUpperCase()
+  if (code === 'CTA') return true
+  return /consulta/i.test(ticket.service_name || '') && code !== 'TRIAGE'
+}
+
 function isTriageCallDestination(destination: string): boolean {
   return destination.trim().toLowerCase() === 'triage'
 }
@@ -117,6 +123,32 @@ function isLabOrRadTicket(ticket: { service_code?: string | null; service_name?:
   const name = (ticket.service_name || '').toLowerCase()
   if (code === 'LAB' || code === 'RAD') return true
   return name.includes('toma de muestra') || name.includes('laboratorio') || name.includes('radiolog')
+}
+
+/** Cola de espera según el destino inicial de cada tipo de ticket. */
+function ticketVisibleInWaitingQueue(
+  ticket: Ticket,
+  destination: string,
+  supervisorView: boolean,
+): boolean {
+  if (supervisorView) return true
+  const dest = destination.trim()
+  if (isTriageTicket(ticket)) return isTriageCallDestination(dest)
+  if (isConsultaTicket(ticket)) {
+    if (isTransferOriginTicket(ticket)) return isVentanillaCallDestination(dest)
+    return isTriageCallDestination(dest)
+  }
+  if (isLabOrRadTicket(ticket)) {
+    if (!isTransferOriginTicket(ticket)) return isVentanillaCallDestination(dest)
+    if (!isTransferOnlyCallDestination(dest)) return false
+    return ticketMatchesTransferDestination(ticket, dest)
+  }
+  if (isTransferOnlyCallDestination(dest)) {
+    if (!isTransferOriginTicket(ticket)) return false
+    return ticketMatchesTransferDestination(ticket, dest)
+  }
+  if (isTriageCallDestination(dest)) return false
+  return isVentanillaCallDestination(dest) || dest === ''
 }
 
 interface Service {
@@ -209,17 +241,19 @@ export default function StaffConsolePage() {
     try {
       // En destinos Lab/Rad la cola es por transferidos: no filtrar por servicio OT/etc.
       // (si se filtra OT tras Lab+Rad, el ticket ya es LAB y “desaparece” de la vista).
+      const supervisorView = !agentState.trim()
       const ignoreServiceFilter =
-        Boolean(myDestination) && isTransferOnlyCallDestination(myDestination)
+        supervisorView ||
+        (Boolean(myDestination) && isTransferOnlyCallDestination(myDestination))
       const url =
-        selectedService && !selectedIsTriageGroup && !ignoreServiceFilter
+        !supervisorView && selectedService && !selectedIsTriageGroup && !ignoreServiceFilter
           ? `/api/tickets/?service_id=${selectedService}`
           : '/api/tickets/'
       const response = await fetch(url, { headers: authHeaders(token) })
       if (handleAuthFailure(response.status, notifySessionExpired)) return
       if (response.ok) {
         let data = await response.json()
-        if (selectedIsTriageGroup && Array.isArray(data)) {
+        if (!supervisorView && selectedIsTriageGroup && Array.isArray(data)) {
           data = data.filter((t: Ticket) => triageServiceIds.has(t.service_id))
         }
         setTickets(data)
@@ -283,7 +317,7 @@ export default function StaffConsolePage() {
       fetchOccupiedDestinations()
     }, 3000)
     return () => clearInterval(interval)
-  }, [canUseStaff, selectedService, token, windowNumber])
+  }, [canUseStaff, selectedService, token, windowNumber, agentState])
 
   // Si el agente tenía un turno activo (p. ej. volvió tras expirar sesión), restaurar destino.
   useEffect(() => {
@@ -697,21 +731,7 @@ export default function StaffConsolePage() {
       if (queueView === 'priority') return (t.priority_level ?? 2) <= 2
       return true
     })
-    .filter((t) => {
-      if (!isTransferOnlyCallDestination(myDestination)) return true
-      if (!isTransferOriginTicket(t)) return false
-      return ticketMatchesTransferDestination(t, myDestination)
-    })
-    .filter((t) => {
-      if (!isTriageTicket(t)) return true
-      return isTriageCallDestination(myDestination)
-    })
-    .filter((t) => {
-      if (!isLabOrRadTicket(t)) return true
-      if (!isTransferOriginTicket(t)) return isVentanillaCallDestination(myDestination)
-      if (!isTransferOnlyCallDestination(myDestination)) return false
-      return ticketMatchesTransferDestination(t, myDestination)
-    })
+    .filter((t) => ticketVisibleInWaitingQueue(t, myDestination, !agentState.trim()))
     .filter(matchesQueueSearch)
     .sort((a, b) => {
       // Orden de llegada: prioridad de servicio (Triage 1, Consulta 2…), luego llegada
@@ -890,8 +910,8 @@ export default function StaffConsolePage() {
             </select>
             {!destinationUnlocked && (
               <p className="text-sm text-amber-700 mt-2">
-                Seleccione el estado del agente (En línea, Manual o Fuera de línea) para elegir un
-                destino.
+                Sin estado de agente se muestran todos los turnos pendientes de llamar. Seleccione
+                En línea, Manual o Fuera de línea para elegir un destino y llamar.
               </p>
             )}
             {destinationUnlocked && !windowNumber.trim() && (
@@ -1199,13 +1219,15 @@ export default function StaffConsolePage() {
           <div>
             <h2 className="text-xl font-semibold mb-4">Cola de Espera</h2>
             <p className="text-sm text-gray-600 mb-4">
-              {isTriageCallDestination(myDestination)
-                ? 'Turnos de Triage del día. Después de atender, asignar color y transferir, el turno pasa a la cola de ventanillas.'
-                : isTransferOnlyCallDestination(myDestination)
-                  ? 'Solo turnos ya atendidos en ventanilla y transferidos a este destino, del día actual.'
-                  : isVentanillaCallDestination(myDestination)
-                    ? 'Del día actual. Los turnos de Toma de muestra (LR) y Radiología se atienden aquí y pasan a ese destino al transferirlos. Triage no aparece en esta cola.'
-                    : 'Del día actual. Triage se atiende en Triage. Toma de muestra y Radiología se atienden primero en una ventanilla.'}
+              {!agentState.trim()
+                ? 'Vista de supervisor: todos los turnos del día pendientes de llamar, sin filtrar por destino.'
+                : isTriageCallDestination(myDestination)
+                  ? 'Turnos de Triage y Consulta. Triage pasa a ventanilla después de asignar color y transferir. Consulta pasa a ventanilla al transferir.'
+                  : isTransferOnlyCallDestination(myDestination)
+                    ? 'Solo turnos ya atendidos en ventanilla y transferidos a este destino, del día actual.'
+                    : isVentanillaCallDestination(myDestination)
+                      ? 'Del día actual. Laboratorio y Radiología se atienden aquí y pasan a ese destino al transferirlos. Triage y Consulta no aparecen hasta transferirlos.'
+                      : 'Del día actual. Triage y Consulta se atienden en Triage. Laboratorio y Radiología se atienden primero en una ventanilla.'}
             </p>
             {queueTickets.length === 0 ? (
               <div className="text-center py-8 text-gray-500">

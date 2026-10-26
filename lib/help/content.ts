@@ -90,7 +90,7 @@ export const MANUAL_SECTIONS: ManualSection[] = [
     title: 'Consola operativa (Staff)',
     audience: 'staff',
     paragraphs: [
-      'Desde /staff el equipo llama turnos, inicia y finaliza atención, transfiere a Radiología/Toma de muestra y registra check-in por QR. Un turno de Triage solo aparece en el destino Triage; pasa a la cola de ventanillas después de atenderlo, asignar el color y transferirlo. Un turno de Toma de muestra (LR) o Radiología se atiende primero en ventanilla y pasa a ese destino después de transferirlo.',
+      'Desde /staff el equipo llama turnos, inicia y finaliza atención, transfiere a Radiología/Toma de muestra y registra check-in por QR. Triage y Consulta se atienden en Triage: Triage pasa a ventanilla después de asignar color y transferir; Consulta, al transferir. Laboratorio y Radiología se atienden primero en ventanilla. Sin estado de agente, la cola muestra todos los turnos pendientes de llamar.',
     ],
     bullets: [
       'Indique su estado de agente (en línea, almuerzo, etc.) antes de operar turnos.',
